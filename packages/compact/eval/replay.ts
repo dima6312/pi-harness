@@ -35,6 +35,7 @@ const above = Number(values.above);
 let real = 0;
 let pruned = 0;
 let rewrites = 0;
+let prunes = 0;
 let sessions = 0;
 const rows: string[] = [];
 
@@ -48,6 +49,7 @@ for (const folder of readdirSync(root)) {
 		real += result.real;
 		pruned += result.pruned;
 		rewrites += result.rewrites;
+		prunes += result.prunes;
 		rows.push(
 			`${result.real.toFixed(2).padStart(8)} ${result.pruned.toFixed(2).padStart(8)}  ${result.prunes} prunes  ${folder}/${file.slice(0, 16)}`,
 		);
@@ -57,7 +59,7 @@ for (const folder of readdirSync(root)) {
 if (values.show) console.log(rows.toSorted().toReversed().join("\n"));
 const saved = Math.round((1 - pruned / real) * 100);
 console.log(
-	`${sessions} sessions, pruning above ${above / 1000}k: $${real.toFixed(2)} -> $${pruned.toFixed(2)} (${saved}% less), cache rewrites $${rewrites.toFixed(2)}`,
+	`${sessions} sessions, pruning above ${above / 1000}k: $${real.toFixed(2)} -> $${pruned.toFixed(2)} (${saved}% less), ${prunes} prunes, cache rewrites $${rewrites.toFixed(2)}`,
 );
 
 function replay(branch: Entry[]) {
@@ -70,7 +72,7 @@ function replay(branch: Entry[]) {
 
 	let projected: ProjectedSessionEntry[] = [];
 	let removed = 0;
-	let rewriteAt: number | undefined;
+	let rewriting = false;
 	const result = { real: 0, pruned: 0, rewrites: 0, prunes: 0 };
 	let last: Entry["message"];
 	for (const entry of branch) {
@@ -90,12 +92,11 @@ function replay(branch: Entry[]) {
 				usage.input * price.input +
 				usage.output * price.output;
 			result.real += cost(usage.cacheRead, usage.cacheWrite);
-			if (rewriteAt !== undefined) {
-				const read = Math.min(rewriteAt, usage.cacheRead + usage.cacheWrite);
-				const write = Math.max(0, context - removed - read - usage.input);
-				result.pruned += cost(read, write);
+			if (rewriting) {
+				const write = Math.max(0, context - removed - usage.input);
+				result.pruned += cost(0, write);
 				result.rewrites += write * (price.cacheWrite - price.cacheRead);
-				rewriteAt = undefined;
+				rewriting = false;
 			} else if (usage.cacheRead >= removed)
 				result.pruned += cost(usage.cacheRead - removed, usage.cacheWrite);
 			else result.pruned += cost(0, Math.max(0, usage.cacheWrite - (removed - usage.cacheRead)));
@@ -112,14 +113,9 @@ function replay(branch: Entry[]) {
 			last.usage.input + last.usage.cacheRead + last.usage.cacheWrite + outputs - removed;
 		const plan = pruneNow(projected, before, above);
 		if (plan === undefined) continue;
-		const first = projected.findIndex((item) =>
-			plan.edits.some((edit) => edit.targetId === item.sourceEntry.id),
-		);
-		const ratio = before / Math.max(1, plan.total);
-		const prefix = projected.slice(0, first);
-		rewriteAt =
-			prefix.reduce((sum, item) => sum + estimateTokens(item.messages[0] as AgentMessage), 0) *
-			ratio;
+		// The next request writes all of the context again, the system prompt too, which in fact
+		// stays cached. So the saving here is a floor.
+		rewriting = true;
 		removed += before - sizeAfter(plan, before);
 		result.prunes++;
 		projected = projected.map((item) => {
