@@ -25,7 +25,7 @@
 		"fmt:check": "oxfmt --check",
 		"test": "bun test",
 		"perf": "bun test packages/*/test/perf.test.ts",
-		"goal:eval": "bun packages/goal/eval/run.ts",
+		"tasks:eval": "bun packages/tasks/eval/run.ts",
 		"verify": "bun run check && bun run lint && bun run fmt:check && bun run test && bun run docs:check && bun run pi:defaults",
 		"docs": "bun scripts/docs/index.ts",
 		"docs:check": "bun scripts/docs/index.ts --check",
