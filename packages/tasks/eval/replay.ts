@@ -10,11 +10,12 @@ import {
 	type SessionTasks,
 	type TaskOp,
 } from "@adeildo/pi-kit";
+import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 
 import { type Asker, onMessage, onRun, onTidy, type Proposal } from "../src/ask.ts";
 import { clipMessage, heard, type Line, runSince, yourWords } from "../src/transcript.ts";
 import { type Entry, readBranch } from "./session.ts";
-import { signedIn } from "./signin.ts";
+import { modelNamed, signedIn } from "./signin.ts";
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
@@ -24,24 +25,12 @@ const [file] = positionals;
 if (file === undefined) throw new Error("usage: replay.ts <session.jsonl> [--model provider/id]");
 
 const registry = await signedIn();
-/** The last answer the model gave, to show the line a refused close cited. */
-let lastAnswer: unknown;
-const stream = registry.streamSimple.bind(registry);
-registry.streamSimple = (target, context, options) => {
-	const reply = stream(target, context, options);
-	const result = reply.result.bind(reply);
-	reply.result = async () => {
-		const done = await result();
-		const call = done.content.find((part) => part.type === "toolCall");
-		lastAnswer = call?.type === "toolCall" ? call.arguments : undefined;
-		return done;
-	};
-	return reply;
+const lastAnswer = watchAnswers(registry);
+const asker: Asker = {
+	registry,
+	models: [modelNamed(registry, values.model)],
+	signal: new AbortController().signal,
 };
-const [provider = "", ...rest] = values.model.split("/");
-const model = registry.find(provider, rest.join("/"));
-if (model === undefined) throw new Error(`no model ${values.model}`);
-const asker: Asker = { registry, models: [model], signal: new AbortController().signal };
 
 const branch = readBranch(file);
 
@@ -116,10 +105,29 @@ function settle(
 	);
 }
 
+/** Keeps the arguments of the model's last answer, which the checks never return. */
+function watchAnswers(watched: ModelRegistry): () => unknown {
+	let last: unknown;
+	const stream = watched.streamSimple.bind(watched);
+	watched.streamSimple = (target, context, options) => {
+		const reply = stream(target, context, options);
+		const result = reply.result.bind(reply);
+		reply.result = async () => {
+			const done = await result();
+			const call = done.content.find((part) => part.type === "toolCall");
+			last = call?.type === "toolCall" ? call.arguments : undefined;
+			return done;
+		};
+		return reply;
+	};
+	return () => last;
+}
+
 /** The line each refused done cited, so a check that refuses too much shows itself. */
 function showCited(lines: readonly Line[]): void {
 	const verdicts =
-		(lastAnswer as { tasks?: { id?: string; evidence?: string; outcome?: string }[] })?.tasks ?? [];
+		(lastAnswer() as { tasks?: { id?: string; evidence?: string; outcome?: string }[] })?.tasks ??
+		[];
 	for (const { id, evidence, outcome } of verdicts) {
 		if (outcome !== "done") continue;
 		const line = lines.find((entry) => entry.ref === evidence);

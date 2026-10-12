@@ -164,7 +164,7 @@ class Draft {
 	}
 
 	#decide(text: string, tasks: readonly string[] | undefined): void {
-		if (text === "" || this.#next.decisions.some((decision) => sameWords(decision.text, text)))
+		if (text === "" || this.#next.decisions.some((decision) => sameText(decision.text, text)))
 			return;
 		const known = (tasks ?? []).filter((id) => this.#find(id) !== undefined);
 		this.#next.decisions.push({
@@ -196,7 +196,7 @@ class Draft {
 
 	/** A task with the same words that is not dropped, which a new one would repeat. */
 	#listed(text: string): Task | undefined {
-		return this.#next.tasks.find((task) => task.status !== "dropped" && sameWords(task.text, text));
+		return this.#next.tasks.find((task) => task.status !== "dropped" && sameText(task.text, text));
 	}
 
 	#move(task: Task, status: TaskStatus): void {
@@ -233,7 +233,7 @@ class Draft {
 	}
 }
 
-function sameWords(left: string, right: string): boolean {
+function sameText(left: string, right: string): boolean {
 	return wordsOf(left) === wordsOf(right);
 }
 

@@ -4,7 +4,7 @@ import type { Api, Model, Tool } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { modelRef } from "./models.ts";
-import { type Checked, messageOps, runOps, SCHEMAS, tidyOps } from "./ops.ts";
+import { type Checked, messageOps, runOps, tidyOps } from "./ops.ts";
 import {
 	type MessageRequest,
 	messagePrompt,
@@ -14,6 +14,7 @@ import {
 	tidyPrompt,
 	TOOL,
 } from "./prompts.ts";
+import { SCHEMAS } from "./schemas.ts";
 import type { Line } from "./transcript.ts";
 
 export interface Proposal {

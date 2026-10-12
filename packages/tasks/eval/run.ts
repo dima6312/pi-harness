@@ -15,7 +15,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import { type Asker, onMessage, onRun, onTidy, type Proposal } from "../src/ask.ts";
 import { clipMessage } from "../src/transcript.ts";
 import { type Case, CASES, type Expect, linesOf } from "./cases.ts";
-import { signedIn } from "./signin.ts";
+import { modelNamed, signedIn } from "./signin.ts";
 
 const { values } = parseArgs({
 	options: {
@@ -28,9 +28,7 @@ const { values } = parseArgs({
 });
 
 const registry = await signedIn();
-const [provider = "", ...rest] = values.model.split("/");
-const chosen = registry.find(provider, rest.join("/"));
-if (chosen === undefined) throw new Error(`no model ${values.model}`);
+const chosen = modelNamed(registry, values.model);
 
 const cases = CASES.filter((c) => values.case === undefined || c.name.includes(values.case));
 const slot = limit(Number(values.parallel));

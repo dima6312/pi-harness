@@ -1,108 +1,12 @@
-// What the model may answer at each moment, read defensively and checked against what it read.
+// The model's answers, read defensively and checked against what it read.
 import { isObject, type SessionTasks, type Task, type TaskOp } from "@adeildo/pi-kit";
-import { type TSchema, Type } from "@earendil-works/pi-ai";
 
-import type { Moment } from "./prompts.ts";
-import type { Line, LineKind } from "./transcript.ts";
+import type { Line } from "./transcript.ts";
+import { ASKING, echoes, isPlan, normalized, sameWords, sharesWord } from "./words.ts";
 
 const MAX_TEXT = 240;
 const MIN_PROOF = 8;
 const MAX_DECISIONS = 1;
-
-function text(description: string): TSchema {
-	return Type.String({ description });
-}
-
-function literals(...values: string[]): TSchema {
-	return Type.Union(values.map((value) => Type.Literal(value)));
-}
-
-const ID = text("A task's id from the list, like t3.");
-const TASK = text("Imperative, under 60 characters, in the operator's language.");
-const PROOF = text("The operator's words that say it, copied exactly from the message.");
-const WHY = text("Why, in a few words.");
-const INSTEAD_OF = text(
-	'The alternative that was not chosen, like "two separate keys", or "" when there was none.',
-);
-
-function shape(
-	name: string,
-	fields: Record<string, TSchema>,
-	optional: Record<string, TSchema> = {},
-): TSchema {
-	const extra = Object.fromEntries(
-		Object.entries(optional).map(([key, schema]) => [key, Type.Optional(schema)]),
-	);
-	return Type.Object({ op: Type.Literal(name), ...fields, ...extra });
-}
-
-const MESSAGE_SCHEMA = Type.Object({
-	language: text("The English name of the message's language, like 'Portuguese'."),
-	ops: Type.Array(
-		Type.Union([
-			shape(
-				"continue_task",
-				{ id: ID },
-				{ text: text("The task's new words, only when the ask changed.") },
-			),
-			shape("new_task", {
-				proof: text(
-					"The operator's words that ask for this work, copied exactly from the message.",
-				),
-				text: TASK,
-			}),
-			shape("defer_task", { id: ID, why: WHY, proof: PROOF }),
-			shape("drop_task", { id: ID, why: WHY, proof: PROOF }),
-			shape("you_did", { id: ID, proof: PROOF }),
-			shape("decide", {
-				instead_of: INSTEAD_OF,
-				text: text("What was chosen, in a short sentence."),
-				proof: PROOF,
-			}),
-			shape("title", { text: text("What the session is about, broader than one task.") }),
-		]),
-	),
-});
-
-/** Evidence first, so the model reads before it decides. */
-const VERDICT = Type.Object({
-	id: ID,
-	evidence: text(
-		'The ref of the said: or report: line that reports it done, or where the agent asks or says what it waits on, like "L12", or "". Never a call: line.',
-	),
-	outcome: literals("untouched", "done", "progress", "waiting"),
-	result: text('Done: what came out of it, or "".'),
-	left: text('What it did not do, or "".'),
-	waiting_on: literals("you", "outside"),
-	why: text('Waiting: why, or "".'),
-});
-
-const RUN_SCHEMA = Type.Object({
-	tasks: Type.Array(VERDICT),
-	decisions: Type.Array(
-		Type.Object({
-			evidence: text('The ref of the line that reports the choice, like "L7".'),
-			instead_of: INSTEAD_OF,
-			text: text("What was chosen, in a short sentence."),
-		}),
-	),
-});
-
-const TIDY_SCHEMA = Type.Object({
-	ops: Type.Array(
-		Type.Union([
-			shape("merge", { id: text("The task that goes."), into: text("The task that stays.") }),
-			shape("rename", { id: ID, text: TASK }),
-			shape("title", { text: text("What the session is about, broader than one task.") }),
-		]),
-	),
-});
-
-export const SCHEMAS: Record<Moment, TSchema> = {
-	message: MESSAGE_SCHEMA,
-	run: RUN_SCHEMA,
-	tidy: TIDY_SCHEMA,
-};
 
 export interface Checked {
 	ops: TaskOp[];
@@ -142,7 +46,10 @@ function fromMessage(
 	const why = field("why", clean(raw.why));
 	switch (raw.op) {
 		case "new_task":
-			return words ? [{ op: "ask", text: words }, echoes(raw.proof, message)] : undefined;
+			// A new task only has to come from what you asked, in any order.
+			return words
+				? [{ op: "ask", text: words }, echoes(clean(raw.proof) ?? "", message)]
+				: undefined;
 		case "continue_task":
 			return task ? [{ op: "continue", id: task.id, ...field("text", words) }, true] : undefined;
 		case "defer_task":
@@ -276,14 +183,6 @@ function proves(proof: unknown, message: string): string | undefined {
 	return words;
 }
 
-/** Words mostly found in the message, for a new task: it only has to come from what you asked. */
-function echoes(proof: unknown, message: string): boolean {
-	const words = stems(typeof proof === "string" ? proof : "");
-	if (words.size === 0) return false;
-	const said = stems(message);
-	return [...words].filter((stem) => said.has(stem)).length / words.size >= 0.75;
-}
-
 function lineOf(message: string, proof: string): string {
 	const needle = normalized(proof);
 	return message.split("\n").find((line) => normalized(line).includes(needle)) ?? proof;
@@ -312,73 +211,8 @@ function reports(ref: unknown, lines: readonly Line[], task?: Task): boolean {
 	return lines.slice(0, at).findLast((before) => before.kind === "call")?.failed !== true;
 }
 
-/** Words that ask for work instead of saying it was done. */
-const ASKING =
-	/(?<!\p{L})(vamos|vou|pode|podemos|bora|faz|faça|let's|let me|please|can you|could you)(?!\p{L})/iu;
-const PLAN_START = /^(i'll|i will|i'm going to|let me|let's|vou|vamos|deixa eu|deixe-me)\b/i;
-const PLAN_AFTER =
-	/^(now|next|then|first|agora|em seguida|depois|primeiro)\b[^.]{0,40}\b(i'll|i will|let me|vou)\b/i;
-
-/**
- * What the agent announces or asks, as opposed to what it reports. A line that reports something
- * and then says what comes next, like "Pushed. Now I watch the build:", still reports.
- */
-export function isPlan(said: string, next?: LineKind): boolean {
-	const sentences = said
-		.trim()
-		.replace(/[`*_]+$/g, "")
-		.split(/(?<=[.!])\s+/);
-	return sentences.every((sentence, index) =>
-		plans(sentence, index === sentences.length - 1 ? next : "said"),
-	);
-}
-
-function plans(sentence: string, next: LineKind | undefined): boolean {
-	if (PLAN_START.test(sentence) || PLAN_AFTER.test(sentence) || sentence.endsWith("?")) return true;
-	// "Now the router:" leads into a call; a report that ends in a colon leads into its list.
-	return sentence.endsWith(":") && (next === undefined || next === "call");
-}
-
 function find(state: SessionTasks, id: string): Task | undefined {
 	return state.tasks.find((task) => task.id === id.trim());
-}
-
-/** Two words with the same first letters are one: "publiquei" names "Publicar". */
-const STEM = 5;
-/** Words any message has, which name no task. */
-const COMMON = new Set(
-	"agora aqui esse essa isso esta está para pode feito fazer tudo with that this done already just have".split(
-		" ",
-	),
-);
-
-function stems(words: string): Set<string> {
-	return new Set(
-		normalized(words)
-			.split(/[^\p{L}\p{N}]+/u)
-			.filter((word) => word.length >= 4 && !COMMON.has(word))
-			.map((word) => word.slice(0, STEM)),
-	);
-}
-
-function sharesWord(left: string, right: string): boolean {
-	const named = stems(right);
-	return [...stems(left)].some((stem) => named.has(stem));
-}
-
-function sameWords(left: string, right: string): boolean {
-	const a = stems(left);
-	const b = stems(right);
-	const shared = [...a].filter((stem) => b.has(stem)).length;
-	return shared > 0 && shared / Math.max(a.size, b.size) >= 0.75;
-}
-
-function normalized(value: string): string {
-	return value
-		.toLowerCase()
-		.replace(/[*_`"'“”‘’]/g, "")
-		.replace(/\s+/g, " ")
-		.trim();
 }
 
 const NOTHING = /^(-|n\/?a|none|nothing|nenhum|nenhuma|nada)\.?$/i;

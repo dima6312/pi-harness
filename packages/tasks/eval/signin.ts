@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import type { Api, Model } from "@earendil-works/pi-ai";
 import { ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
 
 import { userAgent } from "../../providers/src/subscription/billing.ts";
@@ -50,4 +51,12 @@ function accountToken(): string {
 	if (usable?.credential.access === undefined)
 		throw new Error("no Anthropic account with a live token; open pi once to refresh them");
 	return usable.credential.access;
+}
+
+/** A model by its `provider/id`, or an error that names it. */
+export function modelNamed(registry: ModelRegistry, ref: string): Model<Api> {
+	const [provider = "", ...rest] = ref.split("/");
+	const model = registry.find(provider, rest.join("/"));
+	if (model === undefined) throw new Error(`no model ${ref}`);
+	return model;
 }

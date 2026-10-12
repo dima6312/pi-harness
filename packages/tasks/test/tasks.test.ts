@@ -24,7 +24,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import { TASKS_STATUS, tasks } from "../src/index.ts";
 import { Keeper } from "../src/keeper.ts";
 import { modelsFor } from "../src/models.ts";
-import { isPlan, messageOps, runOps } from "../src/ops.ts";
+import { messageOps, runOps } from "../src/ops.ts";
 import { doingOps, queuedOps } from "../src/screen.ts";
 import {
 	clipMessage,
@@ -35,6 +35,7 @@ import {
 	yourWords,
 } from "../src/transcript.ts";
 import { Updates } from "../src/updates.ts";
+import { isPlan } from "../src/words.ts";
 
 let dir: string;
 beforeEach(() => {

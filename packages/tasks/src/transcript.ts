@@ -141,7 +141,7 @@ export function operatorText(message: unknown): string | undefined {
 	return text === "" ? undefined : text;
 }
 
-export const QUESTIONS_TOOL = "ask_questions";
+const QUESTIONS_TOOL = "ask_questions";
 
 /** What you wrote: a message, or your answers to the agent's questions. */
 export function yourWords(message: unknown): string | undefined {
@@ -172,8 +172,7 @@ export function heard(branch: readonly unknown[], text: string): Heard {
 		(entry) => entry.type === "message" && yourWords(entry.message) === text,
 	);
 	const before = at === -1 ? entries : entries.slice(0, at);
-	const reply = before.findLast((entry) => assistantText(entry) !== "");
-	const words = reply === undefined ? "" : assistantText(reply);
+	const words = before.map(assistantText).findLast((said) => said !== "") ?? "";
 	return {
 		...(at === -1 ? {} : { entry: entries[at]?.id }),
 		...(words === "" ? {} : { reply: clip(oneLine(words), MAX_REPLY) }),
@@ -184,8 +183,10 @@ export function heard(branch: readonly unknown[], text: string): Heard {
 export function clipMessage(text: string): string {
 	if (text.length <= MAX_MESSAGE) return text;
 	const head = Math.floor(MAX_MESSAGE / 3);
-	const tail = MAX_MESSAGE - head;
-	return `${text.slice(0, head).trimEnd()}\n(\u2026 ${text.length - MAX_MESSAGE} characters left out \u2026)\n${text.slice(-tail).trimStart()}`;
+	const cut = `(\u2026 ${text.length - MAX_MESSAGE} characters left out \u2026)`;
+	return [text.slice(0, head).trimEnd(), cut, text.slice(head - MAX_MESSAGE).trimStart()].join(
+		"\n",
+	);
 }
 
 export interface SkillNote {
