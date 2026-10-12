@@ -75,16 +75,16 @@ flowchart TD
 
 It replaced `@adeildo/pi-goal`. In a week of sessions, the goal timeline left most finished work in `later`. A message sent while the agent worked had pushed 72 of the 87 items there aside, and the end of the run could only close the one step under way.
 
-| Item                     | Status | Note                                                                                                                |
-| ------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------- |
-| Six states               | done   | doing (several at once), queued, waiting on me or on something outside, deferred, done with its result, and dropped |
-| Decisions                | done   | the choices I made or the agent reported, kept apart so a later reader does not undo them                           |
-| Asks while it works      | done   | they queue instead of pushing the task under way aside, and the end of the run settles each one it worked on        |
-| A close needs its line   | done   | the model cites the line that reports the work, and the extension checks it is a report, after the task, not a plan |
-| Only my words are intent | done   | the judge reads the title and what is under way from my words only, and the model never sees what a tool returned   |
-| `Alt+T`                  | done   | the tasks by state over the chat, with the result of each done one beside it and the selected one in full           |
-| Measured                 | done   | `bun run tasks:eval`, with cases from real sessions. 96% on Claude Haiku                                            |
-| Closed by the agent      | later  | a tool the agent calls to close a task with its result, with the end of the run as the fallback when it forgets     |
+| Item                     | Status | Note                                                                                                                    |
+| ------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Six states               | done   | doing (several at once), queued, waiting on me or on something outside, deferred, done with its result, and dropped     |
+| Decisions                | done   | the choices I made or the agent reported, kept apart so a later reader does not undo them                               |
+| Asks while it works      | done   | they queue instead of pushing the task under way aside, and the end of the run settles each one it worked on            |
+| A change needs its words | done   | a close cites the line that reports the work, a wait the line that asks, a new task your words, a decision what it beat |
+| Only my words are intent | done   | the judge reads the title and what is under way from my words only, and the model never sees what a tool returned       |
+| `Alt+T`                  | done   | the tasks by state over the chat, with the result of each done one beside it and the selected one in full               |
+| Measured                 | done   | `bun run tasks:eval` with cases from real sessions, 99% on Claude Haiku, and a replay of any recorded session           |
+| Closed by the agent      | later  | a tool the agent calls to close a task with its result, with the end of the run as the fallback when it forgets         |
 
 ## Accounts. `@adeildo/pi-providers`
 
