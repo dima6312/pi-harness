@@ -447,6 +447,12 @@ describe("a session that comes back", () => {
 		expect(statuses.get(TASKS_STATUS)).toBe("\u25b8 resume me");
 	});
 
+	test("one titled before it could be named gets its name when it opens", async () => {
+		const saved = { ...emptyTasks(), title: "OAuth for the MCP" };
+		const entry = { type: "custom", customType: TASKS_ENTRY, data: { version: 1, state: saved } };
+		expect((await mounted([], [entry])).fake.sessionName).toBe("OAuth for the MCP");
+	});
+
 	test("a session from before shows its goal timeline as tasks", async () => {
 		const branch = [
 			{

@@ -66,7 +66,9 @@ export const tasks = defineFeature({
 
 		function restore(ctx: ExtensionContext): void {
 			keeper.restore(ctx.sessionManager.getBranch());
-			titled = keeper.state().title;
+			// A session titled before it could be named gets its name now.
+			titled = undefined;
+			name();
 			updates.reset();
 			show();
 		}
