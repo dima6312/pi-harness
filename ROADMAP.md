@@ -53,15 +53,15 @@ flowchart TD
 
 ## Permission. `@adeildo/pi-ask-permission`
 
-| Item                        | Status | Note                                                                                                              |
-| --------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------- |
-| The dialog                  | done   | yes, always yes or no, with a note the model reads, on a command longer than three lines shows how many are left  |
-| Grants at three scopes      | done   | session, project and everywhere, forgotten from the settings screen                                               |
-| Modes                       | done   | manual, edits, judge and full, with `Alt+W` for a call outside the workspace                                      |
-| MCP policies and codemode   | done   | a call follows the policy of its server, and every call inside a script is decided on its own                     |
-| The judge on pi's models    | done   | `ctx.modelRegistry.classify()`, so there is no provider of ours and no prompt of ours to keep                     |
-| Every call says who decided | done   | the reason sits on the call, and the calls of one answer are judged together                                      |
-| Judge reads the goal        | done   | the goal and the step under way, from my words only, beside my last message, and the ruling says when it saw them |
+| Item                        | Status | Note                                                                                                               |
+| --------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
+| The dialog                  | done   | yes, always yes or no, with a note the model reads, on a command longer than three lines shows how many are left   |
+| Grants at three scopes      | done   | session, project and everywhere, forgotten from the settings screen                                                |
+| Modes                       | done   | manual, edits, judge and full, with `Alt+W` for a call outside the workspace                                       |
+| MCP policies and codemode   | done   | a call follows the policy of its server, and every call inside a script is decided on its own                      |
+| The judge on pi's models    | done   | `ctx.modelRegistry.classify()`, so there is no provider of ours and no prompt of ours to keep                      |
+| Every call says who decided | done   | the reason sits on the call, and the calls of one answer are judged together                                       |
+| Judge reads the tasks       | done   | the session and what it is doing, from my words only, beside my last message, and the ruling says when it saw them |
 
 ## Questions. `@adeildo/pi-ask-questions`
 
@@ -71,17 +71,20 @@ flowchart TD
 | One dialog for both        | done    | the permission ask goes through it, so both take the same keys                 |
 | `ctrl+g` in a typed answer | planned | opens the external editor, the last piece of the port                          |
 
-## The goal. `@adeildo/pi-goal`
+## Tasks. `@adeildo/pi-tasks`
 
-| Item                     | Status | Note                                                                                                                  |
-| ------------------------ | ------ | --------------------------------------------------------------------------------------------------------------------- |
-| The timeline             | done   | the goal, the step under way, what was done with what it left out, and what waits with why                            |
-| Kept by a small model    | done   | it answers with operations, never a new list, so it cannot rewrite what was done                                      |
-| When it updates          | done   | on my message at once, when the agent stops, and one tidy pass after each run. A step closes only when the run ends   |
-| Only my words are intent | done   | the agent's work can finish or add a step, never set the goal the judge reads, and it never sees what a tool returned |
-| `Alt+G`                  | done   | the whole timeline as a tree over the chat, with a cursor and the item under it in full                               |
-| On the look              | done   | the step under way above the editor, with how many are done and how many wait                                         |
-| What it costs            | done   | every call records its cost, and the look adds it to the session's. About $0.03 for a ten-minute turn on Haiku        |
+It replaced `@adeildo/pi-goal`. In a week of sessions, the goal timeline left most finished work in `later`. A message sent while the agent worked had pushed 72 of the 87 items there aside, and the end of the run could only close the one step under way.
+
+| Item                     | Status | Note                                                                                                                |
+| ------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| Six states               | done   | doing (several at once), queued, waiting on me or on something outside, deferred, done with its result, and dropped |
+| Decisions                | done   | the choices I made or the agent reported, kept apart so a later reader does not undo them                           |
+| Asks while it works      | done   | they queue instead of pushing the task under way aside, and the end of the run settles each one it worked on        |
+| A close needs its line   | done   | the model cites the line that reports the work, and the extension checks it is a report, after the task, not a plan |
+| Only my words are intent | done   | the judge reads the title and what is under way from my words only, and the model never sees what a tool returned   |
+| `Alt+T`                  | done   | the tasks by state over the chat, with the result of each done one beside it and the selected one in full           |
+| Measured                 | done   | `bun run tasks:eval`, with cases from real sessions. 96% on Claude Haiku                                            |
+| Closed by the agent      | later  | a tool the agent calls to close a task with its result, with the end of the run as the fallback when it forgets     |
 
 ## Accounts. `@adeildo/pi-providers`
 
@@ -137,14 +140,14 @@ Open:
 
 ## Sessions
 
-| Item                     | Status  | Needs                     | Note                                                                                                     |
-| ------------------------ | ------- | ------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Session naming           | planned |                           | A name from the first turns. The look already shows it                                                   |
-| Session state            | planned |                           | The goal, the step and the plan come from `pi-goal`. Touched files and the last summary are left         |
-| Structured compaction    | planned | Session state             | Goal, decisions, open questions and files, from the session state instead of prose                       |
-| Memory                   | planned | Session state, compaction | Replaces `pi-memory`. Markdown is the source of truth, and a command reviews and deletes what was stored |
-| Compaction by classifier | later   | Structured compaction     | A classifier picks which entries stay, in place of a summary                                             |
-| Mentions                 | later   |                           | `#entry`, `@file` and session references expanded before the turn                                        |
+| Item                     | Status  | Needs                     | Note                                                                                                        |
+| ------------------------ | ------- | ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Session naming           | planned |                           | A name from the first turns. The look already shows it                                                      |
+| Session state            | planned |                           | What is doing, done, waiting and decided comes from `pi-tasks`. Touched files and the last summary are left |
+| Structured compaction    | planned | Session state             | `describeTasks()` with the decisions, open questions and files, from the session state instead of prose     |
+| Memory                   | planned | Session state, compaction | Replaces `pi-memory`. Markdown is the source of truth, and a command reviews and deletes what was stored    |
+| Compaction by classifier | later   | Structured compaction     | A classifier picks which entries stay, in place of a summary                                                |
+| Mentions                 | later   |                           | `#entry`, `@file` and session references expanded before the turn                                           |
 
 Open:
 
