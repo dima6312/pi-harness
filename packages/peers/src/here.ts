@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
 // This session among the others in its folder: what it logs, what it reads, what it hands its agent
 // and when. Every decision goes through the rules over the folder, so the others reach the same.
 import {
@@ -8,12 +11,21 @@ import {
 	logEvent,
 	type LogTarget,
 	targetOf,
+	tasksWith,
 } from "@adeildo/pi-kit";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ThemeColor } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "./bid.ts";
 import { Folder, isAlive, livePeers, type Peer, type Posted } from "./folder.ts";
 import { type Named, namesOf } from "./names.ts";
+
+/** What the footer shows of another session: its colour, and what it is up to. */
+export interface BoardMark {
+	handle: string;
+	color: ThemeColor;
+	state: "running" | "idle" | "waiting";
+}
 import { agentStreak, award, deliveryFor, QUIET_AFTER, turnToTake } from "./rules.ts";
 
 export const PEER_MESSAGE = "pi-peers:message";
@@ -21,6 +33,16 @@ export const PEER_MESSAGE = "pi-peers:message";
 export const GRACE_MS = 3_000;
 /** Older messages and requests are history, never delivered or bid on. */
 const RECENT_MS = 10 * 60_000;
+/** A message still being written, shown live and never logged. Stale ones are a crashed writer. */
+const TYPING_STALE_MS = 15_000;
+const TYPING_EVERY_MS = 100;
+
+export interface Typing {
+	session: string;
+	to: string;
+	text: string;
+	at: number;
+}
 
 export interface PeerMessageDetails {
 	id: string;
@@ -65,6 +87,7 @@ export class Here {
 	readonly #withdrawn = new Set<string>();
 	/** Your words handed to the agent, waiting for its model to read them. */
 	readonly #unread = new Map<string, string>();
+	#typedAt = 0;
 
 	constructor(hooks: Hooks) {
 		this.#hooks = hooks;
@@ -90,6 +113,29 @@ export class Here {
 		return namesOf(this.live());
 	}
 
+	/** One mark per other session, and how many asked this one something its agent has not read. */
+	summary(): { others: BoardMark[]; unread: number } {
+		const named = this.names();
+		const others: BoardMark[] = [];
+		for (const peer of this.live()) {
+			if (peer.session === this.session) continue;
+			const waiting = peer.tasks !== undefined && tasksWith(peer.tasks, "waiting").length > 0;
+			others.push({
+				handle: named.get(peer.session)?.handle ?? "anon",
+				color: named.get(peer.session)?.color ?? "muted",
+				state: waiting ? "waiting" : peer.state === "running" ? "running" : "idle",
+			});
+		}
+		let unread = 0;
+		for (const message of this.#folder.messages.values()) {
+			if (message.unsent || message.from === "you" || message.to === "all") continue;
+			if (!message.to.includes(this.session ?? "") || message.read.has(this.session ?? ""))
+				continue;
+			unread++;
+		}
+		return { others, unread };
+	}
+
 	open(session: SessionSource, model: string | undefined): void {
 		this.close();
 		this.#abort = new AbortController();
@@ -110,6 +156,7 @@ export class Here {
 
 	close(): void {
 		if (this.#target === undefined) return;
+		this.doneTyping();
 		this.log("session.ended", {});
 		this.#abort.abort();
 		this.#stopWatching?.();
@@ -128,7 +175,12 @@ export class Here {
 	sync(): void {
 		if (this.#feed === undefined) return;
 		const fresh = this.#feed.read();
-		if (fresh.length === 0) return this.#evaluate();
+		if (fresh.length === 0) {
+			// Still worth redrawing: someone may be typing, which is not an event.
+			this.#evaluate();
+			this.#hooks.changed();
+			return;
+		}
 		this.#folder.apply(fresh);
 		for (const event of fresh) {
 			const id = (event.data as { id?: string }).id;
@@ -160,6 +212,51 @@ export class Here {
 			return undefined;
 		this.log("message.unsent", { id: last.id });
 		return last;
+	}
+
+	/** What this session's agent is writing to the room right now, for the others to watch. */
+	typing(to: string, text: string): void {
+		if (this.#target === undefined || this.#now() - this.#typedAt < TYPING_EVERY_MS) return;
+		this.#typedAt = this.#now();
+		const typing: Omit<Typing, "session"> = { to, text, at: this.#typedAt };
+		try {
+			writeFileSync(
+				join(this.#target.dir, `${this.#target.session}.typing`),
+				JSON.stringify(typing),
+			);
+		} catch {
+			// Watching someone type is a nicety; failing to show it must not stop anything.
+		}
+	}
+
+	doneTyping(): void {
+		if (this.#target === undefined || this.#typedAt === 0) return;
+		this.#typedAt = 0;
+		rmSync(join(this.#target.dir, `${this.#target.session}.typing`), { force: true });
+	}
+
+	/** What the other open sessions are writing right now. */
+	othersTyping(): Typing[] {
+		if (this.#target === undefined) return [];
+		const live = new Set(this.live().map((peer) => peer.session));
+		let files: string[];
+		try {
+			files = readdirSync(this.#target.dir).filter((name) => name.endsWith(".typing"));
+		} catch {
+			return [];
+		}
+		return files.flatMap((name) => {
+			const session = name.slice(0, -".typing".length);
+			if (session === this.session || !live.has(session)) return [];
+			try {
+				const typing = JSON.parse(
+					readFileSync(join(this.#target?.dir ?? "", name), "utf8"),
+				) as Typing;
+				return this.#now() - typing.at > TYPING_STALE_MS ? [] : [{ ...typing, session }];
+			} catch {
+				return [];
+			}
+		});
 	}
 
 	started(): void {

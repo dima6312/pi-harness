@@ -7,13 +7,17 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { Key } from "@earendil-works/pi-tui";
 
 import { fitFor } from "./bid.ts";
 import { boardText } from "./board.ts";
 import { Here, PEER_MESSAGE, type PeerMessageDetails } from "./here.ts";
-import { byHandle } from "./names.ts";
+import { byHandle, mentionsIn } from "./names.ts";
 import { model, PEERS_SETTINGS } from "./settings.ts";
 import { messageBlock } from "./ui/message.ts";
+import { RoomView } from "./ui/room.ts";
+import { PEERS_STATUS, statusLine } from "./ui/status.ts";
+import { toolRenderers } from "./ui/tool.ts";
 
 export { Here, PEER_MESSAGE } from "./here.ts";
 
@@ -53,6 +57,8 @@ export const peers = defineFeature({
 	settings: PEERS_SETTINGS,
 	setup(scope) {
 		let session: ExtensionContext | undefined;
+		// Tool rows that show receipts, redrawn when the folder changes.
+		const rows = new Set<() => void>();
 		const here = new Here({
 			events: scope.events,
 			sendMessage: (message, options) => scope.sendMessage(message, options),
@@ -64,15 +70,26 @@ export const peers = defineFeature({
 				const models = modelsFor(model.get(scope), ctx.modelRegistry, ctx.model);
 				return fitFor(ctx.modelRegistry, models, request, me, signal);
 			},
-			changed: () => {},
+			changed: () => {
+				for (const redraw of rows) redraw();
+				showStatus();
+			},
 		});
 		const pending = new Map<string, { path?: string; command?: string }>();
+
+		/** The look's footer keeps one mark per other session, and how many wait for an answer. */
+		function showStatus(): void {
+			const ctx = session;
+			if (ctx === undefined) return;
+			ctx.ui.setStatus(PEERS_STATUS, statusLine(here.summary(), ctx.ui.theme));
+		}
 
 		scope.onSessionStart((ctx) => {
 			session = ctx;
 			here.open(ctx.sessionManager, ctx.model === undefined ? undefined : modelRef(ctx.model));
 		});
 		scope.onShutdown(() => {
+			session?.ui.setStatus(PEERS_STATUS, undefined);
 			here.close();
 			session = undefined;
 		});
@@ -84,6 +101,20 @@ export const peers = defineFeature({
 				here.log("session.prompted", {});
 			return { action: "continue" };
 		});
+
+		// The message the agent is writing, live, for the others' room.
+		scope.on("message_update", (event) => {
+			const kind = event.assistantMessageEvent.type;
+			if (kind !== "toolcall_start" && kind !== "toolcall_delta") return;
+			const content = (event.message as { content?: unknown }).content;
+			const call = Array.isArray(content)
+				? content.findLast((part) => part?.type === "toolCall" && part.name === TOOL)
+				: undefined;
+			const args = (call?.arguments ?? {}) as { action?: unknown; to?: unknown; text?: unknown };
+			if (args.action !== "send" || typeof args.text !== "string") return;
+			here.typing(typeof args.to === "string" ? args.to : "everyone", args.text);
+		});
+		scope.on("message_end", () => here.doneTyping());
 
 		scope.on("message_start", (event) => {
 			const message = event.message;
@@ -149,6 +180,7 @@ export const peers = defineFeature({
 				"Send to everyone to hand off a part of your work: the agent that fits it best takes it.",
 			],
 			parameters: PARAMETERS,
+			...toolRenderers(here, rows),
 			execute: async (_id, params): Promise<AgentToolResult<SentDetails | undefined>> => {
 				const me = here.session;
 				if (me === undefined) return reply("Not in a session.");
@@ -188,6 +220,46 @@ export const peers = defineFeature({
 				});
 			},
 		});
+
+		scope.registerShortcut(Key.alt("g"), {
+			description: "The agents in this folder, their tasks, and the room to talk in",
+			handler: (ctx) => openRoom(ctx),
+		});
+
+		scope.registerCommand("room", {
+			description: "Read and write with the other agents in this folder",
+			handler: (_args, ctx) => openRoom(ctx),
+		});
+
+		async function openRoom(ctx: ExtensionContext): Promise<void> {
+			if (ctx.mode !== "tui") return;
+			await ctx.ui.custom<void>(
+				(tui, theme, _keybindings, done) => {
+					// The ages on the board change with the clock, not with an event.
+					const ticks = setInterval(() => tui.requestRender(), 1_000);
+					return new RoomView({
+						theme,
+						here,
+						folder: ctx.cwd.split("/").findLast(Boolean) ?? ctx.cwd,
+						rows: () => Math.floor(tui.terminal.rows * 0.8) - 1,
+						requestRender: () => tui.requestRender(),
+						close: () => {
+							clearInterval(ticks);
+							done();
+						},
+						// Mentions go to those agents; anything else goes to everyone to be taken.
+						send: (text) => {
+							const named = mentionsIn(here.names(), text);
+							here.post(named.length === 0 ? "all" : named.map((one) => one.session), text, "you");
+						},
+					});
+				},
+				{
+					overlay: true,
+					overlayOptions: { anchor: "center", width: "80%", minWidth: 60, maxHeight: "80%" },
+				},
+			);
+		}
 
 		scope.registerCommand("to", {
 			description: "Send a message to another agent in this folder: /to <name> <message>",

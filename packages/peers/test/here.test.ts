@@ -3,9 +3,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { Theme } from "@earendil-works/pi-coding-agent";
+
 import type { Fit } from "../src/bid.ts";
 import { GRACE_MS, Here, type Hooks, PEER_MESSAGE } from "../src/here.ts";
 import { BID_WINDOW_MS } from "../src/rules.ts";
+import { statusLine } from "../src/ui/status.ts";
 
 let root: string;
 let now = 1_000_000;
@@ -57,6 +60,9 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }) {
 function name(here: Here, handle: string, title = handle): void {
 	here.log("session.named", { handle, title });
 }
+
+/** Only the colour names matter here. */
+const plain = { fg: (_color: string, text: string) => text } as unknown as Theme;
 
 async function settle(...sessions: { here: Here }[]): Promise<void> {
 	for (let round = 0; round < 3; round++) {
@@ -176,5 +182,45 @@ describe("a request to everyone", () => {
 		expect([...b.here.folder.messages.values()][0]?.takenBy).toBe("b");
 		expect(b.sent[0]?.text).toContain("Message from oauth");
 		expect(b.sent[0]?.text).toContain("you took it");
+	});
+});
+
+describe("what the footer shows", () => {
+	test("a mark per other agent, and a count of what waits for an answer", async () => {
+		const a = session("a");
+		const b = session("b");
+		name(a.here, "migration");
+		name(b.here, "oauth");
+		const id = b.here.post(["a"], "are you in auth.ts?", "agent");
+		await settle(a, b);
+
+		const summary = a.here.summary();
+		expect(summary.others.map((one) => [one.handle, one.state])).toEqual([["oauth", "idle"]]);
+		expect(summary.unread).toBe(1);
+		expect(statusLine(summary, plain)).toBe("\u25c7 @1");
+
+		a.here.read(id);
+		expect(a.here.summary().unread).toBe(0);
+		expect(statusLine(a.here.summary(), plain)).toBe("\u25c7");
+	});
+
+	test("a request to everyone is not on the footer, and neither is your own message", async () => {
+		const a = session("a");
+		const b = session("b");
+		name(a.here, "migration");
+		name(b.here, "oauth");
+		b.here.post("all", "who wants the tests?", "agent");
+		b.here.post(["a"], "and you?", "you");
+		await settle(a, b);
+		expect(a.here.summary().unread).toBe(0);
+	});
+
+	test("an agent working shows a filled mark, one waiting on you a flag", async () => {
+		const a = session("a");
+		const b = session("b");
+		name(b.here, "oauth");
+		b.here.started();
+		a.here.sync();
+		expect(statusLine(a.here.summary(), plain)).toBe("\u25c6");
 	});
 });
