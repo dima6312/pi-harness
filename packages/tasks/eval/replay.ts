@@ -1,6 +1,9 @@
 // Plays a recorded session through the tasks, message by message and run by run, and prints what
 // they would have kept. The session's own goal or tasks entries are ignored.
 // bun packages/tasks/eval/replay.ts <session.jsonl> [--model anthropic/claude-haiku-4-5]
+//   [--until <entry id>]   stop before that entry
+//   [--save <file.json>]   write the tasks it ends with
+import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 import {
@@ -19,7 +22,11 @@ import { modelNamed, signedIn } from "./signin.ts";
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
-	options: { model: { type: "string", default: "anthropic/claude-haiku-4-5" } },
+	options: {
+		model: { type: "string", default: "anthropic/claude-haiku-4-5" },
+		until: { type: "string" },
+		save: { type: "string" },
+	},
 });
 const [file] = positionals;
 if (file === undefined) throw new Error("usage: replay.ts <session.jsonl> [--model provider/id]");
@@ -32,7 +39,10 @@ const asker: Asker = {
 	signal: new AbortController().signal,
 };
 
-const branch = readBranch(file);
+const whole = readBranch(file);
+const stop =
+	values.until === undefined ? -1 : whole.findIndex((entry) => entry.id === values.until);
+const branch = stop === -1 ? whole : whole.slice(0, stop);
 
 let state = emptyTasks();
 let cost = 0;
@@ -80,6 +90,7 @@ for (const [index, entry] of branch.entries()) {
 	}
 }
 
+if (values.save !== undefined) writeFileSync(values.save, JSON.stringify(state, null, "\t"));
 console.log(`\n${describeTasks(state)}`);
 console.log(`\n${summary(state)}, ${rejected} refused by the checks, $${cost.toFixed(3)}`);
 
