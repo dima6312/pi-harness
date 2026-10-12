@@ -22,6 +22,7 @@ import {
 	type Billed,
 	clearedEntries,
 	hiddenCalls,
+	lastPromptOf,
 	NOTE_MESSAGE,
 	PRUNE_ENTRY,
 	priced,
@@ -63,7 +64,7 @@ export const compact = defineFeature({
 			const branch = ctx.sessionManager.getBranch();
 			hidden = hiddenCalls(branch);
 			cleared = clearedEntries(branch);
-			lastPrompt = undefined;
+			lastPrompt = lastPromptOf(branch);
 		};
 		scope.onSessionStart(restore);
 		scope.on("session_tree", (_event, ctx) => restore(ctx));

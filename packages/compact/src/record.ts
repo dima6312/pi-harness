@@ -95,6 +95,24 @@ export function clearedEntries(branch: readonly unknown[]): Set<string> {
 	return entries;
 }
 
+/**
+ * The last request's prompt, so the first clear after a reload is seen. Undefined after an edit or
+ * a compaction, which shrink the next request on their own.
+ */
+export function lastPromptOf(branch: readonly unknown[]): number | undefined {
+	for (const entry of branch.toReversed()) {
+		if (!isObject(entry) || entry.type === "compaction" || entry.type === "context_edit")
+			return undefined;
+		const message = entry.type === "message" && isObject(entry.message) ? entry.message : {};
+		const { role, stopReason, usage } = message;
+		if (role !== "assistant" || stopReason === "error" || stopReason === "aborted") continue;
+		if (!isObject(usage)) return undefined;
+		const { input, cacheRead, cacheWrite } = usage;
+		return Number(input) + Number(cacheRead) + Number(cacheWrite) || undefined;
+	}
+	return undefined;
+}
+
 export function hiddenCalls(branch: readonly unknown[]): Set<string> {
 	const calls = new Set<string>();
 	for (const entry of branch) {

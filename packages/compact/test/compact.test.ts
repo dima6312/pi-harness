@@ -371,6 +371,16 @@ describe("on Anthropic models", () => {
 		expect(hidden.length).toBeGreaterThan(0);
 		expect(await turnEnd(13_000)).toBeUndefined();
 	});
+
+	test("after a reload, the first clear is measured from the last request on the branch", async () => {
+		const answered = { type: "message", message: { role: "assistant", usage: usage(25_000) } };
+		const { turnEnd } = await mounted([answered], { pruneAbove: 20_000 }, ANTHROPIC);
+		expect((await turnEnd(12_000))?.entries.at(-1)).toMatchObject({
+			data: { before: 25_000, server: true },
+		});
+		const edited = await mounted([answered, { type: "context_edit" }], {}, ANTHROPIC);
+		expect(await edited.turnEnd(12_000)).toBeUndefined();
+	});
 });
 
 describe("the line a prune leaves", () => {
