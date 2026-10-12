@@ -112,6 +112,8 @@ export const tasks = defineFeature({
 						rows: () => Math.floor(tui.terminal.rows * 0.8) - 1,
 						close: () => done(),
 						requestRender: () => tui.requestRender(),
+						// What you do here is yours, and joins the tasks under way instead of pushing them aside.
+						act: (op) => keeper.apply([op], "you", { busy: true }),
 					});
 				},
 				{

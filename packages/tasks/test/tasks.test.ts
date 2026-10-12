@@ -21,6 +21,7 @@ import {
 import { fakeContext, fakePi } from "@adeildo/pi-kit/testing";
 import type { Api, Model } from "@earendil-works/pi-ai";
 
+import { darkTheme } from "../../../scripts/docs/theme.ts";
 import { TASKS_STATUS, tasks } from "../src/index.ts";
 import { Keeper } from "../src/keeper.ts";
 import { modelsFor } from "../src/models.ts";
@@ -35,6 +36,7 @@ import {
 	yourWords,
 } from "../src/transcript.ts";
 import { Updates } from "../src/updates.ts";
+import { TasksView, taskKeys } from "../src/view.ts";
 import { isPlan } from "../src/words.ts";
 
 let dir: string;
@@ -854,4 +856,63 @@ test("the model setting picks, and the session's model always comes after", () =
 	expect(modelsFor("auto", known, OPUS).map((entry) => entry.id)).toEqual(["haiku", "opus"]);
 	expect(modelsFor("session", known, OPUS).map((entry) => entry.id)).toEqual(["opus"]);
 	expect(modelsFor("anthropic/haiku", known, HAIKU).map((entry) => entry.id)).toEqual(["haiku"]);
+});
+
+/** The Alt+T panel, drawn once so its cursor is on the first task. */
+function panel(state: () => SessionTasks, act: (op: TaskOp) => void): TasksView {
+	const view = new TasksView({
+		theme: darkTheme(),
+		state,
+		spent: () => ({ cost: 0, calls: 0 }),
+		rows: () => 30,
+		close: () => {},
+		requestRender: () => {},
+		act,
+	});
+	view.render(80);
+	return view;
+}
+
+describe("on Alt+T", () => {
+	test("each key changes the selected task only where it means something", () => {
+		const [doing, queued] = stateWith([
+			{ op: "ask", text: "a" },
+			{ op: "ask", text: "b" },
+		]).tasks;
+		expect(taskKeys(doing!).map((key) => key.label)).toEqual(["x done", "p later", "\u232b drop"]);
+		expect(taskKeys(queued!).map((key) => key.op)).toEqual([
+			{ op: "continue", id: "t2" },
+			{ op: "done", id: "t2" },
+			{ op: "defer", id: "t2" },
+			{ op: "drop", id: "t2" },
+		]);
+	});
+
+	test("a key on the selected task goes through as yours, and the cursor stays in place", () => {
+		let state = stateWith([
+			{ op: "ask", text: "a" },
+			{ op: "ask", text: "b" },
+			{ op: "ask", text: "c" },
+		]);
+		const applied: TaskOp[] = [];
+		const view = panel(
+			() => state,
+			(op) => {
+				applied.push(op);
+				state = applyTaskOps(state, [op], { at: 2, origin: "you", busy: true });
+			},
+		);
+		view.handleInput("\x1b[B");
+		view.handleInput("\x7f");
+		expect(applied).toEqual([{ op: "drop", id: "t2" }]);
+		// The dropped task left the list, so the cursor is on the next one.
+		view.render(80);
+		view.handleInput("x");
+		expect(applied.at(-1)).toEqual({ op: "done", id: "t3" });
+		expect(state.tasks.map((task) => task.status)).toEqual(["doing", "dropped", "done"]);
+		// A key that does not fit the task, like done on a done task, changes nothing.
+		view.render(80);
+		view.handleInput("x");
+		expect(applied).toHaveLength(2);
+	});
 });

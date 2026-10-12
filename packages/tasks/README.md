@@ -59,6 +59,8 @@ The model writes every task in the language of your messages, as a short imperat
 
 `Alt+T` opens the tasks over the chat, by state, with the decisions at the end. The arrows move a cursor, and the pane at the bottom shows the task under it in full: its result, what it left out, why it waits, and when it was asked, started and closed. `d` shows the dropped tasks, and `Esc` closes it. It updates while open.
 
+The keys change the task under the cursor, and the footer lists the ones that fit it: `Enter` puts it under way, `x` marks it done, `p` defers it and `Backspace` drops it. What you do here counts as yours, like a message, and a task you drop comes back with `d` and `Enter`.
+
 Pi's footer shows what the agent is doing. With [`@adeildo/pi-look`](../look), the task sits on the right of the line above the editor, with how many wait, are queued and are done.
 
 `Alt+S` has a Tasks tab where you edit the session's title, what the agent is doing and what is queued, and read what waits, what got done and what was decided.

@@ -1,10 +1,12 @@
 // Alt+T: the session's tasks over the chat, by status, with a cursor and the one under it in full.
 import {
 	type Decision,
+	isOpen,
 	isStale,
 	newestFirst,
 	type SessionTasks,
 	type Task,
+	type TaskOp,
 	type TaskStatus,
 	tasksWith,
 } from "@adeildo/pi-kit";
@@ -13,6 +15,7 @@ import {
 	backgroundAnsi,
 	colorToOkhsl,
 	type Component,
+	type KeyId,
 	matchesKey,
 	okhslColor,
 	truncateToWidth,
@@ -52,6 +55,34 @@ export interface TasksViewOptions {
 	requestRender: () => void;
 	/** How a time reads. The local clock by default; the docs pin it, so a picture never moves. */
 	clock?: Clock;
+	/** Applies what a key did to the selected task. Without it, the panel only shows. */
+	act?: (op: TaskOp) => void;
+}
+
+/** A key on the selected task, and what it does to it. */
+export interface TaskKey {
+	keys: KeyId[];
+	label: string;
+	op: TaskOp;
+}
+
+/** The keys that change `task`, in the order the footer shows them. */
+export function taskKeys(task: Task): TaskKey[] {
+	const { id } = task;
+	const open = isOpen(task);
+	const keys: TaskKey[] = [];
+	if (task.status !== "doing")
+		keys.push({ keys: ["enter"], label: "\u21b5 doing", op: { op: "continue", id } });
+	if (open) keys.push({ keys: ["x"], label: "x done", op: { op: "done", id } });
+	if (open && task.status !== "deferred")
+		keys.push({ keys: ["p"], label: "p later", op: { op: "defer", id } });
+	if (task.status !== "dropped")
+		keys.push({ keys: ["backspace", "delete"], label: "\u232b drop", op: { op: "drop", id } });
+	return keys;
+}
+
+function pressed(data: string, key: KeyId): boolean {
+	return key.length === 1 ? data === key : matchesKey(data, key);
 }
 
 type Clock = (at: number) => string;
@@ -73,6 +104,8 @@ export class TasksView implements Component {
 	readonly #options: TasksViewOptions;
 	readonly #clock: Clock;
 	#selected: string | undefined;
+	/** Where the cursor was, so it stays in place when its task leaves the list. */
+	#index = 0;
 	#offset = 0;
 	#dropped = false;
 	#room = 0;
@@ -93,8 +126,19 @@ export class TasksView implements Component {
 		else if (matchesKey(data, "home") || data === "g") this.#step(-Infinity);
 		else if (matchesKey(data, "end") || data === "G") this.#step(Infinity);
 		else if (data === "d") this.#dropped = !this.#dropped;
-		else return;
+		else if (!this.#act(data)) return;
 		requestRender();
+	}
+
+	/** The change goes through the tasks, whose update redraws the panel. */
+	#act(data: string): boolean {
+		const { act, state } = this.#options;
+		const task = state().tasks.find((entry) => entry.id === this.#selected);
+		if (act === undefined || task === undefined) return false;
+		const chosen = taskKeys(task).find((entry) => entry.keys.some((key) => pressed(data, key)));
+		if (chosen === undefined) return false;
+		act(chosen.op);
+		return true;
 	}
 
 	invalidate(): void {}
@@ -103,9 +147,15 @@ export class TasksView implements Component {
 		const { theme } = this.#options;
 		const state = this.#options.state();
 		const picks = this.#picks(state);
-		if (this.#selected === undefined || !picks.some((pick) => idOf(pick) === this.#selected))
-			this.#selected = picks[0] === undefined ? undefined : idOf(picks[0]);
+		if (!picks.some((pick) => idOf(pick) === this.#selected)) {
+			const near = picks[Math.min(this.#index, picks.length - 1)];
+			this.#selected = near === undefined ? undefined : idOf(near);
+		}
 		const selected = picks.find((pick) => idOf(pick) === this.#selected);
+		this.#index = Math.max(
+			0,
+			picks.findIndex((pick) => idOf(pick) === this.#selected),
+		);
 
 		const inner = Math.max(10, width - PAD * 2);
 		const body = this.#body(state, picks, inner);
@@ -139,7 +189,7 @@ export class TasksView implements Component {
 			row(theme.fg("borderMuted", "\u2500".repeat(inner))),
 			...this.#detail(selected, inner).map((text) => row(text)),
 			row(""),
-			row(this.#footer(inner), band),
+			row(this.#footer(inner, selected), band),
 		];
 	}
 
@@ -299,7 +349,8 @@ export class TasksView implements Component {
 		const picks = this.#picks(this.#options.state());
 		if (picks.length === 0) return;
 		const at = picks.findIndex((pick) => idOf(pick) === this.#selected);
-		const next = picks[Math.min(picks.length - 1, Math.max(0, (at === -1 ? 0 : at) + by))];
+		this.#index = Math.min(picks.length - 1, Math.max(0, (at === -1 ? 0 : at) + by));
+		const next = picks[this.#index];
 		this.#selected = next === undefined ? undefined : idOf(next);
 	}
 
@@ -331,9 +382,13 @@ export class TasksView implements Component {
 		return spread(title, counts, width);
 	}
 
-	#footer(width: number): string {
-		const { theme, spent } = this.#options;
-		const keys = theme.fg("dim", "\u2191\u2193 move  d dropped  esc close");
+	#footer(width: number, selected: Pick | undefined): string {
+		const { theme, spent, act } = this.#options;
+		const actions =
+			act !== undefined && selected?.kind === "task"
+				? taskKeys(selected.task).map((entry) => entry.label)
+				: [];
+		const keys = theme.fg("dim", ["\u2191\u2193", ...actions, "d dropped", "esc"].join("  "));
 		const { cost, calls } = spent();
 		return spread(
 			keys,

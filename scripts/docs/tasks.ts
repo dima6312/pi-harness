@@ -126,6 +126,7 @@ export function tasksPanel(theme: Theme): string[] {
 		close: () => {},
 		requestRender: () => {},
 		clock,
+		act: () => {},
 	});
 	view.handleInput(KEYS.down);
 	return view.render(WIDTH);
