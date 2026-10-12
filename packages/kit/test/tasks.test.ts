@@ -12,6 +12,7 @@ import {
 	isStale,
 	LEGACY_ENTRY,
 	type SessionTasks,
+	type Task,
 	TASKS_ENTRY,
 	TASKS_USAGE_ENTRY,
 	TASKS_VERSION,
@@ -108,16 +109,20 @@ test("asking for what is already listed continues it instead of adding a repeat"
 	]);
 });
 
-test("asking for an agent's follow-up makes it yours", () => {
-	let state = apply(
-		emptyTasks(),
-		[{ op: "follow_up", text: "test with a real sync", why: "needs a phone" }],
-		{
-			origin: "agent",
-		},
-	);
-	expect(state.tasks[0]).toMatchObject({ status: "queued", origin: "agent", why: "needs a phone" });
-	state = apply(state, [{ op: "continue", id: "t1" }]);
+test("asking for a task the agent wrote makes it yours", () => {
+	const left: Task = {
+		id: "t1",
+		text: "test with a real sync",
+		status: "queued",
+		origin: "agent",
+		created: { at: 0 },
+		asks: [],
+		updatedAt: 0,
+		why: "needs a phone",
+	};
+	const state = apply({ ...emptyTasks(), tasks: [left], nextTask: 2 }, [
+		{ op: "continue", id: "t1" },
+	]);
 	expect(state.tasks[0]).toMatchObject({ status: "doing", origin: "you" });
 	expect(state.tasks[0]?.why).toBeUndefined();
 });

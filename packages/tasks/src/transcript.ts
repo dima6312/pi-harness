@@ -8,7 +8,7 @@ const MAX_SAID = 500;
 /** The agent's report at the end of a run is what says what was done, so more of it is kept. */
 const MAX_REPORT = 1500;
 const MAX_CALL = 100;
-const MAX_MESSAGE = 1500;
+const MAX_MESSAGE = 2000;
 const MAX_REPLY = 800;
 
 interface Entry {
@@ -180,8 +180,12 @@ export function heard(branch: readonly unknown[], text: string): Heard {
 	};
 }
 
+/** A long message keeps its start and its end, where what you ask of something you pasted usually is. */
 export function clipMessage(text: string): string {
-	return clip(text, MAX_MESSAGE);
+	if (text.length <= MAX_MESSAGE) return text;
+	const head = Math.floor(MAX_MESSAGE / 3);
+	const tail = MAX_MESSAGE - head;
+	return `${text.slice(0, head).trimEnd()}\n(\u2026 ${text.length - MAX_MESSAGE} characters left out \u2026)\n${text.slice(-tail).trimStart()}`;
 }
 
 export interface SkillNote {

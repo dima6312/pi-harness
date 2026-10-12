@@ -87,8 +87,6 @@ export type TaskOp =
 	| { op: "progress"; id: string; left?: string }
 	| { op: "wait"; id: string; on: WaitingOn; why: string }
 	| { op: "drop"; id: string; why?: string }
-	/** Something the agent left for after, which only you can turn into an ask. */
-	| { op: "follow_up"; text: string; why?: string }
 	| { op: "decide"; text: string; tasks?: string[] }
 	| { op: "rename"; id: string; text: string }
 	| { op: "merge"; id: string; into: string }

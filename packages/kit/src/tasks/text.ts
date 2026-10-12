@@ -26,7 +26,7 @@ export function describeTasks(state: SessionTasks, options: DescribeOptions = {}
 		aside(`on ${task.waitingOn === "outside" ? "something outside" : "you"}`, task.why),
 	);
 	section("Queued", tasksWith(state, "queued"), (task) =>
-		aside(task.origin === "agent" ? "the agent's follow-up" : undefined, task.why),
+		aside(task.origin === "agent" ? "left by the agent" : undefined, task.why),
 	);
 	section("Deferred", tasksWith(state, "deferred"), (task) => aside(task.why));
 	const done = newestFirst(tasksWith(state, "done")).slice(0, options.done ?? Infinity);

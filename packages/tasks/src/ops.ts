@@ -7,7 +7,7 @@ import type { Line, LineKind } from "./transcript.ts";
 
 const MAX_TEXT = 240;
 const MIN_PROOF = 8;
-const MAX_FOLLOW_UPS = 3;
+const MAX_DECISIONS = 1;
 
 function text(description: string): TSchema {
 	return Type.String({ description });
@@ -21,6 +21,9 @@ const ID = text("A task's id from the list, like t3.");
 const TASK = text("Imperative, under 60 characters, in the operator's language.");
 const PROOF = text("The operator's words that say it, copied exactly from the message.");
 const WHY = text("Why, in a few words.");
+const INSTEAD_OF = text(
+	'The alternative that was not chosen, like "two separate keys", or "" when there was none.',
+);
 
 function shape(
 	name: string,
@@ -42,11 +45,20 @@ const MESSAGE_SCHEMA = Type.Object({
 				{ id: ID },
 				{ text: text("The task's new words, only when the ask changed.") },
 			),
-			shape("new_task", { text: TASK }),
+			shape("new_task", {
+				proof: text(
+					"The operator's words that ask for this work, copied exactly from the message.",
+				),
+				text: TASK,
+			}),
 			shape("defer_task", { id: ID, why: WHY, proof: PROOF }),
 			shape("drop_task", { id: ID, why: WHY, proof: PROOF }),
 			shape("you_did", { id: ID, proof: PROOF }),
-			shape("decide", { text: text("What was chosen, in a short sentence."), proof: PROOF }),
+			shape("decide", {
+				instead_of: INSTEAD_OF,
+				text: text("What was chosen, in a short sentence."),
+				proof: PROOF,
+			}),
 			shape("title", { text: text("What the session is about, broader than one task.") }),
 		]),
 	),
@@ -56,9 +68,9 @@ const MESSAGE_SCHEMA = Type.Object({
 const VERDICT = Type.Object({
 	id: ID,
 	evidence: text(
-		'The ref of a said: or report: line that reports it done, like "L12", or "". Never a call: line.',
+		'The ref of the said: or report: line that reports it done, or where the agent asks or says what it waits on, like "L12", or "". Never a call: line.',
 	),
-	outcome: literals("done", "progress", "waiting"),
+	outcome: literals("untouched", "done", "progress", "waiting"),
 	result: text('Done: what came out of it, or "".'),
 	left: text('What it did not do, or "".'),
 	waiting_on: literals("you", "outside"),
@@ -67,10 +79,10 @@ const VERDICT = Type.Object({
 
 const RUN_SCHEMA = Type.Object({
 	tasks: Type.Array(VERDICT),
-	follow_ups: Type.Array(Type.Object({ text: TASK, why: WHY })),
 	decisions: Type.Array(
 		Type.Object({
 			evidence: text('The ref of the line that reports the choice, like "L7".'),
+			instead_of: INSTEAD_OF,
 			text: text("What was chosen, in a short sentence."),
 		}),
 	),
@@ -130,7 +142,7 @@ function fromMessage(
 	const why = field("why", clean(raw.why));
 	switch (raw.op) {
 		case "new_task":
-			return words ? [{ op: "ask", text: words }, true] : undefined;
+			return words ? [{ op: "ask", text: words }, echoes(raw.proof, message)] : undefined;
 		case "continue_task":
 			return task ? [{ op: "continue", id: task.id, ...field("text", words) }, true] : undefined;
 		case "defer_task":
@@ -138,15 +150,19 @@ function fromMessage(
 		case "drop_task":
 			return task ? [{ op: "drop", id: task.id, ...why }, proven !== undefined] : undefined;
 		case "you_did": {
-			// Your line has to name the task, since "it showed up" could be about anything.
+			// Your line has to name the task, since "it showed up" could be about anything, and say
+			// it was done, since "let's push" asks for it.
 			const named =
 				proven !== undefined &&
 				task !== undefined &&
+				!ASKING.test(proven) &&
 				sharesWord(lineOf(message, proven), task.text);
 			return task ? [{ op: "done", id: task.id }, named] : undefined;
 		}
 		case "decide":
-			return words ? [{ op: "decide", text: words }, proven !== undefined] : undefined;
+			return words
+				? [{ op: "decide", text: words }, proven !== undefined && chose(raw)]
+				: undefined;
 		case "title":
 			// Set once here; the tidy pass moves it when the session moves.
 			return words ? [{ op: "title", text: words }, state.title === undefined] : undefined;
@@ -163,28 +179,17 @@ export function runOps(answer: unknown, lines: readonly Line[], state: SessionTa
 	for (const raw of objects(reply.tasks)) {
 		const task = typeof raw.id === "string" ? find(state, raw.id) : undefined;
 		if (task === undefined || !runnable(task) || touched.has(task.id)) continue;
-		touched.add(task.id);
-		verdict(checked, raw, task, lines);
-	}
-	const lefts = checked.ops.flatMap((op) => ("left" in op && op.left ? [op.left] : []));
-	for (const raw of objects(reply.follow_ups)) {
-		const words = clean(raw.text);
-		if (words === undefined) continue;
-		// A follow-up that repeats a task, or what a task left, adds nothing.
-		const repeats =
-			state.tasks.some((task) => task.status !== "dropped" && sameWords(task.text, words)) ||
-			lefts.some((left) => sameWords(left, words));
-		const room = checked.ops.filter((op) => op.op === "follow_up").length < MAX_FOLLOW_UPS;
-		keep(
-			checked,
-			{ op: "follow_up", text: words, ...field("why", clean(raw.why)) },
-			!repeats && room,
-		);
+		if (verdict(checked, raw, task, lines)) touched.add(task.id);
 	}
 	for (const raw of objects(reply.decisions)) {
 		const words = clean(raw.text);
-		if (words !== undefined)
-			keep(checked, { op: "decide", text: words }, reports(raw.evidence, lines));
+		if (words === undefined) continue;
+		const room = checked.ops.filter((op) => op.op === "decide").length < MAX_DECISIONS;
+		keep(
+			checked,
+			{ op: "decide", text: words },
+			room && chose(raw) && reports(raw.evidence, lines),
+		);
 	}
 	for (const task of state.tasks)
 		if (task.status === "queued" && !touched.has(task.id))
@@ -192,16 +197,20 @@ export function runOps(answer: unknown, lines: readonly Line[], state: SessionTa
 	return checked;
 }
 
+/** False when the verdict did not stand and the task stays as it was. */
 function verdict(
 	checked: Checked,
 	raw: Record<string, unknown>,
 	task: Task,
 	lines: readonly Line[],
-): void {
-	const left = field("left", given(raw.left));
+): boolean {
+	// A left that repeats the task says nothing it did not do.
+	const said = given(raw.left);
+	const left = field("left", said !== undefined && !sameWords(said, task.text) ? said : undefined);
 	const progress: TaskOp = { op: "progress", id: task.id, ...left };
-	const why = given(raw.why);
 	switch (raw.outcome) {
+		case "untouched":
+			return false;
 		case "done": {
 			const done: TaskOp = {
 				op: "done",
@@ -213,19 +222,25 @@ function verdict(
 			keep(checked, done, proven);
 			// Without a line that says it finished, the task is still under way.
 			if (!proven) keep(checked, progress);
-			return;
+			return true;
 		}
-		case "waiting":
-			if (why === undefined) return keep(checked, progress);
-			return keep(checked, {
-				op: "wait",
-				id: task.id,
-				on: raw.waiting_on === "outside" ? "outside" : "you",
-				why,
-			});
+		case "waiting": {
+			const why = given(raw.why) ?? "";
+			const on = raw.waiting_on === "outside" ? "outside" : "you";
+			// Without the line where the agent asks or says it waits, the task stays as it was.
+			const stands = why !== "" && asks(raw.evidence, lines, task);
+			keep(checked, { op: "wait", id: task.id, on, why }, stands);
+			return stands;
+		}
 		default:
-			return keep(checked, progress);
+			keep(checked, progress);
+			return true;
 	}
+}
+
+/** A choice names what it was chosen over; a step has nothing to be chosen over. */
+function chose(raw: Record<string, unknown>): boolean {
+	return given(raw.instead_of) !== undefined;
 }
 
 function runnable(task: Task): boolean {
@@ -261,32 +276,67 @@ function proves(proof: unknown, message: string): string | undefined {
 	return words;
 }
 
+/** Words mostly found in the message, for a new task: it only has to come from what you asked. */
+function echoes(proof: unknown, message: string): boolean {
+	const words = stems(typeof proof === "string" ? proof : "");
+	if (words.size === 0) return false;
+	const said = stems(message);
+	return [...words].filter((stem) => said.has(stem)).length / words.size >= 0.75;
+}
+
 function lineOf(message: string, proof: string): string {
 	const needle = normalized(proof);
 	return message.split("\n").find((line) => normalized(line).includes(needle)) ?? proof;
 }
 
-/** A line the agent wrote, after the task existed, that is not a plan and not over a failed call. */
-function reports(ref: unknown, lines: readonly Line[], task?: Task): boolean {
-	if (typeof ref !== "string") return false;
+/** The agent's line `ref`, written after the task existed, with where it sits. */
+function agentLine(ref: unknown, lines: readonly Line[], task?: Task): number {
+	if (typeof ref !== "string") return -1;
 	const at = lines.findIndex((line) => line.ref === ref.trim().toUpperCase());
 	const line = lines[at];
-	if (line === undefined || (line.kind !== "said" && line.kind !== "report")) return false;
-	if (task !== undefined && line.at !== undefined && line.at < task.created.at) return false;
-	if (isPlan(line.text, lines[at + 1]?.kind)) return false;
+	if (line === undefined || (line.kind !== "said" && line.kind !== "report")) return -1;
+	if (task !== undefined && line.at !== undefined && line.at < task.created.at) return -1;
+	return at;
+}
+
+/** A line where the agent asks you, or says what it waits on. A plan or a question is fine here. */
+function asks(ref: unknown, lines: readonly Line[], task: Task): boolean {
+	return agentLine(ref, lines, task) !== -1;
+}
+
+/** A line the agent wrote, after the task existed, that is not a plan and not over a failed call. */
+function reports(ref: unknown, lines: readonly Line[], task?: Task): boolean {
+	const at = agentLine(ref, lines, task);
+	const line = lines[at];
+	if (line === undefined || isPlan(line.text, lines[at + 1]?.kind)) return false;
 	return lines.slice(0, at).findLast((before) => before.kind === "call")?.failed !== true;
 }
 
+/** Words that ask for work instead of saying it was done. */
+const ASKING =
+	/(?<!\p{L})(vamos|vou|pode|podemos|bora|faz|faça|let's|let me|please|can you|could you)(?!\p{L})/iu;
 const PLAN_START = /^(i'll|i will|i'm going to|let me|let's|vou|vamos|deixa eu|deixe-me)\b/i;
 const PLAN_AFTER =
 	/^(now|next|then|first|agora|em seguida|depois|primeiro)\b[^.]{0,40}\b(i'll|i will|let me|vou)\b/i;
 
-/** What the agent announces or asks, as opposed to what it reports. */
+/**
+ * What the agent announces or asks, as opposed to what it reports. A line that reports something
+ * and then says what comes next, like "Pushed. Now I watch the build:", still reports.
+ */
 export function isPlan(said: string, next?: LineKind): boolean {
-	const words = said.trim().replace(/[`*_]+$/g, "");
-	if (PLAN_START.test(words) || PLAN_AFTER.test(words) || words.endsWith("?")) return true;
+	const sentences = said
+		.trim()
+		.replace(/[`*_]+$/g, "")
+		.split(/(?<=[.!])\s+/);
+	return sentences.every((sentence, index) =>
+		plans(sentence, index === sentences.length - 1 ? next : "said"),
+	);
+}
+
+function plans(sentence: string, next: LineKind | undefined): boolean {
+	if (PLAN_START.test(sentence) || PLAN_AFTER.test(sentence) || sentence.endsWith("?")) return true;
 	// "Now the router:" leads into a call; a report that ends in a colon leads into its list.
-	return words.endsWith(":") && (next === undefined || next === "call");
+	return sentence.endsWith(":") && (next === undefined || next === "call");
 }
 
 function find(state: SessionTasks, id: string): Task | undefined {

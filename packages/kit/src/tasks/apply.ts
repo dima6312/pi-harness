@@ -60,7 +60,7 @@ class Draft {
 				const task = this.#find(op.id);
 				if (task === undefined) return;
 				if (op.text?.trim()) task.text = op.text.trim();
-				// Asking for an agent's follow-up makes it yours.
+				// Asking for a task the agent wrote makes it yours.
 				task.origin = "you";
 				this.#heard(task);
 				this.#move(task, "doing");
@@ -92,13 +92,6 @@ class Draft {
 				// Done work is history, unless you say it was only an idea.
 				if (task.status === "done" && this.#options.origin !== "you") return;
 				this.#move(task, "dropped");
-				if (op.why) task.why = op.why;
-				return;
-			}
-			case "follow_up": {
-				const text = op.text.trim();
-				if (text === "" || this.#listed(text) !== undefined) return;
-				const task = this.#add(text, "queued", "agent");
 				if (op.why) task.why = op.why;
 				return;
 			}

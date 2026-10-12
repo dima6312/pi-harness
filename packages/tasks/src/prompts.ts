@@ -18,14 +18,15 @@ The operator just wrote the message below. Call ${TOOL} once. Read it with what 
 
 ops, for what the message itself says:
 - continue_task {id}: the message is about a listed task: a correction, feedback on how it came out ("it is misaligned", "the old one was better"), an approval of what the agent proposed for it, or asking for it again. Reopens it when it was done. Add text only when the ask changed. This is the usual answer to feedback.
-- new_task {text}: work nothing listed covers, in any words or language. One per distinct piece of work: finding out how to do something and then doing it is one task, while a commit, a release and a blog post are three. The first is what the agent does now, the rest wait their turn.
+- new_task {proof, text}: work nothing listed covers, in any words or language, with the operator's words that ask for it as proof. A task is what the operator would check off when it is done, not each step to get there: finding out how to do something and then doing it is one task, a plan, a deploy or a feature with its parts is one task, and a release with its notes is one task, while a commit, a release and a blog post are three. The first is what the agent does now, the rest wait their turn.
+Text the operator pasted, like the agent's own plan, a log or an error, is context: the tasks come from what the operator asks about it, usually in their own lines around it.
 - defer_task {id, why, proof}: the operator puts it off.
 - drop_task {id, why, proof}: the operator gives it up, or says a done task was only an idea.
 - you_did {id, proof}: the operator says they did it themselves, in the past tense, like a command they ran. Letting the agent go ahead ("pode fazer push", "go ahead") is continue_task, never you_did.
-- decide {text, proof}: a choice the operator made that a later reader must not undo, like "one SECRET with a mode, not two keys" or "push straight to main". Not a request for work.
+- decide {instead_of, text, proof}: a choice between alternatives the operator made, that a later reader must not undo, like "one SECRET with a mode, not two keys" or "push straight to main". instead_of names the alternative they turned down; when there is none, it is no decision. Never a request for work, a step the operator confirms ("we'll tag v1.0.0 and release it"), or something they explain about how a tool behaves.
 - title {text}: only when the list has no session yet. What the session is about, broader than the task.
 
-A question, a remark or a criticism with no task to attach it to changes nothing: send no ops.
+A question, a remark or a criticism with no task to attach it to changes nothing: send no ops. Words that say something is fine as it is ("everyone can open it, that's fine") ask for no work; when they settle a choice, they are a decide.
 language: the English name of the language the message is written in, like "Portuguese".
 proof: the operator's words that say it, copied exactly from the message. They name the task or what it produced; "it worked" alone proves nothing. Without such words, leave the task as it is.`;
 
@@ -33,18 +34,18 @@ const RUN = `${TASKS}
 
 The agent's run just ended. <run> is all of it, one numbered line each: "you:" is the operator, "said:" the agent while working, "report:" the agent's last message, and "call:" a tool call with only its target; a call marked failed did not happen. Call ${TOOL} once.
 
-tasks: one verdict for each open task the run worked on, in any words, queued ones included: what the operator asked while the agent worked is queued, and the run usually took it on. Leave out every task the run never worked on: it stays as it is, and it is never waiting just because something else is.
-- evidence first: the ref of the "said:" or "report:" line that reports this task's work done or its result, like "L12", or "" when none does. Look in the report lines first: the agent's last message usually says what it did. Never a line that announces what the agent is about to do ("I'll...", "Now...", "Agora vou..."), and never a "call:" line, not even the call that did the work.
+tasks: one verdict for every task under Doing, Waiting and Queued, in the list's order. Read the whole run for each one, in any words: what the operator asked while the agent worked is queued, and the run often did it beside the task under way, even in the same commit or the same report.
+- evidence first: the ref of a "said:" or "report:" line, like "L12". For done, the line that reports this task's work done or its result; look in the report lines first, since the agent's last message usually says what it did. Never a line that announces what the agent is about to do ("I'll...", "Now...", "Agora vou..."), and never a "call:" line, not even the call that did the work. For waiting, the line where the agent asks the operator or says what it waits on. "" when no line does.
 - outcome:
+  - untouched: the run never worked on it. It stays as it is, and it is never waiting just because something else is.
   - done: the task's own work finished, even with something left. Needs evidence.
   - progress: worked on, not finished.
   - waiting: stopped before the work was done. waiting_on is "you" when the agent asks the operator something, waits for their go-ahead (a commit, a push), or asks them to run a command first; "outside" only when it waits on a build, a review or a deploy that nobody has to act on.
-- result: for done, what came out, the way someone who needs it later would: a commit hash, a URL, a number, the behaviour now. "" when the line says nothing specific.
-- left: what it did not do, like a part that did not run or a commit it asked about. "" when nothing.
+- result: for done, what came out, the way someone who needs it later would, under 100 characters: a commit hash, a URL, a number, the behaviour now. "" when the line says nothing specific.
+- left: what it did not do, like a part that did not run or a commit it asked about. Never the task itself. "" when nothing.
 - why and waiting_on: for waiting.
 
-follow_ups: work the agent said it leaves for after and no task covers, with why it waits. Never the left of a task above. Usually none.
-decisions: choices the agent reported making, like an approach picked over another, that a later reader must not redo, with the evidence line. Not routine steps. Usually none.`;
+decisions: at most one, and usually none. A decision is a choice between alternatives that shapes the work from here on, like a library picked over another or a design the operator agreed to, with the evidence line and the alternative turned down in instead_of. Never a step or a task ("create the release"), a command to run, a fact the agent found, or a wording or style fix.`;
 
 const TIDY = `${TASKS}
 

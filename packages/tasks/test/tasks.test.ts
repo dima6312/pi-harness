@@ -26,7 +26,14 @@ import { Keeper } from "../src/keeper.ts";
 import { modelsFor } from "../src/models.ts";
 import { isPlan, messageOps, runOps } from "../src/ops.ts";
 import { doingOps, queuedOps } from "../src/screen.ts";
-import { heard, operatorText, runSince, withSkills, yourWords } from "../src/transcript.ts";
+import {
+	clipMessage,
+	heard,
+	operatorText,
+	runSince,
+	withSkills,
+	yourWords,
+} from "../src/transcript.ts";
 import { Updates } from "../src/updates.ts";
 
 let dir: string;
@@ -191,7 +198,7 @@ describe("your messages", () => {
 					language: "Portuguese",
 					ops: [
 						{ op: "title", text: "OAuth no MCP" },
-						{ op: "new_task", text: "Pesquisar OAuth no MCP" },
+						{ op: "new_task", text: "Pesquisar OAuth no MCP", proof: "como expor oauth no mcp" },
 					],
 				},
 			},
@@ -225,8 +232,18 @@ describe("your messages", () => {
 
 	test("asks that arrive while the agent works wait their turn instead of pushing its task aside", async () => {
 		const { say, start, state, models } = await mounted([
-			{ haiku: { language: "English", ops: [{ op: "new_task", text: "Use one secret" }] } },
-			{ haiku: { language: "English", ops: [{ op: "new_task", text: "Cut the comments" }] } },
+			{
+				haiku: {
+					language: "English",
+					ops: [{ op: "new_task", text: "Use one secret", proof: "use one secret" }],
+				},
+			},
+			{
+				haiku: {
+					language: "English",
+					ops: [{ op: "new_task", text: "Cut the comments", proof: "cut the comments" }],
+				},
+			},
 		]);
 		await start();
 		await say("m1", "use one secret");
@@ -240,9 +257,11 @@ describe("your messages", () => {
 	test("when the chosen model fails, the session's model answers", async () => {
 		const { updates, models, say } = await mounted([
 			{ haiku: "fail" },
-			{ opus: { language: "English", ops: [{ op: "new_task", text: "a" }] } },
+			{
+				opus: { language: "English", ops: [{ op: "new_task", text: "a", proof: "do the a task" }] },
+			},
 		]);
-		await say("m1", "do a");
+		await say("m1", "do the a task");
 		expect(models.asked.map((entry) => entry.model)).toEqual(["haiku", "opus"]);
 		expect(updates()[0]?.model).toBe("anthropic/opus");
 	});
@@ -274,7 +293,14 @@ describe("your messages", () => {
 				{
 					haiku: {
 						language: "English",
-						ops: [{ op: "decide", text: "Call it pi-tasks", proof: "pi-tasks (Recommended)" }],
+						ops: [
+							{
+								op: "decide",
+								instead_of: "pi-journal",
+								text: "Call it pi-tasks",
+								proof: "pi-tasks (Recommended)",
+							},
+						],
 					},
 				},
 			],
@@ -303,8 +329,18 @@ describe("the end of a run", () => {
 		const branch: unknown[] = [];
 		const { say, start, settle, state, models, updates } = await mounted(
 			[
-				{ haiku: { language: "English", ops: [{ op: "new_task", text: "Use one secret" }] } },
-				{ haiku: { language: "English", ops: [{ op: "new_task", text: "Cut the comments" }] } },
+				{
+					haiku: {
+						language: "English",
+						ops: [{ op: "new_task", text: "Use one secret", proof: "use one secret" }],
+					},
+				},
+				{
+					haiku: {
+						language: "English",
+						ops: [{ op: "new_task", text: "Cut the comments", proof: "cut the comments" }],
+					},
+				},
 				{
 					haiku: {
 						tasks: [
@@ -327,7 +363,6 @@ describe("the end of a run", () => {
 								why: "",
 							},
 						],
-						follow_ups: [],
 						decisions: [],
 					},
 				},
@@ -424,7 +459,12 @@ describe("a session that comes back", () => {
 test("a call that never comes back lets the next message through", async () => {
 	const models = registry([
 		{ haiku: "hang" },
-		{ haiku: { language: "English", ops: [{ op: "new_task", text: "second" }] } },
+		{
+			haiku: {
+				language: "English",
+				ops: [{ op: "new_task", text: "second", proof: "the second one" }],
+			},
+		},
 	]);
 	const keeper = new Keeper(
 		() => {},
@@ -442,7 +482,7 @@ test("a call that never comes back lets the next message through", async () => {
 		sessionManager: { getBranch: () => [] },
 	});
 	updates.message(ctx, "first");
-	updates.message(ctx, "second");
+	updates.message(ctx, "the second one");
 	await new Promise((resolve) => setTimeout(resolve, 120));
 	expect(keeper.state().tasks.map((task) => task.text)).toEqual(["second"]);
 	expect(settled).toBe(1);
@@ -470,12 +510,38 @@ describe("what your message proves", () => {
 			state,
 		);
 		expect(named.ops).toEqual([{ op: "done", id: "t1" }]);
+		const asked = messageOps(
+			{ ops: [{ op: "you_did", id: "t1", proof: "vamos publicar no npm" }] },
+			"beleza, vamos publicar no npm",
+			state,
+		);
+		expect(asked.rejected).toEqual([{ op: "done", id: "t1" }]);
 		const vague = messageOps(
 			{ ops: [{ op: "you_did", id: "t1", proof: "deu certo aqui" }] },
 			"deu certo aqui",
 			state,
 		);
 		expect(vague.rejected).toEqual([{ op: "done", id: "t1" }]);
+	});
+
+	test("a new task needs your words that ask for it, in any order", () => {
+		const message = "faz o deploy, e depois a gente escreve o post";
+		const checked = messageOps(
+			{
+				ops: [
+					{ op: "new_task", text: "Fazer o deploy", proof: "faz o deploy" },
+					{ op: "new_task", text: "Escrever o post", proof: "escrever o post" },
+					{ op: "new_task", text: "Gravar um podcast", proof: "gravar um podcast" },
+				],
+			},
+			message,
+			state,
+		);
+		expect(checked.ops).toEqual([
+			{ op: "ask", text: "Fazer o deploy" },
+			{ op: "ask", text: "Escrever o post" },
+		]);
+		expect(checked.rejected).toEqual([{ op: "ask", text: "Gravar um podcast" }]);
 	});
 
 	test("words that are not in the message prove nothing", () => {
@@ -486,6 +552,17 @@ describe("what your message proves", () => {
 		);
 		expect(checked.ops).toEqual([]);
 		expect(checked.rejected).toHaveLength(1);
+	});
+
+	test("a decision names what it was chosen over, so a step you confirm is none", () => {
+		const message = "vamos usar um secret so, nao duas chaves";
+		const choice = { op: "decide", text: "One secret", proof: "um secret so, nao duas chaves" };
+		expect(
+			messageOps({ ops: [{ ...choice, instead_of: "two keys" }] }, message, state).ops,
+		).toEqual([{ op: "decide", text: "One secret" }]);
+		expect(messageOps({ ops: [{ ...choice, instead_of: "" }] }, message, state).rejected).toEqual([
+			{ op: "decide", text: "One secret" },
+		]);
 	});
 
 	test("the title is set once, and the language only when it changes", () => {
@@ -570,26 +647,55 @@ describe("what a run proves", () => {
 		]);
 	});
 
+	test("waiting needs the line where the agent asks, and without it the task stays as it was", () => {
+		const untouched = runOps(
+			{ tasks: [{ ...verdict("t2", "", "waiting"), why: "waits on feedback" }] },
+			lines,
+			state,
+		);
+		expect(untouched.ops).toEqual([
+			{ op: "idle", id: "t2" },
+			{ op: "idle", id: "t3" },
+		]);
+		expect(untouched.rejected).toEqual([
+			{ op: "wait", id: "t2", on: "you", why: "waits on feedback" },
+		]);
+	});
+
+	test("a left that repeats the task is dropped, and a run keeps one decision at most", () => {
+		const checked = runOps(
+			{
+				tasks: [{ ...verdict("t1", "L5"), left: "Write the docs" }],
+				decisions: [
+					{ evidence: "L5", instead_of: "a wiki", text: "Docs live in the README" },
+					{ evidence: "L5", instead_of: "Portuguese", text: "Docs are in English" },
+				],
+			},
+			lines,
+			stateWith([{ op: "ask", text: "Write the docs" }], { at: 100 }),
+		);
+		expect(checked.ops).toEqual([
+			{ op: "done", id: "t1" },
+			{ op: "decide", text: "Docs live in the README" },
+		]);
+		expect(checked.rejected).toEqual([{ op: "decide", text: "Docs are in English" }]);
+	});
+
 	test("a line written before the task existed cannot close it", () => {
 		const late = stateWith([{ op: "ask", text: "Docs" }], { at: 1000 });
 		expect(runOps({ tasks: [verdict("t1", "L5")] }, lines, late).rejected).toHaveLength(1);
 	});
 
-	test("waiting needs a reason, and a follow-up never repeats a task or what a task left", () => {
+	test("a wait stands on the line where the agent asks, and a decision on the line that reports it", () => {
 		const checked = runOps(
 			{
 				tasks: [
-					{ ...verdict("t1", "", "waiting"), why: "asks before pushing" },
+					{ ...verdict("t1", "L1", "waiting"), why: "asks before pushing" },
 					{ ...verdict("t2", "L5"), left: "Translate the docs" },
 				],
-				follow_ups: [
-					{ text: "Translate the docs", why: "" },
-					{ text: "Release", why: "" },
-					{ text: "Record a demo", why: "after the release" },
-				],
 				decisions: [
-					{ evidence: "L5", text: "Docs live in the README" },
-					{ evidence: "L9", text: "Made up" },
+					{ evidence: "L5", instead_of: "a wiki", text: "Docs live in the README" },
+					{ evidence: "L9", instead_of: "x", text: "Made up" },
 				],
 			},
 			lines,
@@ -598,11 +704,10 @@ describe("what a run proves", () => {
 		expect(checked.ops).toEqual([
 			{ op: "wait", id: "t1", on: "you", why: "asks before pushing" },
 			{ op: "done", id: "t2", left: "Translate the docs" },
-			{ op: "follow_up", text: "Record a demo", why: "after the release" },
 			{ op: "decide", text: "Docs live in the README" },
 			{ op: "idle", id: "t3" },
 		]);
-		expect(checked.rejected.map((op) => op.op)).toEqual(["follow_up", "follow_up", "decide"]);
+		expect(checked.rejected).toEqual([{ op: "decide", text: "Made up" }]);
 	});
 });
 
@@ -622,6 +727,8 @@ test("a line that announces work is a plan, and a line that reports it is not", 
 	])
 		expect(isPlan(report)).toBe(false);
 	expect(isPlan("Agora o roteador:", "call")).toBe(true);
+	// A report followed by what comes next still reports.
+	expect(isPlan("O push foi feito. Agora acompanho o build:", "call")).toBe(false);
 	// A report that ends in a colon leads into its table, not into a call.
 	expect(isPlan("**Como ficou a autenticação:** um SECRET só, com um modo:", "said")).toBe(false);
 });
@@ -691,6 +798,16 @@ describe("reading the session", () => {
 		).toContain(
 			'L2 you: Answering the agent\'s questions: - Name: "What should the package be called?" \u2192 "pi-tasks (Recommended)"',
 		);
+	});
+
+	test("a long message keeps its start and its end, where the ask about a paste usually is", () => {
+		const pasted = `${"the agent's plan. ".repeat(200)}open the PR in the infra repo`;
+		const clipped = clipMessage(pasted);
+		expect(clipped.length).toBeLessThan(2100);
+		expect(clipped).toStartWith("the agent's plan.");
+		expect(clipped).toEndWith("open the PR in the infra repo");
+		expect(clipped).toContain("characters left out");
+		expect(clipMessage("short")).toBe("short");
 	});
 
 	test("your message is found on the branch, with what the agent said before it", () => {

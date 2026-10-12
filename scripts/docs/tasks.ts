@@ -51,11 +51,6 @@ const SESSION: Step[] = [
 				result: "progress bar on /status",
 				left: "not tried with a real phone sync",
 			},
-			{
-				op: "follow_up",
-				text: "Try the history with a real phone sync",
-				why: "needs a paired phone",
-			},
 			{ op: "idle", id: "t5" },
 		],
 	],
@@ -66,13 +61,14 @@ const SESSION: Step[] = [
 		[
 			{
 				op: "wait",
-				id: "t7",
+				id: "t6",
 				on: "you",
 				why: "production has no SECRET yet: wrangler secret put SECRET",
 			},
 		],
 	],
 	[34, "you", [{ op: "ask", text: "Round the corners of the README images" }]],
+	[36, "steer", [{ op: "ask", text: "Write the 1.0.0 release notes" }]],
 ];
 
 /** The session the look's pictures show: a fix made, and now being published. */

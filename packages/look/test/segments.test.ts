@@ -86,14 +86,8 @@ describe("segments", () => {
 		expect(text(["tasks"], snapshot({ tasks: emptyTasks() }))).toEqual([]);
 
 		let between = applyTaskOps(emptyTasks(), [{ op: "ask", text: "a" }], YOU);
-		between = applyTaskOps(
-			between,
-			[
-				{ op: "done", id: "t1" },
-				{ op: "follow_up", text: "b" },
-			],
-			AGENT,
-		);
+		between = applyTaskOps(between, [{ op: "ask", text: "b" }], { ...YOU, busy: true });
+		between = applyTaskOps(between, [{ op: "done", id: "t1" }], AGENT);
 		expect(text(["tasks"], snapshot({ tasks: between }), { labels: true })).toEqual([
 			"> idle  1 queued  1 done",
 		]);
