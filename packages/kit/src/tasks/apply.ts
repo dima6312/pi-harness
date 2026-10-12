@@ -11,13 +11,11 @@ import {
 export interface ApplyOptions {
 	at: number;
 	origin: Origin;
-	/** The entry the operations came from: your message, or the last entry of the run. */
 	entry?: string;
 	/** The agent is already on something you asked in this run, so a new ask waits its turn. */
 	busy?: boolean;
 }
 
-/** Operations that do not fit, like closing a task that is already closed, are skipped. */
 export function applyTaskOps(
 	state: SessionTasks,
 	ops: readonly TaskOp[],
@@ -194,7 +192,6 @@ class Draft {
 		return this.#next.tasks.find((task) => task.id === id);
 	}
 
-	/** A task with the same words that is not dropped, which a new one would repeat. */
 	#listed(text: string): Task | undefined {
 		return this.#next.tasks.find((task) => task.status !== "dropped" && sameText(task.text, text));
 	}
@@ -202,7 +199,6 @@ class Draft {
 	#move(task: Task, status: TaskStatus): void {
 		if (status === "doing" || status === "queued") {
 			delete task.finished;
-			// It did not finish after all, so its result goes with its close.
 			delete task.result;
 		}
 		if (status !== "waiting") delete task.waitingOn;

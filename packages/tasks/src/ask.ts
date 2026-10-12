@@ -27,7 +27,6 @@ type Registry = Pick<ExtensionContext["modelRegistry"], "streamSimple">;
 
 export interface Asker {
 	registry: Registry;
-	/** Tried in order: the next one answers only when the one before fails. */
 	models: readonly Model<Api>[];
 	signal: AbortSignal;
 }

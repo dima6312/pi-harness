@@ -1,4 +1,3 @@
-// Alt+T: the session's tasks over the chat, by status, with a cursor and the one under it in full.
 import {
 	type Decision,
 	isOpen,
@@ -35,7 +34,6 @@ export const MARKS = {
 
 type Tint = "accent" | "warning" | "success" | "dim" | "muted" | "text" | "mdLink";
 
-/** Each state's section title, and the tint of its title and of its mark. */
 const STATUS: Record<TaskStatus, { title: string; tint: Tint; mark: Tint }> = {
 	doing: { title: "Doing", tint: "accent", mark: "accent" },
 	waiting: { title: "Waiting", tint: "warning", mark: "warning" },
@@ -49,24 +47,19 @@ export interface TasksViewOptions {
 	theme: Theme;
 	state: () => SessionTasks;
 	spent: () => { cost: number; calls: number };
-	/** Rows the panel may take. */
 	rows: () => number;
 	close: () => void;
 	requestRender: () => void;
-	/** How a time reads. The local clock by default; the docs pin it, so a picture never moves. */
 	clock?: Clock;
-	/** Applies what a key did to the selected task. Without it, the panel only shows. */
 	act?: (op: TaskOp) => void;
 }
 
-/** A key on the selected task, and what it does to it. */
 export interface TaskKey {
 	keys: KeyId[];
 	label: string;
 	op: TaskOp;
 }
 
-/** The keys that change `task`, in the order the footer shows them. */
 export function taskKeys(task: Task): TaskKey[] {
 	const { id } = task;
 	const open = isOpen(task);
@@ -91,7 +84,6 @@ type Pick = { kind: "task"; task: Task } | { kind: "decision"; decision: Decisio
 
 interface Line {
 	text: string;
-	/** The id under the line, for the cursor's highlight. */
 	id?: string;
 }
 
@@ -151,7 +143,6 @@ export class TasksView implements Component {
 
 		const inner = Math.max(10, width - PAD * 2);
 		const body = this.#body(state, picks, inner);
-		// The header, a blank line, the scroll hint, the divider, the detail pane, a blank line and the footer.
 		const chrome = 6 + DETAIL_LINES;
 		const most = Math.max(3, this.#options.rows() - chrome);
 		// The panel never shrinks while open, so moving the cursor never moves the frame.
@@ -185,7 +176,6 @@ export class TasksView implements Component {
 		];
 	}
 
-	/** What the cursor walks, in the order it is drawn. */
 	#picks(state: SessionTasks): Pick[] {
 		const tasks = (status: TaskStatus) => {
 			const found = tasksWith(state, status);
@@ -230,7 +220,6 @@ export class TasksView implements Component {
 		return lines;
 	}
 
-	/** The tree's branch, or the pointer on the selected row. */
 	#branch(line: Line, last: boolean): Line {
 		const { theme } = this.#options;
 		const on = line.id === this.#selected;
@@ -246,7 +235,6 @@ export class TasksView implements Component {
 		const faded = task.id !== this.#selected && (closed || isStale(task));
 		const meta = this.#meta(task);
 		const mark = theme.fg(STATUS[task.status].mark, MARKS[task.status]);
-		// What came out of a done task reads beside it, so the list says what the session produced.
 		const aside = task.status === "done" ? task.result : undefined;
 		const ink = faded ? "muted" : "text";
 		return { text: this.#fit(mark, task.text, ink, meta, width, aside), id: task.id };
@@ -261,7 +249,6 @@ export class TasksView implements Component {
 		};
 	}
 
-	/** The mark, the words and a dim aside cut to fit, and the meta flush right. */
 	#fit(
 		mark: string,
 		words: string,
@@ -301,7 +288,6 @@ export class TasksView implements Component {
 		}
 	}
 
-	/** The pick under the cursor in full, in a pane of fixed height. */
 	#detail(pick: Pick | undefined, width: number): string[] {
 		const { theme } = this.#options;
 		const lines: string[] = [];
@@ -344,7 +330,6 @@ export class TasksView implements Component {
 		this.#select(picks, Math.max(0, at) + by);
 	}
 
-	/** Puts the cursor on the pick at `index`, kept inside the list. */
 	#select(picks: readonly Pick[], index: number): Pick | undefined {
 		this.#index = Math.min(picks.length - 1, Math.max(0, index));
 		const pick = picks[this.#index];
@@ -352,11 +337,9 @@ export class TasksView implements Component {
 		return pick;
 	}
 
-	/** Scrolls just enough to keep the cursor's row in view. */
 	#follow(body: readonly Line[], room: number): void {
 		const at = body.findIndex((line) => line.id === this.#selected);
 		if (at !== -1) {
-			// The section title above the first row comes into view with it.
 			const top = body[at - 1]?.id === undefined ? at - 1 : at;
 			if (top < this.#offset) this.#offset = Math.max(0, top);
 			if (at >= this.#offset + room) this.#offset = at - room + 1;
@@ -416,7 +399,6 @@ function keepBackground(text: string, background: string): string {
 	return text.replaceAll("\x1b[0m", `\x1b[0m${background}`);
 }
 
-/** The card in the border's hue, and a band a step brighter for its header and footer. */
 function cardTones(theme: Theme) {
 	const { h, s } = colorToOkhsl(theme.colors.border);
 	return theme.appearance === "dark"

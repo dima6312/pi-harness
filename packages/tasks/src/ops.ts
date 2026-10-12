@@ -1,4 +1,3 @@
-// The model's answers, read defensively and checked against what it read.
 import { isObject, type SessionTasks, type Task, type TaskOp } from "@adeildo/pi-kit";
 
 import type { MessageRequest } from "./prompts.ts";
@@ -22,7 +21,6 @@ function objects(value: unknown): Record<string, unknown>[] {
 	return Array.isArray(value) ? value.filter(isObject) : [];
 }
 
-/** Your message: only what its own words say, read beside what the agent said just before. */
 export function messageOps(answer: unknown, request: MessageRequest): Checked {
 	const { state } = request;
 	const checked: Checked = { ops: [], rejected: [] };
@@ -77,7 +75,6 @@ function fromMessage(
 	}
 }
 
-/** The run: a verdict per task it touched, each close backed by a line that reports it. */
 export function runOps(answer: unknown, lines: readonly Line[], state: SessionTasks): Checked {
 	const checked: Checked = { ops: [], rejected: [] };
 	const reply = isObject(answer) ? answer : {};
@@ -103,14 +100,12 @@ export function runOps(answer: unknown, lines: readonly Line[], state: SessionTa
 	return checked;
 }
 
-/** False when the verdict did not stand and the task stays as it was. */
 function verdict(
 	checked: Checked,
 	raw: Record<string, unknown>,
 	task: Task,
 	lines: readonly Line[],
 ): boolean {
-	// A left that repeats the task says nothing it did not do.
 	const said = given(raw.left);
 	const left = field("left", said !== undefined && !sameWords(said, task.text) ? said : undefined);
 	const progress: TaskOp = { op: "progress", id: task.id, ...left };
@@ -126,14 +121,12 @@ function verdict(
 			};
 			const proven = reports(raw.evidence, lines, task);
 			keep(checked, done, proven);
-			// Without a line that says it finished, the task is still under way.
 			if (!proven) keep(checked, progress);
 			return true;
 		}
 		case "waiting": {
 			const why = given(raw.why) ?? "";
 			const on = raw.waiting_on === "outside" ? "outside" : "you";
-			// Without the line where the agent asks or says it waits, the task stays as it was.
 			const stands = why !== "" && asks(raw.evidence, lines, task);
 			keep(checked, { op: "wait", id: task.id, on, why }, stands);
 			return stands;
@@ -144,7 +137,6 @@ function verdict(
 	}
 }
 
-/** A task that waits on you, which the agent's last words were about. */
 function answersAsk(task: Task, reply: string | undefined): boolean {
 	if (task.status !== "waiting" || task.waitingOn !== "you" || reply === undefined) return false;
 	return sharesWord(reply, `${task.text} ${task.why ?? ""}`);
@@ -179,7 +171,6 @@ export function tidyOps(answer: unknown, state: SessionTasks): Checked {
 	return checked;
 }
 
-/** The words of `proof` as they appear in the message, or undefined when they are not there. */
 function proves(proof: unknown, message: string): string | undefined {
 	const words = clean(proof);
 	if (words === undefined) return undefined;
@@ -193,7 +184,6 @@ function lineOf(message: string, proof: string): string {
 	return message.split("\n").find((line) => normalized(line).includes(needle)) ?? proof;
 }
 
-/** The agent's line `ref`, written after the task existed, with where it sits. */
 function agentLine(ref: unknown, lines: readonly Line[], task?: Task): number {
 	if (typeof ref !== "string") return -1;
 	const at = lines.findIndex((line) => line.ref === ref.trim().toUpperCase());
@@ -203,12 +193,10 @@ function agentLine(ref: unknown, lines: readonly Line[], task?: Task): number {
 	return at;
 }
 
-/** A line where the agent asks you, or says what it waits on. A plan or a question is fine here. */
 function asks(ref: unknown, lines: readonly Line[], task: Task): boolean {
 	return agentLine(ref, lines, task) !== -1;
 }
 
-/** A line the agent wrote, after the task existed, that is not a plan and not over a failed call. */
 function reports(ref: unknown, lines: readonly Line[], task?: Task): boolean {
 	const at = agentLine(ref, lines, task);
 	const line = lines[at];

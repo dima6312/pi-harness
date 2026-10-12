@@ -75,9 +75,7 @@ function language(state: SessionTasks): string[] {
 export interface MessageRequest {
 	state: SessionTasks;
 	message: string;
-	/** What the agent said last before your message. */
 	reply?: string;
-	/** The agent is already on something you asked in this run. */
 	busy?: boolean;
 }
 
@@ -94,7 +92,6 @@ export function messagePrompt({ state, message, reply, busy }: MessageRequest): 
 
 export interface RunRequest {
 	state: SessionTasks;
-	/** The run's lines, numbered. */
 	run: string;
 }
 

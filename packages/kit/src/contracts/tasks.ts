@@ -1,18 +1,15 @@
-// Other packages ask the tasks feature for the live state over the event bus.
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { isObject } from "../decode.ts";
 import type { SessionTasks } from "../tasks/state.ts";
 
 export const TASKS_STATE = "harness:tasks";
-/** Carries the new `SessionTasks` after every change. */
 export const TASKS_CHANGED = "harness:tasks:changed";
 /** Your last message is in the tasks, changed or not. */
 export const TASKS_SETTLED = "harness:tasks:settled";
 
 export interface TasksProbe {
 	state?: SessionTasks;
-	/** Your last message is not in the tasks yet. */
 	pending?: boolean;
 	working?: boolean;
 }
@@ -34,7 +31,6 @@ export function answerTasks(
 	if (extra.working === true) data.working = true;
 }
 
-/** Resolves once your last message is in the tasks, or after `timeoutMs`. */
 export function tasksSettled(events: ExtensionAPI["events"], timeoutMs: number): Promise<void> {
 	if (currentTasks(events)?.pending !== true) return Promise.resolve();
 	return new Promise((resolve) => {

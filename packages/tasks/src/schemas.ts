@@ -1,4 +1,3 @@
-// What the model may answer at each moment. ops.ts reads the answers and checks them.
 import { type TSchema, Type } from "@earendil-works/pi-ai";
 
 import type { Moment } from "./prompts.ts";

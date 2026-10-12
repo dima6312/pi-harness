@@ -1,5 +1,4 @@
-// A branch's tasks are its last update entry. Sessions from before kept a goal timeline, which is
-// read as tasks, so nothing they recorded is lost.
+// Sessions recorded by @adeildo/pi-goal read as tasks.
 import { isObject } from "../decode.ts";
 import {
 	emptyTasks,
@@ -15,14 +14,12 @@ import {
 
 export const TASKS_ENTRY = "pi-tasks:update";
 export const TASKS_USAGE_ENTRY = "pi-tasks:usage";
-/** What `@adeildo/pi-goal` wrote, up to 5.5. */
 export const LEGACY_ENTRY = "pi-goal:update";
 const LEGACY_USAGE_ENTRY = "pi-goal:usage";
 
 export interface TasksUsage {
 	input: number;
 	output: number;
-	/** In dollars, at the model's catalog price. */
 	cost: number;
 }
 
@@ -30,16 +27,13 @@ export interface TasksUpdate {
 	version: typeof TASKS_VERSION;
 	trigger: TasksTrigger;
 	ops: TaskOp[];
-	/** The first and last entries the model read. */
 	covers?: { from?: string; to?: string };
 	model?: string;
 	usage?: TasksUsage;
-	/** What the model proposed and the checks refused, kept so a bad call can be studied. */
 	rejected?: TaskOp[];
 	state: SessionTasks;
 }
 
-/** A call that changed nothing still cost something. */
 export interface TasksCall {
 	trigger: TasksTrigger;
 	model: string;
@@ -58,7 +52,6 @@ export function tasksFromEntries(entries: readonly unknown[]): SessionTasks {
 	return emptyTasks();
 }
 
-/** Undefined for any other entry, or an update this version cannot read. */
 export function tasksUpdateOf(entry: unknown): TasksUpdate | undefined {
 	if (!isObject(entry) || entry.type !== "custom" || entry.customType !== TASKS_ENTRY)
 		return undefined;
@@ -117,7 +110,6 @@ interface LegacyItem {
 	note?: string;
 }
 
-/** A goal timeline as tasks: the step under way is doing, and later splits by who put it off. */
 function legacyStateOf(entry: unknown): SessionTasks | undefined {
 	if (!isObject(entry) || entry.type !== "custom" || entry.customType !== LEGACY_ENTRY)
 		return undefined;

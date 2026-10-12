@@ -1,6 +1,5 @@
-// What the tasks' model reads of the branch. Tool output stays out, since it could carry
-// instructions; a call shows only its name, its target and whether it failed. The one exception is
-// your answers in the questions dialog, which are your words.
+// Tool output never reaches the model, since it could carry instructions. Your answers to the
+// agent's questions are the one exception: they are your words.
 import { describeAnswers, isAnswered, isAskResult } from "@adeildo/pi-kit";
 
 const MAX_RUN = 9000;
@@ -36,24 +35,20 @@ interface Part {
 export type LineKind = "you" | "said" | "report" | "call";
 
 export interface Line {
-	/** `L1`, `L2`, as the model cites them. */
 	ref: string;
 	kind: LineKind;
 	text: string;
 	at?: number;
-	/** A call that failed or that you refused. */
 	failed?: boolean;
 }
 
 export interface Run {
 	lines: Line[];
-	/** The lines as the model reads them, one per row, each after its ref. */
 	text: string;
 	from?: string;
 	to?: string;
 }
 
-/** Everything on the branch after `after`: your messages, the agent's words and its calls. */
 export function runSince(branch: readonly unknown[], after: string | undefined): Run {
 	const entries = branch as readonly Entry[];
 	const start = after === undefined ? 0 : entries.findIndex((entry) => entry.id === after) + 1;
@@ -117,7 +112,6 @@ function callOf(name: string, args: unknown): string {
 	return `${name} ${clip(shown, MAX_CALL)}`;
 }
 
-/** The newest lines that fit, since the end of a run says the most about what got done. */
 function newest<T extends { text: string }>(lines: readonly T[], max: number): T[] {
 	const kept: T[] = [];
 	let size = 0;
@@ -131,7 +125,6 @@ function newest<T extends { text: string }>(lines: readonly T[], max: number): T
 	return kept;
 }
 
-/** What you wrote in a message, without the skill blocks pi expands into it. */
 export function operatorText(message: unknown): string | undefined {
 	const { role, content } = asMessage(message);
 	if (role !== "user") return undefined;
@@ -143,7 +136,6 @@ export function operatorText(message: unknown): string | undefined {
 
 const QUESTIONS_TOOL = "ask_questions";
 
-/** What you wrote: a message, or your answers to the agent's questions. */
 export function yourWords(message: unknown): string | undefined {
 	return operatorText(message) ?? answerWords(message);
 }
@@ -152,20 +144,16 @@ function answerWords(message: unknown): string | undefined {
 	const { role, toolName, details } = asMessage(message);
 	if (role !== "toolResult" || toolName !== QUESTIONS_TOOL || !isAskResult(details))
 		return undefined;
-	// A closed dialog answers nothing, even where you had picked before closing it.
 	const answered = details.cancelled ? [] : details.answers.filter(isAnswered);
 	if (answered.length === 0) return undefined;
 	return ["Answering the agent's questions:", ...describeAnswers(answered)].join("\n");
 }
 
 export interface Heard {
-	/** The entry of your message, once it is in the session. */
 	entry?: string;
-	/** What the agent said last before it, which "yes, do it" answers. */
 	reply?: string;
 }
 
-/** Where your message sits on the branch, and what the agent said just before it. */
 export function heard(branch: readonly unknown[], text: string): Heard {
 	const entries = branch as readonly Entry[];
 	const at = entries.findLastIndex(

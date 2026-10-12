@@ -1,18 +1,11 @@
 import { type SessionTasks, type Task, tasksWith } from "./state.ts";
 
 export interface DescribeOptions {
-	/** With ids, for a model that answers about them. */
 	ids?: boolean;
-	/** Caps the done tasks, newest first. */
 	done?: number;
-	/** Caps the decisions, newest first. */
 	decisions?: number;
 }
 
-/**
- * The tasks as a reader without the chat needs them: a model that keeps them, another agent, or
- * compaction. Empty when there is nothing to say.
- */
 export function describeTasks(state: SessionTasks, options: DescribeOptions = {}): string {
 	const tag = (id: string) => (options.ids ? `[${id}] ` : "");
 	const lines: string[] = [];

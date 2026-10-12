@@ -1,4 +1,3 @@
-// The tasks on Alt+S, titled by the session. What you write here counts as yours.
 import {
 	type FeatureScope,
 	type ScreenEntry,
@@ -84,7 +83,6 @@ function rows(keeper: Keeper, section: string): ScreenEntry[] {
 			text: () => count(texts("queued").length),
 			set: (value) => {
 				if (typeof value !== "string") return "expected text";
-				// A line you add queues behind what the agent is doing.
 				keeper.apply(queuedOps(keeper.state(), linesOf(value)), "you", { busy: true });
 				return undefined;
 			},
@@ -147,7 +145,6 @@ function listed(
 	};
 }
 
-/** Done for a line you removed, and doing for one you added. */
 export function doingOps(state: SessionTasks, lines: readonly string[]): TaskOp[] {
 	const doing = tasksWith(state, "doing");
 	const finished: TaskOp[] = doing

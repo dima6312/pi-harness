@@ -1,18 +1,12 @@
-// How the checks compare words: a stem names a word in any of its forms, and a line of the agent
-// reports or plans by how its sentences start and end.
 import type { LineKind } from "./transcript.ts";
 
-/** Words that ask for work instead of saying it was done. */
 export const ASKING =
 	/(?<!\p{L})(vamos|vou|pode|podemos|bora|faz|faça|let's|let me|please|can you|could you)(?!\p{L})/iu;
 const PLAN_START = /^(i'll|i will|i'm going to|let me|let's|vou|vamos|deixa eu|deixe-me)\b/i;
 const PLAN_AFTER =
 	/^(now|next|then|first|agora|em seguida|depois|primeiro)\b[^.]{0,40}\b(i'll|i will|let me|vou)\b/i;
 
-/**
- * What the agent announces or asks, as opposed to what it reports. A line that reports something
- * and then says what comes next, like "Pushed. Now I watch the build:", still reports.
- */
+/** A line that reports and then says what comes next ("Pushed. Now I watch the build:") still reports. */
 export function isPlan(said: string, next?: LineKind): boolean {
 	const sentences = said
 		.trim()
@@ -31,7 +25,6 @@ function plans(sentence: string, next: LineKind | undefined): boolean {
 
 /** Two words with the same first letters are one: "publiquei" names "Publicar". */
 const STEM = 5;
-/** Words any message has, which name no task. */
 const COMMON_PT = "agora aqui esse essa isso esta está para pode feito fazer tudo";
 const COMMON_EN = "with that this done already just have";
 const COMMON = new Set(`${COMMON_PT} ${COMMON_EN}`.split(" "));
@@ -50,7 +43,6 @@ export function sharesWord(left: string, right: string): boolean {
 	return [...stems(left)].some((stem) => named.has(stem));
 }
 
-/** Most of the words of the longer one are in the other. */
 export function sameWords(left: string, right: string): boolean {
 	const a = stems(left);
 	const b = stems(right);
@@ -58,7 +50,6 @@ export function sameWords(left: string, right: string): boolean {
 	return shared > 0 && shared / Math.max(a.size, b.size) >= 0.75;
 }
 
-/** Most of the words of `part` are in `whole`, in any order or form. */
 export function echoes(part: string, whole: string): boolean {
 	const words = stems(part);
 	return words.size > 0 && sharedCount(words, stems(whole)) / words.size >= 0.75;

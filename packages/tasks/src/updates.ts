@@ -1,4 +1,3 @@
-// When the model runs: on each message of yours, at the end of each run, and one tidy pass after.
 import { oneAtATime } from "@adeildo/pi-kit";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -12,9 +11,7 @@ const CALL_LIMIT_MS = 90_000;
 
 export interface UpdateOptions {
 	models(ctx: ExtensionContext): Model<Api>[];
-	/** Your last message is in the tasks. */
 	settled(): void;
-	/** Your words with each skill you named explained. */
 	explain(text: string): string;
 	limitMs?: number;
 }
@@ -41,7 +38,6 @@ export class Updates {
 		return this.#working;
 	}
 
-	/** Your last message is not in the tasks yet. */
 	get pending(): boolean {
 		return this.#messages > 0;
 	}
@@ -55,7 +51,6 @@ export class Updates {
 		this.#working = false;
 	}
 
-	/** Tasks that come back from a file get one tidy pass after the next run. */
 	reset(): void {
 		this.#untidy = this.#keeper.state().tasks.length > 0;
 	}

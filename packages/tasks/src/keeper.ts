@@ -1,4 +1,3 @@
-// The live tasks, and the entries that record each change and what each call cost.
 import {
 	applyTaskOps,
 	emptyTasks,
@@ -42,7 +41,6 @@ export class Keeper {
 		this.#state = tasksFromEntries(branch);
 	}
 
-	/** False when the operations changed nothing, and then nothing is written. */
 	apply(ops: readonly TaskOp[], trigger: TasksTrigger, context: ChangeContext = {}): boolean {
 		const origin = trigger === "message" || trigger === "you" ? "you" : "agent";
 		const next = applyTaskOps(this.#state, ops, {
@@ -68,7 +66,6 @@ export class Keeper {
 		return true;
 	}
 
-	/** Applies what a model proposed, or keeps only its cost when it changed nothing. */
 	settle(
 		proposal: Proposal,
 		trigger: TasksTrigger,
