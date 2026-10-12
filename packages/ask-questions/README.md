@@ -24,19 +24,19 @@
 
 ## The dialog
 
-The options sit on the left, one line each. The panel on the right shows the option under the cursor: what it means, then what it looks like. The panel is as tall as the tallest option, so the dialog keeps its size while you move. A preview longer than the panel scrolls with `pgup` and `pgdn`. Under 100 columns the panel moves below the options.
+The options sit on the left, one line each. The panel on the right shows the option under the cursor: what it means, then what it looks like. The panel is as tall as the tallest option, so the dialog keeps its size while you move. A preview longer than the panel scrolls with `shift+↑` `shift+↓` or the mouse wheel, and the panel says how many lines it hides above and below. Under 100 columns the panel moves below the options.
 
 Several questions become tabs. `●` is where you are, `✓` is a question already answered, and `submit` turns green once every one has an answer.
 
-| Key               | Does                                                                   |
-| ----------------- | ---------------------------------------------------------------------- |
-| `↑` `↓`, a number | Move between the options                                               |
-| `enter`           | Choose the option. With several picks allowed, confirm the ones ticked |
-| `space`           | Tick an option, when several can be picked                             |
-| `tab`             | Write a note on the option under the cursor                            |
-| `←` `→`           | Go to another question, or to `submit`                                 |
-| `pgup` `pgdn`     | Scroll a long preview                                                  |
-| `esc`             | Close without answering. On the typed row or in a note, step back      |
+| Key                 | Does                                                                   |
+| ------------------- | ---------------------------------------------------------------------- |
+| `↑` `↓`, a number   | Move between the options                                               |
+| `enter`             | Choose the option. With several picks allowed, confirm the ones ticked |
+| `space`             | Tick an option, when several can be picked                             |
+| `tab`               | Write a note on the option under the cursor                            |
+| `←` `→`             | Go to another question, or to `submit`                                 |
+| `shift+↑` `shift+↓` | Scroll a long preview. `pgup` `pgdn` too, outside fullscreen           |
+| `esc`               | Close without answering. On the typed row or in a note, step back      |
 
 ## Notes
 

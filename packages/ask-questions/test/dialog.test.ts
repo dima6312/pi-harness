@@ -2,7 +2,12 @@ import { beforeAll, describe, expect, test } from "bun:test";
 
 import type { AskResult } from "@adeildo/pi-kit";
 import { getMarkdownTheme, initTheme, type Theme } from "@earendil-works/pi-coding-agent";
-import { type KeybindingsManager, type TUI, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	type KeybindingsManager,
+	type TUI,
+	type TuiMouseEvent,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 
 import type { Question } from "../src/schema.ts";
 import { QuestionDialog } from "../src/ui/dialog.ts";
@@ -297,7 +302,7 @@ describe("drawing", () => {
 		type(dialog, "a note that is long enough to take a second line in the panel of the dialog");
 		press(dialog, KEYS.enter);
 		const text = dialog.render(120).join("\n");
-		expect(text).not.toMatch(/\u2191\d+ \u2193\d+/);
+		expect(text).not.toMatch(/\u2193 \d+ below/);
 		expect(dialog.render(120).length).toBeGreaterThanOrEqual(before);
 	});
 
@@ -395,9 +400,56 @@ describe("notes", () => {
 	});
 });
 
+function firstRow(dialog: QuestionDialog): string | undefined {
+	return dialog
+		.render(120)
+		.join("\n")
+		.match(/row (\d+)/)?.[1];
+}
+
 function draw(component: { render(width: number): string[] }): string {
 	return component.render(90).join("\n");
 }
+
+describe("a preview taller than the panel", () => {
+	const LONG: Question = {
+		question: "Which layout?",
+		header: "Layout",
+		options: [
+			{
+				label: "Tall",
+				preview: `\`\`\`\n${Array.from({ length: 60 }, (_, i) => `row ${i + 1}`).join("\n")}\n\`\`\``,
+			},
+			{ label: "Short", preview: "one line" },
+		],
+	};
+
+	test("scrolls with shift and the arrows, which fullscreen pi leaves to the dialog", () => {
+		const { dialog } = open(LONG);
+		const text = dialog.render(120).join("\n");
+		expect(firstRow(dialog)).toBe("1");
+		expect(text).toMatch(/\u2193 \d+ below/);
+		expect(text).toContain("shift+\u2191\u2193 scroll");
+		press(dialog, "\x1b[1;2B");
+		expect(Number(firstRow(dialog))).toBeGreaterThan(1);
+		expect(dialog.render(120).join("\n")).toMatch(/\u2191 \d+ above/);
+		press(dialog, "\x1b[1;2A");
+		expect(firstRow(dialog)).toBe("1");
+	});
+
+	test("scrolls with the wheel, and leaves the wheel to the transcript when it fits", () => {
+		const { dialog } = open(LONG);
+		dialog.render(120);
+		const wheel = { type: "wheel", wheelDelta: 3 } as TuiMouseEvent;
+		expect(dialog.handleMouse(wheel)).toEqual({ handled: true });
+		const once = Number(firstRow(dialog));
+		dialog.handleMouse(wheel);
+		expect(Number(firstRow(dialog)) - once).toBe(3);
+		press(dialog, KEYS.down);
+		dialog.render(120);
+		expect(dialog.handleMouse(wheel)).toBeUndefined();
+	});
+});
 
 describe("in the transcript", () => {
 	test("while the model writes, each question shows as it arrives", () => {

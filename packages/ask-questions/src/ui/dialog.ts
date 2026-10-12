@@ -11,6 +11,8 @@ import {
 	type MarkdownTheme,
 	matchesKey,
 	type TUI,
+	type TuiMouseEvent,
+	type TuiMouseEventResult,
 	truncateToWidth,
 	visibleWidth,
 	wrapTextWithAnsi,
@@ -146,6 +148,13 @@ export class QuestionDialog implements Component, Focusable {
 		}
 	}
 
+	/** The wheel scrolls a preview taller than the panel. Otherwise it scrolls the transcript. */
+	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
+		if (this.done || event.type !== "wheel" || !this.overflow) return undefined;
+		this.panelTop += event.wheelDelta ?? 0;
+		return { handled: true };
+	}
+
 	invalidate(): void {
 		this.previews.invalidate();
 		for (const draft of this.drafts) {
@@ -221,8 +230,7 @@ export class QuestionDialog implements Component, Focusable {
 		if (matchesKey(data, Key.escape)) return this.finish(true);
 		if (matchesKey(data, Key.up)) return this.move(-1);
 		if (matchesKey(data, Key.down)) return this.move(1);
-		if (matchesKey(data, Key.pageUp)) return this.scrollPanel(-1);
-		if (matchesKey(data, Key.pageDown)) return this.scrollPanel(1);
+		if (this.scrollKey(data)) return;
 		if (this.switchTab(data)) return;
 		if (matchesKey(data, Key.tab)) {
 			this.noting = true;
@@ -236,6 +244,7 @@ export class QuestionDialog implements Component, Focusable {
 	}
 
 	private dispatchNote(data: string): void {
+		if (this.scrollKey(data)) return;
 		if (matchesKey(data, Key.escape) || matchesKey(data, Key.tab) || this.isConfirm(data)) {
 			this.noting = false;
 			return;
@@ -286,8 +295,17 @@ export class QuestionDialog implements Component, Focusable {
 		this.row = (this.row + delta + this.rowCount) % this.rowCount;
 	}
 
-	private scrollPanel(direction: 1 | -1): void {
+	/**
+	 * Half a panel at a time. Fullscreen pi takes page up and down for the transcript, so shift and
+	 * the arrows are the keys that always reach the dialog.
+	 */
+	private scrollKey(data: string): boolean {
+		let direction = 0;
+		if (matchesKey(data, Key.shift("up")) || matchesKey(data, Key.pageUp)) direction = -1;
+		else if (matchesKey(data, Key.shift("down")) || matchesKey(data, Key.pageDown)) direction = 1;
+		if (direction === 0) return false;
 		this.panelTop += direction * Math.max(1, Math.floor(this.panelRoom / 2));
+		return true;
 	}
 
 	private toggle(row: number): void {
@@ -637,13 +655,21 @@ export class QuestionDialog implements Component, Focusable {
 				this.panelTop = Math.max(0, Math.min(this.panelTop, last));
 				out.push(
 					...content.slice(this.panelTop, this.panelTop + view),
-					this.theme.fg("dim", `\u2191${this.panelTop} \u2193${last - this.panelTop}`),
+					this.scrolled(this.panelTop, last - this.panelTop),
 				);
 				this.overflow = true;
 			}
 		}
 		while (out.length + pinned.length < rows) out.push("");
 		return [...out, ...pinned];
+	}
+
+	/** What the panel hides above and below, in words. */
+	private scrolled(above: number, below: number): string {
+		const parts = [];
+		if (above > 0) parts.push(`\u2191 ${above} above`);
+		if (below > 0) parts.push(`\u2193 ${below} below`);
+		return this.theme.fg("dim", parts.join("   "));
 	}
 
 	/** The note being written, pinned to the foot of the panel so a long preview cannot push it out. */
@@ -695,11 +721,10 @@ export class QuestionDialog implements Component, Focusable {
 		} else {
 			if (tabs) keys.push(["\u2190\u2192", "question"]);
 			keys.push(["\u2191\u2193", "move"]);
+			if (this.overflow) keys.push(["shift+\u2191\u2193", "scroll"]);
 			if (this.question?.multiSelect) keys.push(["space", "tick"], ["enter", "confirm"]);
 			else keys.push(["enter", "choose"]);
-			keys.push(["tab", "note"]);
-			if (this.overflow) keys.push(["pgup/pgdn", "scroll"]);
-			keys.push(["esc", "cancel"]);
+			keys.push(["tab", "note"], ["esc", "cancel"]);
 		}
 		return keys
 			.map(([key, action]) => `${this.theme.fg("muted", key)} ${this.theme.fg("dim", action)}`)
