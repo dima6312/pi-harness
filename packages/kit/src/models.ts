@@ -1,5 +1,3 @@
-// The model a side feature calls, like the tasks or the compaction summary. `auto` is the cheapest
-// model of the session's provider, and the session's model always answers when that one fails.
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import type { Control } from "./control.ts";
@@ -10,7 +8,6 @@ export type ChatModel = ReturnType<Registry["getAvailable"]>[number];
 export const AUTO_MODEL = "auto";
 export const SESSION_MODEL = "session";
 
-/** The models to try, in order, for a setting that holds `auto`, `session` or `provider/id`. */
 export function modelsFor(
 	choice: string,
 	registry: Registry,
@@ -24,7 +21,6 @@ export function modelsFor(
 	);
 }
 
-/** The choice on the settings screen: `auto`, `session`, or any model pi has. */
 export function modelChoice(ctx: ExtensionContext): Control {
 	return {
 		type: "choice",

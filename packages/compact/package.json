@@ -1,0 +1,52 @@
+{
+	"name": "@adeildo/pi-compact",
+	"version": "5.6.0",
+	"description": "Keeps a long pi session's context small: hides old tool output, keeping each call so the agent can run it again, and writes pi's compaction summary from the session's tasks.",
+	"keywords": [
+		"compaction",
+		"context",
+		"pi",
+		"pi-coding-agent",
+		"pi-extension",
+		"pi-package",
+		"prompt-caching"
+	],
+	"homepage": "https://github.com/felipeadeildo/pi-harness/tree/main/packages/compact#readme",
+	"bugs": "https://github.com/felipeadeildo/pi-harness/issues",
+	"license": "MIT",
+	"author": {
+		"name": "adeildo",
+		"email": "contato@felipeadeildo.com",
+		"url": "https://github.com/felipeadeildo"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/felipeadeildo/pi-harness.git",
+		"directory": "packages/compact"
+	},
+	"files": [
+		"src",
+		"README.md",
+		"LICENSE"
+	],
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@adeildo/pi-kit": "workspace:*"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-ai": "*",
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	},
+	"pi": {
+		"extensions": [
+			"./src/index.ts"
+		]
+	}
+}

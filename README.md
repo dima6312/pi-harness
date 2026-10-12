@@ -34,14 +34,15 @@
 
 ## What you get
 
-| Piece                                 | What it does                                                                                                                                     |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [Permission](packages/ask-permission) | Asks before a command runs. A model answers the easy ones for you, with the reason on the command, and the ones it is not sure about come to you |
-| [Questions](packages/ask-questions)   | The model asks instead of guessing, with options, a preview of what each one leads to, and a note on any of them                                 |
-| [Tasks](packages/tasks)               | Keeps what the session is doing, what it did and with what result, what waits on you, and what was decided. The judge reads it as your intent    |
-| [Skill calls](packages/skills)        | Call the skills you already have from anywhere in a message, several at once. The model reads each in full, and the chat shows a chip            |
-| [Look](packages/look)                 | The start screen, the editor with the branch and the model on its borders, and a box around each command with its output and how long it took    |
-| [Providers](packages/providers)       | Bills Anthropic requests to the Claude plan you already pay for, and keeps several accounts with a switch to the next one when a limit hits      |
+| Piece                                 | What it does                                                                                                                                                |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Permission](packages/ask-permission) | Asks before a command runs. A model answers the easy ones for you, with the reason on the command, and the ones it is not sure about come to you            |
+| [Questions](packages/ask-questions)   | The model asks instead of guessing, with options, a preview of what each one leads to, and a note on any of them                                            |
+| [Tasks](packages/tasks)               | Keeps what the session is doing, what it did and with what result, what waits on you, and what was decided. The judge reads it as your intent               |
+| [Compact](packages/compact)           | Hides old tool output once the context passes 150k tokens, which cut a week of real sessions' cost by a third. pi's compaction summary comes from the tasks |
+| [Skill calls](packages/skills)        | Call the skills you already have from anywhere in a message, several at once. The model reads each in full, and the chat shows a chip                       |
+| [Look](packages/look)                 | The start screen, the editor with the branch and the model on its borders, and a box around each command with its output and how long it took               |
+| [Providers](packages/providers)       | Bills Anthropic requests to the Claude plan you already pay for, and keeps several accounts with a switch to the next one when a limit hits                 |
 
 Two dialogs stand between the model and the two things that need you: the permission to run something, and a question it would otherwise guess at.
 

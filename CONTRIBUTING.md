@@ -25,6 +25,7 @@ packages/
   ask-questions/    # @adeildo/pi-ask-questions: the ask_questions tool and its dialog
   skills/           # @adeildo/pi-skills: /skill: references anywhere in a message
   tasks/            # @adeildo/pi-tasks: what the session is doing, did, waits on and decided
+  compact/          # @adeildo/pi-compact: hides old tool output, writes the compaction summary
   harness/          # @adeildo/pi-harness: every piece above, one extension each
   kit/              # @adeildo/pi-kit: app builder, feature scope, settings, events
 ```

@@ -58,6 +58,11 @@
 				},
 				{
 					"type": "json",
+					"path": "packages/compact/package.json",
+					"jsonpath": "$.version"
+				},
+				{
+					"type": "json",
 					"path": "packages/harness/package.json",
 					"jsonpath": "$.version"
 				}

@@ -42,12 +42,25 @@
         "@earendil-works/pi-tui": "*",
       },
     },
+    "packages/compact": {
+      "name": "@adeildo/pi-compact",
+      "version": "5.6.0",
+      "dependencies": {
+        "@adeildo/pi-kit": "workspace:*",
+      },
+      "peerDependencies": {
+        "@earendil-works/pi-ai": "*",
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
+      },
+    },
     "packages/harness": {
       "name": "@adeildo/pi-harness",
       "version": "5.6.0",
       "dependencies": {
         "@adeildo/pi-ask-permission": "workspace:*",
         "@adeildo/pi-ask-questions": "workspace:*",
+        "@adeildo/pi-compact": "workspace:*",
         "@adeildo/pi-kit": "workspace:*",
         "@adeildo/pi-look": "workspace:*",
         "@adeildo/pi-providers": "workspace:*",
@@ -124,6 +137,8 @@
     "@adeildo/pi-ask-permission": ["@adeildo/pi-ask-permission@workspace:packages/ask-permission"],
 
     "@adeildo/pi-ask-questions": ["@adeildo/pi-ask-questions@workspace:packages/ask-questions"],
+
+    "@adeildo/pi-compact": ["@adeildo/pi-compact@workspace:packages/compact"],
 
     "@adeildo/pi-harness": ["@adeildo/pi-harness@workspace:packages/harness"],
 

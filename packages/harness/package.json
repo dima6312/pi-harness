@@ -1,9 +1,10 @@
 {
 	"name": "@adeildo/pi-harness",
 	"version": "5.6.0",
-	"description": "Every adeildo Pi extension in one install: the permission dialog, the look, the providers, the questions, the skill calls and the session tasks. Each is its own extension, so pi config turns one off.",
+	"description": "Every adeildo Pi extension in one install: the permission dialog, the look, the providers, the questions, the skill calls the session tasks and the context pruning. Each is its own extension, so pi config turns one off.",
 	"keywords": [
 		"anthropic",
+		"compaction",
 		"permission",
 		"pi",
 		"pi-coding-agent",
@@ -37,6 +38,7 @@
 	"dependencies": {
 		"@adeildo/pi-ask-permission": "workspace:*",
 		"@adeildo/pi-ask-questions": "workspace:*",
+		"@adeildo/pi-compact": "workspace:*",
 		"@adeildo/pi-kit": "workspace:*",
 		"@adeildo/pi-look": "workspace:*",
 		"@adeildo/pi-providers": "workspace:*",
@@ -55,7 +57,8 @@
 			"./src/providers.ts",
 			"./src/questions.ts",
 			"./src/skills.ts",
-			"./src/tasks.ts"
+			"./src/tasks.ts",
+			"./src/compact.ts"
 		]
 	}
 }
