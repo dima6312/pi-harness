@@ -1,5 +1,7 @@
 // Plays recorded sessions through the prune and prices them, cache rewrites included.
 // bun packages/compact/eval/replay.ts [--above 150000] [--days 7] [--show]
+//   [--server 20]   Anthropic's clear_tool_uses, keeping the last 20 tool calls
+//   [--inputs]      with clear_tool_inputs: the cleared calls lose their parameters too
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -7,13 +9,15 @@ import { parseArgs } from "node:util";
 
 import { estimateTokens, type ProjectedSessionEntry } from "@earendil-works/pi-coding-agent";
 
-import { type AgentMessage, pruneNow, sizeAfter } from "../src/prune.ts";
+import { type AgentMessage, pruneNow, serverClearNow, sizeAfter } from "../src/prune.ts";
 
 const { values } = parseArgs({
 	options: {
 		above: { type: "string", default: "150000" },
 		days: { type: "string", default: "7" },
 		show: { type: "boolean", default: false },
+		server: { type: "string" },
+		inputs: { type: "boolean", default: false },
 	},
 });
 
@@ -59,7 +63,7 @@ for (const folder of readdirSync(root)) {
 if (values.show) console.log(rows.toSorted().toReversed().join("\n"));
 const saved = Math.round((1 - pruned / real) * 100);
 console.log(
-	`${sessions} sessions, pruning above ${above / 1000}k: $${real.toFixed(2)} -> $${pruned.toFixed(2)} (${saved}% less), ${prunes} prunes, cache rewrites $${rewrites.toFixed(2)}`,
+	`${sessions} sessions, ${values.server === undefined ? "pruning" : `server clearing (keep ${values.server})`} above ${above / 1000}k: $${real.toFixed(2)} -> $${pruned.toFixed(2)} (${saved}% less), ${prunes} prunes, cache rewrites $${rewrites.toFixed(2)}`,
 );
 
 function replay(branch: Entry[]) {
@@ -73,6 +77,7 @@ function replay(branch: Entry[]) {
 	let projected: ProjectedSessionEntry[] = [];
 	let removed = 0;
 	let rewriting = false;
+	const cleared = new Set<string>();
 	const result = { real: 0, pruned: 0, rewrites: 0, prunes: 0 };
 	let last: Entry["message"];
 	for (const entry of branch) {
@@ -111,13 +116,17 @@ function replay(branch: Entry[]) {
 			.reduce((sum, item) => sum + estimateTokens(item.messages[0] as AgentMessage), 0);
 		const before =
 			last.usage.input + last.usage.cacheRead + last.usage.cacheWrite + outputs - removed;
-		const plan = pruneNow(projected, before, above);
+		const plan =
+			values.server === undefined
+				? pruneNow(projected, before, above)
+				: serverClearNow(projected, before, above, Number(values.server), cleared, values.inputs);
 		if (plan === undefined) continue;
 		// The next request writes all of the context again, the system prompt too, which in fact
 		// stays cached. So the saving here is a floor.
 		rewriting = true;
 		removed += before - sizeAfter(plan, before);
 		result.prunes++;
+		for (const edit of plan.edits) cleared.add(edit.targetId);
 		projected = projected.map((item) => {
 			const edit = plan.edits.find((candidate) => candidate.targetId === item.sourceEntry.id);
 			if (edit === undefined || edit.replacement === null) return item;

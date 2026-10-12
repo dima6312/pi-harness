@@ -23,10 +23,13 @@ export async function signedIn(): Promise<ModelRegistry> {
 			...options,
 			apiKey: token,
 			headers: { ...options?.headers, "user-agent": userAgent(CLAUDE_CODE) },
-			onPayload: (payload) =>
-				typeof payload === "object" && payload !== null
-					? billToPlan(payload as Record<string, unknown>, CLAUDE_CODE)
-					: undefined,
+			onPayload: async (payload, model) => {
+				const billed =
+					typeof payload === "object" && payload !== null
+						? billToPlan(payload as Record<string, unknown>, CLAUDE_CODE)
+						: undefined;
+				return (await options?.onPayload?.(billed ?? payload, model)) ?? billed;
+			},
 		});
 	return signed;
 }
