@@ -72,7 +72,7 @@ The last row, **Type something.**, opens an editor in the panel, where `shift+en
 
 <!-- /docs -->
 
-The review tab lists each question with what you said under it: `✓` for an answer, `›` for a note, and a note on an option you turned down names that option. It names what is still blank. `enter` sends it anyway, and the model is told which questions were left unanswered.
+The review tab lists each question with what you said under it. `✓` marks an answer and `›` a note, and a note on an option you turned down names that option. It names what is still blank. `enter` sends it anyway, and the model is told which questions were left unanswered.
 
 ## In the chat
 
@@ -86,7 +86,7 @@ The review tab lists each question with what you said under it: `✓` for an ans
 
 <!-- /docs -->
 
-While the model writes the call, it lists the questions as they arrive, so you can read them before the dialog opens. Once you answer, it keeps the same blocks as the review tab. `ctrl+o` shows the questions uncut.
+While the model writes the call, the chat lists the questions as they arrive, so you can read them before the dialog opens. Once you answer, the call keeps the same blocks as the review tab. `ctrl+o` shows the questions uncut.
 
 Pi draws this dialog in the flow of the screen, like the permission dialog, so a tall one scrolls with the terminal and the chat above it stays in the scrollback. Over RPC, in an editor plugin or an ACP client, the questions go one at a time through the host's own select and input dialogs, without previews or notes. With no UI at all, the model never sees the tool.
 

@@ -25,7 +25,7 @@ const SESSION: Step[] = [
 		0,
 		"you",
 		[
-			{ op: "title", text: "Sign in to the MCP server with OAuth" },
+			{ op: "title", text: "OAuth for the MCP server" },
 			{ op: "ask", text: "Find how to expose OAuth instead of an API key" },
 		],
 	],

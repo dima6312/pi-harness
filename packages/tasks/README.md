@@ -15,7 +15,7 @@
 ## What it keeps
 
 ```text
-Session: Sign in to the MCP server with OAuth
+Session: OAuth for the MCP server
 Doing:
 - Round the corners of the README images
 Waiting:
@@ -69,13 +69,13 @@ Pi's footer shows what the agent is doing. With [`@adeildo/pi-look`](../look), t
 
 Nobody writes it. A small model reads the list and only what changed, and answers with operations, never a whole new list, so it cannot rewrite what happened. It runs at three moments.
 
-**Your message.** The model reads it beside what the agent said just before it, which is what a short "yes, do it" answers. A long message keeps its start and its end, since what you ask of something you pasted usually comes after it. It can start a task, continue one, defer it, drop it, mark it done when you say you did it yourself, record a decision, and set the session's title once. A correction like "it came out misaligned" continues the task it is about, and reopens it when it was done. A question or a pasted status changes nothing. Your answers in the questions dialog of [`@adeildo/pi-ask-questions`](../ask-questions) count as a message of yours, so the option you pick or the note you leave can settle a decision or approve a task.
+**Your message.** The model reads it beside what the agent said just before it, which is what a short "yes, do it" answers. A long message keeps its start and its end, since what you ask of something you pasted usually comes after it. It can start a task, continue one, defer it, drop it, mark it done when you say you did it yourself, record a decision, and set the session's title once, in 2 to 5 English words that fit `/resume`. A correction like "it came out misaligned" continues the task it is about, and reopens it when it was done. A question or a pasted status changes nothing. Your answers in the questions dialog of [`@adeildo/pi-ask-questions`](../ask-questions) count as a message of yours, so the option you pick or the note you leave can settle a decision or approve a task.
 
 What you ask between runs is what the agent does now, and what it was doing waits its turn. What you ask while the agent works waits in `queued`, and nothing is pushed aside, since the agent usually takes it on in the same run.
 
 **The end of a run.** The model reads the whole run, every message you sent during it included, as numbered lines, and gives a verdict for every open task: untouched, done with its result, still in progress, or waiting on you or on something outside. Going through all of them is what catches the task you queued mid-run and the agent did in the same commit as another. It can also record a decision the agent reported. It never adds a task: only your messages do, and what a task left out goes in its `left`, where the next task you ask for can pick it up. Tasks close only here, because mid-run the agent's words say what it does next more than what it did.
 
-**The tidy pass.** After each run, the model looks at the whole list. It merges two tasks that say the same work, renames a task into your language, and moves the title when the session moved. It never closes anything.
+**The tidy pass.** After each run, the model looks at the whole list. It merges two tasks that say the same work, renames a task into your language, and moves the title when the session moved or was not short English. It never closes anything.
 
 ## Every change needs the words that show it
 

@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>Keeps a long session's context small, so each request costs less.</strong><br>
-  Old tool output goes. The agent's words, your words and the decisions stay.
+  It hides old tool output and keeps the agent's words, your words and the decisions.
 </p>
 
 <p align="center"><code>pi install npm:@adeildo/pi-compact</code></p>
@@ -22,7 +22,7 @@ Output hidden to save context, about 4.2k tokens. It came from: read src/view.ts
 
 Long arguments go the same way, like a script sent to bash or a file sent to write. Your messages, the agent's own words, errors and the last 10 turns stay whole. After a prune the agent gets the session's [tasks](../tasks) at the end of its context, so it keeps its goals.
 
-On Anthropic's own models, Anthropic clears the old output on its side instead, with [`clear_tool_uses`](https://platform.claude.com/docs/en/build-with-claude/context-editing). The session is not edited, so the agent keeps its earlier thinking: Anthropic signs each thinking block with the conversation before it, and an edit drops the blocks of every later turn. The last 10 calls stay whole, and older ones keep their parameters, so the agent still sees what it read and ran. In a live test without them, the agent took its own earlier reports for invented.
+On Anthropic's own models, Anthropic clears the old output on its side instead, with [`clear_tool_uses`](https://platform.claude.com/docs/en/build-with-claude/context-editing). Nothing edits the session, so the agent keeps its earlier thinking. Anthropic signs each thinking block with the conversation before it, and an edit drops the blocks of every later turn. The last 10 calls stay whole, and older ones keep their parameters, so the agent still sees what it read and ran. In a live test that cleared the parameters too, the agent took its own earlier reports for invented ones.
 
 Each prune or clear leaves a line in the chat, with what rewriting the prompt cache costs and when that pays back. `Ctrl+O` lists the calls it hid.
 
@@ -38,7 +38,7 @@ Each prune or clear leaves a line in the chat, with what rewriting the prompt ca
 
 When pi compacts anyway, pi's own prompt writes the summary on a small model, and the tasks and your last words go on top as they are, so no model rephrases a decision. Without tasks, pi writes the summary on the session's model.
 
-On six recorded sessions, an agent that only had the summary answered 48 questions about what was dropped. A judge graded the answers against the truth: pi's summary on Haiku scored as well as on Opus, within the judge's noise, for 1/40 of the price. A first version that wrote its own short summary from the tasks scored 2.6 of 5 against pi's 3.9, and was dropped. The method is [Factory's probes](https://factory.ai/news/evaluating-compression), and `bun packages/compact/eval/summary.ts` runs it.
+On six recorded sessions, an agent that only had the summary answered 48 questions about what was dropped. A judge graded the answers against the truth. pi's summary on Haiku scored as well as on Opus, within the judge's noise, for 1/40 of the price. A first version that wrote its own short summary from the tasks scored 2.6 of 5 against pi's 3.9, and was dropped. The method is [Factory's probes](https://factory.ai/news/evaluating-compression), and `bun packages/compact/eval/summary.ts` runs it.
 
 ## Why this way
 
@@ -51,7 +51,7 @@ Replaying a week of real sessions, mostly Opus with a 1M context, costs 32% less
 
 ## With pi's compaction
 
-Nothing of pi's is turned off. The prune runs at the end of each turn, right before pi checks its own compaction threshold, so pi rarely needs to compact. `/compact` and auto-compaction still work; this package only writes their summary. The prune is a `context_edit`, so the session file keeps every output, and `/tree` to an earlier point shows them again. Anthropic's clearing edits nothing in the session.
+The package turns off nothing of pi's. The prune runs at the end of each turn, right before pi checks its own compaction threshold, so pi rarely needs to compact. `/compact` and auto-compaction still work; this package only writes their summary. The prune is a `context_edit`, so the session file keeps every output, and `/tree` to an earlier point shows them again. Anthropic's clearing edits nothing in the session.
 
 ## Commands and settings
 
