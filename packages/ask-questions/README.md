@@ -40,7 +40,7 @@ Several questions become tabs. `●` is where you are, `✓` is a question alrea
 
 ## Notes
 
-`tab` writes a note on the option under the cursor, picked or not. You write it in the panel, where there is room, and it stays under the description. The option gets a `›` while it has one. The note reaches the model with your answer, and "Tree, but too long with five accounts" tells it more than the pick alone.
+`tab` writes a note on the option under the cursor, picked or not. You write it in the panel, where there is room, and it stays under the description. The option gets a `›` while it has one. The note reaches the model with your answer, and "Tree, but too long with five accounts" tells it more than the pick alone. With [`@adeildo/pi-tasks`](../tasks) installed, your picks and notes also count as a message of yours there, so they can settle a decision or approve a task.
 
 ## Several picks
 
