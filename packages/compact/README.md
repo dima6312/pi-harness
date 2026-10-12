@@ -22,9 +22,9 @@ Output hidden to save context, about 4.2k tokens. It came from: read src/view.ts
 
 Long arguments go the same way, like a script sent to bash or a file sent to write. Your messages, the agent's own words, errors and the last 10 turns stay whole. After a prune the agent gets the session's [tasks](../tasks) at the end of its context, so it keeps its goals.
 
-On Anthropic models that think, a prune also costs the agent its earlier reasoning. Anthropic signs each thinking block together with the conversation before it, and drops the blocks whose earlier conversation changed. pi then shows "Anthropic dropped N thinking blocks". The visible words stay.
+On Anthropic's own models, Anthropic clears the old output on its side instead, with [`clear_tool_uses`](https://platform.claude.com/docs/en/build-with-claude/context-editing). The session is not edited, so the agent keeps its earlier thinking: Anthropic signs each thinking block with the conversation before it, and an edit drops the blocks of every later turn. The last 10 calls stay whole, and older ones keep their parameters, so the agent still sees what it read and ran. In a live test without them, the agent took its own earlier reports for invented.
 
-Each prune leaves a line in the chat, with the most the next request pays to rewrite the prompt cache and when that pays back. `Ctrl+O` lists the calls it hid.
+Each prune or clear leaves a line in the chat, with what rewriting the prompt cache costs and when that pays back. `Ctrl+O` lists the calls it hid.
 
 <!-- docs:compact/prune -->
 
@@ -47,21 +47,22 @@ On six recorded sessions, an agent that only had the summary answered 48 questio
 - After a prune, the next request writes the whole conversation to the prompt cache again. Anthropic reuses cache only where an earlier request wrote it ([Anthropic](https://platform.claude.com/docs/en/build-with-claude/context-editing)), and the writes near old outputs have expired. So a prune waits until it frees at least two fifths of the context at once. Pruning a little every turn would cost 3.4 times as much.
 - Errors stay and every placeholder keeps its call, after [Manus](https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus).
 
-Replaying a week of real sessions through it, mostly Opus with a 1M context, costs 32% less. The replay has each prune's next request write all of the context again, so the real saving is at least that. `bun packages/compact/eval/replay.ts` replays yours.
+Replaying a week of real sessions, mostly Opus with a 1M context, costs 32% less with the prune and 27% less with Anthropic's clearing, which keeps the parameters and the thinking. The replay has each prune's next request write all of the context again, so the real saving is at least that. `bun packages/compact/eval/replay.ts [--server 10]` replays yours.
 
 ## With pi's compaction
 
-Nothing of pi's is turned off. The prune runs at the end of each turn, right before pi checks its own compaction threshold, so pi rarely needs to compact. `/compact` and auto-compaction still work; this package only writes their summary. The prune is a `context_edit`, so the session file keeps every output, and `/tree` to an earlier point shows them again.
+Nothing of pi's is turned off. The prune runs at the end of each turn, right before pi checks its own compaction threshold, so pi rarely needs to compact. `/compact` and auto-compaction still work; this package only writes their summary. The prune is a `context_edit`, so the session file keeps every output, and `/tree` to an earlier point shows them again. Anthropic's clearing edits nothing in the session.
 
 ## Commands and settings
 
-`/prune` hides old output at the end of the next turn, whatever the context's size.
+`/prune` hides old output at the end of the next turn, whatever the context's size. It edits the context on Anthropic models too, so it drops the thinking there.
 
 On the Compact tab of `Alt+S`, stored under `compact` in `~/.pi/agent/extensions/pi-harness/settings.json`:
 
 | Setting                 | Default  | Does                                                                                                   |
 | ----------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
 | Hide old tool output    | on       | The prune                                                                                              |
+| On Anthropic's side     | on       | On Anthropic models, Anthropic clears instead of the prune, and the agent keeps its thinking           |
 | Above                   | `150000` | Context tokens that start a prune                                                                      |
 | Write it from the tasks | on       | The tasks on top of pi's summary, written on the model below. Off, pi writes it on the session's model |
 | Model                   | `auto`   | Writes the summary. `auto` is the cheapest of the session's provider                                   |

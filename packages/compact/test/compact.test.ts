@@ -25,6 +25,7 @@ import {
 	REREAD_ENTRY,
 	spentOn,
 } from "../src/record.ts";
+import { withServerClearing } from "../src/server.ts";
 import { standing, summarize } from "../src/summary.ts";
 
 const BIG = "x".repeat(8000);
@@ -84,7 +85,7 @@ function usage(context: number) {
 		cacheRead: context,
 		cacheWrite: 0,
 		totalTokens: context,
-		cost: { total: 0 },
+		cost: { input: 0, cacheRead: context / 2_000_000, cacheWrite: 0, total: 0 },
 	};
 }
 
@@ -198,7 +199,18 @@ function tasksEntry(state: SessionTasks) {
 	};
 }
 
-async function mounted(branch: unknown[] = [], settings: Record<string, unknown> = {}) {
+const ANTHROPIC = {
+	provider: "anthropic",
+	api: "anthropic-messages",
+	id: "claude-opus-5-5",
+	cost: { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 },
+};
+
+async function mounted(
+	branch: unknown[] = [],
+	settings: Record<string, unknown> = {},
+	model?: unknown,
+) {
 	writeFileSync(join(dir, "settings.json"), JSON.stringify({ compact: settings }));
 	const fake = fakePi();
 	createApp(fake.pi, { name: "test", settingsPath: join(dir, "settings.json") })
@@ -208,6 +220,7 @@ async function mounted(branch: unknown[] = [], settings: Record<string, unknown>
 	const ctx = fakeContext([], true, {
 		sessionManager: { getBranch: () => branch },
 		ui: { notify: (message: string) => notes.push(message) },
+		...(model === undefined ? {} : { model }),
 	});
 	await fake.fire("session_start", {}, ctx);
 	const turnEnd = async (context: number, entries = session(KEEP_TURNS + 10)) => {
@@ -297,6 +310,67 @@ test("the session's prunes add up, with how much of what they hid was read again
 	);
 	expect(hiddenCalls(branch)).toEqual(new Set(["read b", "read c", "read d", "read e"]));
 	expect(spentText(spentOn([]))).toBe("nothing hidden yet");
+});
+
+function request(payload: unknown) {
+	return { type: "before_provider_request", payload };
+}
+
+describe("on Anthropic models", () => {
+	test("each request asks Anthropic to clear old output on its side", async () => {
+		const { fake, ctx } = await mounted([], { pruneAbove: 150_000 }, ANTHROPIC);
+		const [payload] = await fake.fire(
+			"before_provider_request",
+			request({ betas: ["other"] }),
+			ctx,
+		);
+		expect(payload).toEqual({
+			betas: ["other", "context-management-2025-06-27"],
+			context_management: {
+				edits: [
+					{
+						type: "clear_tool_uses_20250919",
+						trigger: { type: "input_tokens", value: 150_000 },
+						keep: { type: "tool_uses", value: 10 },
+						clear_at_least: { type: "input_tokens", value: 60_000 },
+						exclude_tools: ["ask_questions"],
+					},
+				],
+			},
+		});
+		expect(withServerClearing(payload, 150_000)).toBeUndefined();
+	});
+
+	test("another endpoint that speaks Anthropic's API, or the setting off, gets the prune instead", async () => {
+		const elsewhere = await mounted([], {}, { ...ANTHROPIC, provider: "kimi" });
+		expect(
+			await elsewhere.fake.fire("before_provider_request", request({}), elsewhere.ctx),
+		).toEqual([undefined]);
+		const off = await mounted([], { server: false, pruneAbove: 20_000 }, ANTHROPIC);
+		expect(await off.fake.fire("before_provider_request", request({}), off.ctx)).toEqual([
+			undefined,
+		]);
+		expect(
+			(await off.turnEnd(25_000))?.entries.some((proposed) => proposed.type === "context_edit"),
+		).toBe(true);
+	});
+
+	test("the context is never edited, and a request that shrank records what Anthropic cleared", async () => {
+		const { turnEnd } = await mounted([], { pruneAbove: 20_000 }, ANTHROPIC);
+		expect(await turnEnd(25_000)).toBeUndefined();
+		const answer = await turnEnd(12_000);
+		expect(answer?.entries.some((proposed) => proposed.type === "context_edit")).toBe(false);
+		const note = answer?.entries.find((proposed) => proposed.type === "custom_message");
+		expect(note?.content).toContain("Anthropic cleared older tool output");
+		const record = answer?.entries.at(-1);
+		expect(record).toMatchObject({
+			customType: PRUNE_ENTRY,
+			data: { before: 25_000, after: 12_000, server: true },
+		});
+		const hidden = (record?.data as { hidden?: unknown[] } | undefined)?.hidden ?? [];
+		expect(hidden.length).toBeGreaterThan(0);
+		expect(await turnEnd(13_000)).toBeUndefined();
+	});
 });
 
 describe("the line a prune leaves", () => {

@@ -17,7 +17,9 @@ export interface PruneRecord {
 	after: number;
 	hidden: Hidden[];
 	forced?: boolean;
-	/** Dollars the next request pays to write the cache again. */
+	/** Anthropic cleared it on its side, on the request this was recorded after. */
+	server?: boolean;
+	/** Dollars the next request pays to write the cache again, or paid already when `server`. */
 	rewrite?: number;
 	/** Dollars each request after saves. */
 	saving?: number;
@@ -48,6 +50,7 @@ export function recordOf(entry: unknown): PruneRecord | undefined {
 		before: data.before,
 		after: data.after,
 		hidden: Array.isArray(data.hidden) ? (data.hidden as Hidden[]) : [],
+		...(data.server === true ? { server: true } : {}),
 		...(typeof data.rewrite === "number" ? { rewrite: data.rewrite } : {}),
 		...(typeof data.saving === "number" ? { saving: data.saving } : {}),
 	};
@@ -82,6 +85,16 @@ export function spentOn(branch: readonly unknown[]): Spent {
 	return spent;
 }
 
+/** Entries Anthropic cleared on its side, which the session itself still holds whole. */
+export function clearedEntries(branch: readonly unknown[]): Set<string> {
+	const entries = new Set<string>();
+	for (const entry of branch) {
+		const record = recordOf(entry);
+		if (record?.server) for (const { entry: id } of record.hidden) entries.add(id);
+	}
+	return entries;
+}
+
 export function hiddenCalls(branch: readonly unknown[]): Set<string> {
 	const calls = new Set<string>();
 	for (const entry of branch) {
@@ -110,10 +123,13 @@ export function costRows(record: PruneRecord): [string, string][] {
 	const { rewrite, saving } = record;
 	if (rewrite === undefined || saving === undefined || saving < 0.005) return [];
 	if (rewrite < 0.005) return [["saved on each request after", money(saving)]];
+	const paid = record.server
+		? "cache rewrite on this request"
+		: "cache rewrite on the next request, at most";
 	const requests = Math.ceil(rewrite / saving);
 	const back = requests === 1 ? "back in 1 request" : `back in ${requests} requests`;
 	return [
-		["cache rewrite on the next request, at most", money(rewrite)],
+		[paid, money(rewrite)],
 		[`saved on each request after, ${back}`, money(saving)],
 	];
 }
@@ -138,10 +154,10 @@ export class PruneEntry implements Component {
 
 	render(width: number): string[] {
 		const theme = this.#theme;
-		const { before, after, hidden } = this.#record;
+		const { before, after, hidden, server } = this.#record;
 		// Glyph on the tool box's border column, text on its content column, numbers on its edge.
 		const edge = width - 1;
-		const head = ` ${theme.fg("accent", `${GLYPH} pruned`)}  `;
+		const head = ` ${theme.fg("accent", `${GLYPH} ${server ? "cleared" : "pruned"}`)}  `;
 		const stats = `${tokens(before)} \u2192 ${tokens(after)} tokens`;
 		const lines = [row(head, theme.fg("text", outputsHidden(hidden.length)), stats, edge, theme)];
 		for (const [label, amount] of costRows(this.#record))

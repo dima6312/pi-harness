@@ -12,7 +12,8 @@ const MIN_OUTPUT_TOKENS = 250;
 const MIN_ARGUMENT_CHARS = 1500;
 const LONG_STRING = 200;
 const SHOWN_CHARS = 120;
-const KEPT_TOOLS = new Set(["ask_questions"]);
+export const KEPT_TOOLS = ["ask_questions"];
+const SERVER_PLACEHOLDER = "[cleared]";
 
 export interface Hidden {
 	entry: string;
@@ -41,28 +42,15 @@ interface Visible {
 }
 
 export function planPrune(entries: readonly ProjectedSessionEntry[]): PrunePlan {
-	const plan: PrunePlan = { edits: [], hidden: [], freed: 0, total: 0 };
-	const visible = entries.flatMap(({ sourceEntry, messages }): Visible[] =>
-		sourceEntry.type === "message" && messages.length === 1 && messages[0] !== undefined
-			? [{ id: sourceEntry.id, message: messages[0] }]
-			: [],
-	);
-	plan.total = visible.reduce((sum, { message }) => sum + estimateTokens(message), 0);
+	const visible = visibleOf(entries);
+	const plan: PrunePlan = { edits: [], hidden: [], freed: 0, total: totalOf(visible) };
 	const turns = visible.flatMap((entry, index) =>
 		entry.message.role === "assistant" ? [index] : [],
 	);
 	const cutoff = turns.at(-KEEP_TURNS);
 	if (turns.length <= KEEP_TURNS || cutoff === undefined) return plan;
 
-	const calls = new Map(
-		visible.flatMap(({ message }) =>
-			message.role === "assistant"
-				? message.content.flatMap((part) =>
-						part.type === "toolCall" ? [[part.id, part] as const] : [],
-					)
-				: [],
-		),
-	);
+	const calls = callsOf(visible);
 	for (const { id, message } of visible.slice(0, cutoff)) {
 		if (message.role === "toolResult") hideOutput(plan, id, message, calls.get(message.toolCallId));
 		if (message.role === "assistant") cutArguments(plan, id, message);
@@ -83,9 +71,86 @@ export function pruneNow(
 	return plan;
 }
 
+/**
+ * What Anthropic's `clear_tool_uses` takes out when it runs: every tool result but the last
+ * `keep`, errors too, leaving the calls. `cleared` are the entries it took out before.
+ */
+export function planServerClear(
+	entries: readonly ProjectedSessionEntry[],
+	keep: number,
+	cleared: ReadonlySet<string> = new Set(),
+	inputs = false,
+): PrunePlan {
+	const visible = visibleOf(entries);
+	const plan: PrunePlan = { edits: [], hidden: [], freed: 0, total: totalOf(visible) };
+	const calls = callsOf(visible);
+	const results = visible.filter(
+		({ message }) => message.role === "toolResult" && !KEPT_TOOLS.includes(message.toolName),
+	);
+	for (const { id, message } of results.slice(0, Math.max(0, results.length - keep))) {
+		if (message.role !== "toolResult" || cleared.has(id)) continue;
+		const call = calls.get(message.toolCallId);
+		const tokens = estimateTokens(message);
+		const content = [{ type: "text" as const, text: SERVER_PLACEHOLDER }];
+		plan.edits.push({ type: "context_edit", targetId: id, replacement: { content } });
+		plan.hidden.push({
+			entry: id,
+			call: call === undefined ? message.toolName : describeCall(call.name, call.arguments),
+			tokens,
+		});
+		plan.freed += tokens - estimateTokens({ ...message, content });
+		// estimateTokens counts four characters a token.
+		if (inputs && call !== undefined) plan.freed += JSON.stringify(call.arguments).length / 4;
+	}
+	return plan;
+}
+
+/** The server clears only past `above`, and only when it frees `clearAtLeast` real tokens. */
+export function serverClearNow(
+	entries: readonly ProjectedSessionEntry[],
+	contextTokens: number,
+	above: number,
+	keep: number,
+	cleared: ReadonlySet<string> = new Set(),
+	inputs = false,
+): PrunePlan | undefined {
+	if (contextTokens < above) return undefined;
+	const plan = planServerClear(entries, keep, cleared, inputs);
+	if (plan.freed * scale(plan, contextTokens) < clearAtLeast(above)) return undefined;
+	return plan;
+}
+
+export function clearAtLeast(above: number): number {
+	return Math.round(MIN_FREED_SHARE * above);
+}
+
 /** The context's size after `plan`, in the tokens the API reported for it before. */
 export function sizeAfter(plan: PrunePlan, contextTokens: number): number {
 	return Math.round(contextTokens - plan.freed * scale(plan, contextTokens));
+}
+
+function visibleOf(entries: readonly ProjectedSessionEntry[]): Visible[] {
+	return entries.flatMap(({ sourceEntry, messages }): Visible[] =>
+		sourceEntry.type === "message" && messages.length === 1 && messages[0] !== undefined
+			? [{ id: sourceEntry.id, message: messages[0] }]
+			: [],
+	);
+}
+
+function totalOf(visible: readonly Visible[]): number {
+	return visible.reduce((sum, { message }) => sum + estimateTokens(message), 0);
+}
+
+function callsOf(visible: readonly Visible[]): Map<string, ToolCall> {
+	return new Map(
+		visible.flatMap(({ message }) =>
+			message.role === "assistant"
+				? message.content.flatMap((part) =>
+						part.type === "toolCall" ? [[part.id, part] as const] : [],
+					)
+				: [],
+		),
+	);
 }
 
 function scale(plan: PrunePlan, contextTokens: number): number {
@@ -99,7 +164,7 @@ function hideOutput(
 	call: ToolCall | undefined,
 ): void {
 	// Errors stay: without them the agent repeats what failed.
-	if (message.isError || KEPT_TOOLS.has(message.toolName)) return;
+	if (message.isError || KEPT_TOOLS.includes(message.toolName)) return;
 	const tokens = estimateTokens(message);
 	if (tokens < MIN_OUTPUT_TOKENS) return;
 	const described = call === undefined ? message.toolName : describeCall(call.name, call.arguments);

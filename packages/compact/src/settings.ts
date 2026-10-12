@@ -15,6 +15,18 @@ export const prune = setting({
 	},
 });
 
+export const onServer = setting({
+	id: "compact.server",
+	default: true,
+	decoder: boolean,
+	ui: {
+		section: PRUNE_SECTION,
+		label: "On Anthropic's side",
+		description:
+			"On Anthropic models, Anthropic clears old tool output itself and keeps the last 10 calls whole, so the agent keeps its thinking. Off, the prune edits the context there too, which drops the thinking of every later turn.",
+	},
+});
+
 export const pruneAbove = setting({
 	id: "compact.pruneAbove",
 	default: 150_000,
@@ -53,4 +65,4 @@ export const model = setting({
 	},
 });
 
-export const COMPACT_SETTINGS = [prune, pruneAbove, summary, model];
+export const COMPACT_SETTINGS = [prune, onServer, pruneAbove, summary, model];

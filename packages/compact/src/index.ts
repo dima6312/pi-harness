@@ -13,10 +13,14 @@ import {
 	estimateTokens,
 	type ExtensionAPI,
 	type ExtensionContext,
+	type SessionBoundaryDraft,
+	type TurnEndEvent,
 } from "@earendil-works/pi-coding-agent";
 
-import { describeCall, KEEP_TURNS, pruneNow, sizeAfter } from "./prune.ts";
+import { describeCall, KEEP_TURNS, planServerClear, pruneNow, sizeAfter } from "./prune.ts";
 import {
+	type Billed,
+	clearedEntries,
 	hiddenCalls,
 	NOTE_MESSAGE,
 	PRUNE_ENTRY,
@@ -29,9 +33,11 @@ import {
 	spentOn,
 	tokens,
 } from "./record.ts";
+import { clearsOnServer, KEEP_TOOL_USES, serverCleared, withServerClearing } from "./server.ts";
 import {
 	COMPACT_SETTINGS,
 	model,
+	onServer,
 	prune,
 	PRUNE_SECTION,
 	pruneAbove,
@@ -50,12 +56,27 @@ export const compact = defineFeature({
 	setup(scope) {
 		let forced = false;
 		let hidden = new Set<string>();
+		let cleared = new Set<string>();
+		let lastPrompt: number | undefined;
 
 		const restore = (ctx: ExtensionContext) => {
-			hidden = hiddenCalls(ctx.sessionManager.getBranch());
+			const branch = ctx.sessionManager.getBranch();
+			hidden = hiddenCalls(branch);
+			cleared = clearedEntries(branch);
+			lastPrompt = undefined;
 		};
 		scope.onSessionStart(restore);
 		scope.on("session_tree", (_event, ctx) => restore(ctx));
+		scope.on("session_compact", () => {
+			lastPrompt = undefined;
+		});
+
+		const onServerFor = (ctx: ExtensionContext) =>
+			prune.get(scope) && onServer.get(scope) && clearsOnServer(ctx.model);
+
+		scope.on("before_provider_request", (event, ctx) =>
+			onServerFor(ctx) ? withServerClearing(event.payload, pruneAbove.get(scope)) : undefined,
+		);
 
 		// Pi checks its own compaction right after turn_end, so pruning here usually spares it.
 		scope.on("turn_end", (event, ctx) => {
@@ -68,8 +89,18 @@ export const compact = defineFeature({
 			)
 				return undefined;
 			const { input, cacheRead, cacheWrite } = message.usage;
+			const prompt = input + cacheRead + cacheWrite;
+			const previous = lastPrompt;
+			lastPrompt = prompt;
+			if (!forced && onServerFor(ctx)) {
+				if (previous === undefined || !serverCleared(previous, prompt, pruneAbove.get(scope)))
+					return undefined;
+				return {
+					entries: [...event.entries, ...clearedOnServer(event, ctx, previous, message.usage)],
+				};
+			}
 			const outputs = event.toolResults.reduce((sum, result) => sum + estimateTokens(result), 0);
-			const before = input + cacheRead + cacheWrite + outputs;
+			const before = prompt + outputs;
 			const asked = forced;
 			forced = false;
 			const plan = pruneNow(event.context.contextEntries, before, pruneAbove.get(scope), asked);
@@ -97,13 +128,13 @@ export const compact = defineFeature({
 				...cost,
 			};
 			for (const { call } of plan.hidden) hidden.add(call);
-			const tasks =
-				currentTasks(scope.events)?.state ?? tasksFromEntries(ctx.sessionManager.getBranch());
+			// The next request is smaller for the edit, not for a server clear.
+			lastPrompt = undefined;
 			return {
 				entries: [
 					...event.entries,
 					...plan.edits,
-					note(tasks),
+					note(tasksNow(ctx), false),
 					{ type: "custom", customType: PRUNE_ENTRY, data: record },
 				],
 			};
@@ -133,7 +164,12 @@ export const compact = defineFeature({
 			description: "Hide old tool output at the end of the next turn, whatever the context's size",
 			handler: async (_args, ctx) => {
 				forced = true;
-				ctx.ui.notify(`Old tool output goes at the end of the next turn.`, "info");
+				ctx.ui.notify(
+					onServerFor(ctx)
+						? "Old tool output goes at the end of the next turn. On Anthropic models this edit drops the agent's earlier thinking, which Anthropic's own clearing keeps."
+						: "Old tool output goes at the end of the next turn.",
+					"info",
+				);
 			},
 		});
 
@@ -143,13 +179,48 @@ export const compact = defineFeature({
 		});
 
 		registerScreen(scope);
+
+		/** Records what Anthropic cleared on the request that just answered, and recites the tasks. */
+		function clearedOnServer(
+			event: TurnEndEvent,
+			ctx: ExtensionContext,
+			previous: number,
+			usage: Billed,
+		): SessionBoundaryDraft[] {
+			const prompt = usage.input + usage.cacheRead + usage.cacheWrite;
+			const entries = event.context.contextEntries;
+			const end = entries.findIndex((item) => item.sourceEntry.id === event.messageEntryId);
+			const plan = planServerClear(
+				end === -1 ? entries : entries.slice(0, end),
+				KEEP_TOOL_USES,
+				cleared,
+			);
+			for (const { entry, call } of plan.hidden) {
+				cleared.add(entry);
+				hidden.add(call);
+			}
+			const record: PruneRecord = {
+				before: previous,
+				after: prompt,
+				hidden: plan.hidden,
+				server: true,
+				...priced(usage, ctx.model?.cost.cacheRead ?? 0, previous - prompt, usage.cacheWrite),
+			};
+			return [note(tasksNow(ctx), true), { type: "custom", customType: PRUNE_ENTRY, data: record }];
+		}
+
+		function tasksNow(ctx: ExtensionContext): SessionTasks {
+			return currentTasks(scope.events)?.state ?? tasksFromEntries(ctx.sessionManager.getBranch());
+		}
 	},
 });
 
-// Recites the tasks after a prune, so the agent keeps its goals.
-function note(tasks: SessionTasks): CustomMessageEntryDraft {
+// Recites the tasks after a prune or a clear, so the agent keeps its goals.
+function note(tasks: SessionTasks, server: boolean): CustomMessageEntryDraft {
 	const parts = [
-		"Older tool output was hidden to save context. Each placeholder names the call it came from: run it again if you need it.",
+		server
+			? "Anthropic cleared older tool output to save context. The calls are still there: run one again if you need its output."
+			: "Older tool output was hidden to save context. Each placeholder names the call it came from: run it again if you need it.",
 	];
 	const stands = describeTasks(tasks, { done: 10, decisions: 10 });
 	if (stands !== "") parts.push(`Where the session stands:\n${stands}`);
