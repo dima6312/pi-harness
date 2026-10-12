@@ -8,6 +8,8 @@ export * from "./contracts/goal.ts";
 export * from "./goal/index.ts";
 export * from "./contracts/screen.ts";
 export * from "./contracts/skills.ts";
+export * from "./contracts/tasks.ts";
+export * from "./tasks/index.ts";
 export * from "./control.ts";
 export * from "./decode.ts";
 export * from "./events.ts";
