@@ -60,9 +60,9 @@ describe("format", () => {
 		expect(shortenPath("/home/ada", "/home/ada", 40)).toBe("~");
 		expect(shortenPath("/srv/app", "/home/ada", 40)).toBe("/srv/app");
 		expect(shortenPath("/home/ada/Projects/pi-harness/packages/look", "/home/ada", 20)).toBe(
-			"…/packages/look",
+			".../packages/look",
 		);
-		expect(shortenPath("/home/ada/a-very-long-folder-name", "/home/ada", 10)).toBe("…lder-name");
+		expect(shortenPath("/home/ada/a-very-long-folder-name", "/home/ada", 10)).toBe("...er-name");
 	});
 
 	test("fills a gauge", () => {
@@ -73,7 +73,7 @@ describe("format", () => {
 
 	test("clips a tail from the start", () => {
 		expect(truncateTail("short", 10)).toBe("short");
-		expect(truncateTail("the newest part", 8)).toBe("…st part");
+		expect(truncateTail("the newest part", 8)).toBe("... part");
 	});
 });
 
@@ -96,7 +96,7 @@ describe("fit", () => {
 
 	test("drops by priority, and keeps one piece cut to the width", () => {
 		expect(fitLine(pieces, 8, { separator: " · " })).toBe("model");
-		expect(plain(fitLine(pieces, 3, { separator: " · " }))).toBe("mo…");
+		expect(plain(fitLine(pieces, 4, { separator: " · " }))).toBe("m...");
 	});
 
 	test("regions compete for one width", () => {

@@ -72,11 +72,11 @@ export function shortenPath(cwd: string, home: string | undefined, maxWidth: num
 	let kept = "";
 	for (let index = parts.length - 1; index > 0; index--) {
 		const candidate = `${sep}${parts[index] ?? ""}${kept}`;
-		if (visibleWidth(`…${candidate}`) > maxWidth) break;
+		if (visibleWidth(`...${candidate}`) > maxWidth) break;
 		kept = candidate;
 	}
 	if (kept === "") return truncateTail(parts.at(-1) ?? full, maxWidth);
-	return `…${kept}`;
+	return `...${kept}`;
 }
 
 export function basename(cwd: string): string {
@@ -92,7 +92,7 @@ export function truncateTail(text: string, maxWidth: number): string {
 	if (maxWidth <= 0) return "";
 	if (visibleWidth(text) <= maxWidth) return text;
 	const chars = [...text];
-	let width = 1;
+	let width = 3;
 	let start = chars.length;
 	while (start > 0) {
 		const next = visibleWidth(chars[start - 1] ?? "");
@@ -100,10 +100,10 @@ export function truncateTail(text: string, maxWidth: number): string {
 		width += next;
 		start--;
 	}
-	return `…${chars.slice(start).join("")}`;
+	return `...${chars.slice(start).join("")}`;
 }
 
-export function fitWidth(text: string, width: number, ellipsis = "…"): string {
+export function fitWidth(text: string, width: number, ellipsis = "..."): string {
 	return truncateToWidth(text, Math.max(0, width), ellipsis);
 }
 

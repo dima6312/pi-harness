@@ -77,7 +77,7 @@ function yourWords(messages: readonly AgentMessage[]): string[] {
 			.replace(/\s+/g, " ")
 			.trim();
 		if (text === "") return [];
-		return [text.length <= MAX_ASK_CHARS ? text : `${text.slice(0, MAX_ASK_CHARS - 1)}\u2026`];
+		return [text.length <= MAX_ASK_CHARS ? text : `${text.slice(0, MAX_ASK_CHARS - 3)}...`];
 	});
 	return words.slice(-MAX_ASKS);
 }

@@ -106,7 +106,7 @@ describe("controls", () => {
 		const presets = [{ value: "a rule", label: "Standard" }];
 		expect(formatValue({ type: "text", multiline: true, presets }, "a rule")).toBe("Standard");
 		expect(formatValue({ type: "text", multiline: true, presets }, "mine")).toBe("custom");
-		expect(formatValue({ type: "text" }, "one\ntwo")).toBe("one \u2026");
+		expect(formatValue({ type: "text" }, "one\ntwo")).toBe("one ...");
 	});
 });
 

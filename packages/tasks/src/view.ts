@@ -161,7 +161,7 @@ export class TasksView implements Component {
 		const picked = theme.getBgAnsi("selectedBg");
 		const pad = " ".repeat(PAD);
 		const row = (text: string, background = card) =>
-			`${background}${pad}${keepBackground(truncateToWidth(text, inner, "\u2026", true), background)}${pad}\x1b[49m`;
+			`${background}${pad}${keepBackground(truncateToWidth(text, inner, "...", true), background)}${pad}\x1b[49m`;
 		const line = (entry: Line) =>
 			row(entry.text, entry.id !== undefined && entry.id === this.#selected ? picked : card);
 		return [
@@ -262,7 +262,7 @@ export class TasksView implements Component {
 		const room = width - 3;
 		const metaWidth = meta === "" ? 0 : visibleWidth(meta) + 2;
 		const joined = aside === undefined ? words : `${words}${DOT}${aside}`;
-		const plain = truncateToWidth(joined, Math.max(8, room - 2 - metaWidth), "\u2026");
+		const plain = truncateToWidth(joined, Math.max(8, room - 2 - metaWidth), "...");
 		const rest = plain.slice(words.length);
 		const head = `${mark} ${theme.fg(ink, plain.slice(0, words.length))}${theme.fg("dim", rest)}`;
 		if (meta === "") return head;
@@ -307,7 +307,7 @@ export class TasksView implements Component {
 			add(this.#when(task), "dim");
 		}
 		const kept = lines.slice(0, DETAIL_LINES);
-		if (lines.length > DETAIL_LINES) kept[DETAIL_LINES - 1] = `${kept[DETAIL_LINES - 1]}\u2026`;
+		if (lines.length > DETAIL_LINES) kept[DETAIL_LINES - 1] = `${kept[DETAIL_LINES - 1]}...`;
 		while (kept.length < DETAIL_LINES) kept.push("");
 		return kept;
 	}
@@ -358,7 +358,7 @@ export class TasksView implements Component {
 			.join("  ");
 		const room = Math.max(4, width - visibleWidth(counts) - 2);
 		const title = theme.bold(
-			theme.fg("accent", truncateToWidth(state.title ?? "This session", room, "\u2026")),
+			theme.fg("accent", truncateToWidth(state.title ?? "This session", room, "...")),
 		);
 		return spread(title, counts, width);
 	}

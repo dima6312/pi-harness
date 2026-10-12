@@ -32,7 +32,7 @@ import { PreviewCache } from "./preview.ts";
 const POINTER = "\u276f ";
 const RAIL = "\u258e ";
 const CHECK = " \u2713";
-const ELLIPSIS = "\u2026";
+const ELLIPSIS = "...";
 /** The name of the focused row in the panel, and the blank line under it. */
 const TITLE_ROWS = 2;
 /** The pointer, the number and the gap before a label, in columns. */

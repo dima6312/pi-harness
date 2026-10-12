@@ -110,7 +110,7 @@ export class HeaderComponent implements Component {
 		const hints = HINTS()
 			.map((hint) => `${paint.role("brand", hint.key)} ${paint.dim(hint.does)}`)
 			.join(separator);
-		return [first, hints, ""].map((line) => truncateToWidth(` ${line}`, width, "…"));
+		return [first, hints, ""].map((line) => truncateToWidth(` ${line}`, width, "..."));
 	}
 
 	#title(paint: Paint): string {
@@ -192,7 +192,7 @@ export function halfBlocks(pixels: readonly string[]): string[] {
 }
 
 function pad(text: string, width: number): string {
-	const clipped = truncateToWidth(text, Math.max(0, width), "…");
+	const clipped = truncateToWidth(text, Math.max(0, width), "...");
 	return `${clipped}${" ".repeat(Math.max(0, width - visibleWidth(clipped)))}`;
 }
 

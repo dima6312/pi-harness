@@ -1,4 +1,4 @@
-// The app builder. A package's extension is `createApp(pi, …).use(feature).build()`, and the
+// The app builder. A package's extension is `createApp(pi, ...).use(feature).build()`, and the
 // harness is the same call with every feature. The builder is where the rules from pi's extension
 // docs live: registration only in the factory, session work from `session_start`, cleanup once per
 // session, and a feature that fails to set up becomes a warning.

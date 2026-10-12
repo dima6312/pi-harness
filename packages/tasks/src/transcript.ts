@@ -171,7 +171,7 @@ export function heard(branch: readonly unknown[], text: string): Heard {
 export function clipMessage(text: string): string {
 	if (text.length <= MAX_MESSAGE) return text;
 	const head = Math.floor(MAX_MESSAGE / 3);
-	const cut = `(\u2026 ${text.length - MAX_MESSAGE} characters left out \u2026)`;
+	const cut = `(... ${text.length - MAX_MESSAGE} characters left out ...)`;
 	return [text.slice(0, head).trimEnd(), cut, text.slice(head - MAX_MESSAGE).trimStart()].join(
 		"\n",
 	);
@@ -229,5 +229,5 @@ function oneLine(text: string): string {
 }
 
 function clip(text: string, max: number): string {
-	return text.length <= max ? text : `${text.slice(0, max - 1)}\u2026`;
+	return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }

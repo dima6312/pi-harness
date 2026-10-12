@@ -245,7 +245,7 @@ export class ScreenView implements Component {
 					const items = control.presets.map(pickItem);
 					items.push({
 						value: null,
-						label: "Edit\u2026",
+						label: "Edit...",
 						opens: control.multiline ? "edit" : "input",
 					});
 					this.#openPick(row, items, false);
@@ -275,7 +275,7 @@ export class ScreenView implements Component {
 	}
 
 	#openPick(row: RowView, items: PickItem[], custom: boolean): void {
-		if (custom) items.push({ value: null, label: "Other\u2026", opens: "input" });
+		if (custom) items.push({ value: null, label: "Other...", opens: "input" });
 		const found = items.findIndex(
 			(item) => item.opens === undefined && sameJson(item.value, row.value),
 		);
@@ -399,7 +399,7 @@ export class ScreenView implements Component {
 
 		const border = (text: string): string => theme.fg("borderMuted", text);
 		const frame = (text: string): string =>
-			border("\u2502") + truncateToWidth(text, inner, "\u2026", true) + border("\u2502");
+			border("\u2502") + truncateToWidth(text, inner, "...", true) + border("\u2502");
 
 		const left = this.#mode.kind === "text" || inner < 50 ? 0 : this.#leftWidth(inner);
 		const title = ` ${theme.fg("accent", theme.bold("Settings"))} `;
@@ -466,7 +466,7 @@ export class ScreenView implements Component {
 				out.push(main);
 				continue;
 			}
-			const side = truncateToWidth(sections[index] ?? "", left, "\u2026", true);
+			const side = truncateToWidth(sections[index] ?? "", left, "...", true);
 			out.push(side + this.#options.theme.fg("borderMuted", "\u2502") + main);
 		}
 		return out;
@@ -475,7 +475,7 @@ export class ScreenView implements Component {
 	#sectionLines(width: number): string[] {
 		const { theme, model } = this.#options;
 		return model.sections().map((entry) => {
-			const text = truncateToWidth(entry.title, width - 3, "\u2026");
+			const text = truncateToWidth(entry.title, width - 3, "...");
 			return entry.active
 				? ` ${theme.fg("accent", `\u25b8 ${theme.bold(text)}`)}`
 				: `   ${theme.fg("dim", text)}`;
@@ -522,7 +522,7 @@ export class ScreenView implements Component {
 				line === undefined ? "" : this.#line(line, at === cursor, focused[at] === true, labelWidth);
 			const mark = bar[index];
 			const edge = mark === true ? theme.fg("scrollbarThumb", "\u2503") : " ";
-			out.push(truncateToWidth(text, width - 1, "\u2026", true) + edge);
+			out.push(truncateToWidth(text, width - 1, "...", true) + edge);
 		}
 		return out;
 	}
@@ -535,7 +535,7 @@ export class ScreenView implements Component {
 		const indent = "  ".repeat(row.indent ?? 0);
 		const cursor = selected ? theme.fg("accent", "\u276f ") : "  ";
 		const room = Math.max(1, labelWidth - 1 - visibleWidth(indent));
-		const label = truncateToWidth(row.label, room, "\u2026");
+		const label = truncateToWidth(row.label, room, "...");
 		const pad = " ".repeat(Math.max(1, labelWidth - visibleWidth(indent) - visibleWidth(label)));
 		if (!focused) {
 			const value = stripTerminalSequences(this.#value(row, false));
@@ -556,7 +556,7 @@ export class ScreenView implements Component {
 	#value(row: RowView, selected: boolean): string {
 		const { theme } = this.#options;
 		if (row.kind === "action") {
-			if (this.#running.has(keyOf(row))) return theme.fg("accent", "running\u2026");
+			if (this.#running.has(keyOf(row))) return theme.fg("accent", "running...");
 			if (row.text === undefined) return theme.fg(selected ? "accent" : "dim", "\u21b5 run");
 			return theme.fg("muted", row.text) + (selected ? theme.fg("dim", "  \u21b5 run") : "");
 		}
@@ -605,7 +605,7 @@ export class ScreenView implements Component {
 				const current = item.opens === undefined && sameJson(item.value, mode.current);
 				mark = current ? theme.fg("accent", "\u25cf ") : "  ";
 			}
-			const text = truncateToWidth(item.label, labelWidth - visibleWidth(mark) - 2, "\u2026");
+			const text = truncateToWidth(item.label, labelWidth - visibleWidth(mark) - 2, "...");
 			const label = selected ? theme.fg("accent", theme.bold(text)) : theme.fg("text", text);
 			const pad = " ".repeat(Math.max(1, labelWidth - visibleWidth(mark) - visibleWidth(text)));
 			const description = item.description === undefined ? "" : theme.fg("dim", item.description);

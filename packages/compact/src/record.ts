@@ -153,13 +153,13 @@ export class PruneEntry implements Component {
 			const more = hidden.length - shown.length;
 			if (more > 0) lines.push(INDENT + theme.fg("dim", `and ${more} more`));
 		}
-		return lines.map((line) => truncateToWidth(line, width, "\u2026"));
+		return lines.map((line) => truncateToWidth(line, width, "..."));
 	}
 }
 
 function row(head: string, detail: string, stats: string, width: number, theme: Theme): string {
 	const room = width - visibleWidth(head) - visibleWidth(stats) - 1;
-	const shown = truncateToWidth(detail, Math.max(8, room), "\u2026");
+	const shown = truncateToWidth(detail, Math.max(8, room), "...");
 	const gap = Math.max(1, width - visibleWidth(head) - visibleWidth(shown) - visibleWidth(stats));
 	return head + shown + " ".repeat(gap) + theme.fg("dim", stats);
 }

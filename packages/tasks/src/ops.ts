@@ -174,7 +174,7 @@ export function tidyOps(answer: unknown, state: SessionTasks): Checked {
 function proves(proof: unknown, message: string): string | undefined {
 	const words = clean(proof);
 	if (words === undefined) return undefined;
-	const needle = normalized(words).replace(/…$/, "");
+	const needle = normalized(words).replace(/\.\.\.$/, "");
 	if (needle.length < MIN_PROOF || !normalized(message).includes(needle)) return undefined;
 	return words;
 }
@@ -225,5 +225,5 @@ export function clean(value: unknown): string | undefined {
 	if (words.length <= MAX_TEXT) return words;
 	const cut = words.slice(0, MAX_TEXT);
 	const space = cut.lastIndexOf(" ");
-	return `${(space > MAX_TEXT / 2 ? cut.slice(0, space) : cut).replace(/[,;:.\s]+$/, "")}\u2026`;
+	return `${(space > MAX_TEXT / 2 ? cut.slice(0, space) : cut).replace(/[,;:.\s]+$/, "")}...`;
 }

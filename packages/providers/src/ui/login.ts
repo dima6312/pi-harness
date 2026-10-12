@@ -237,7 +237,7 @@ export class LoginView implements Component, Focusable {
 
 	private promptRows(inner: number): string[] {
 		const pending = this.pending;
-		if (pending === undefined) return [this.theme.fg("dim", "waiting…")];
+		if (pending === undefined) return [this.theme.fg("dim", "waiting...")];
 		const room = Math.max(1, inner - 2);
 		const asked = this.theme.fg("text", truncateToWidth(pending.prompt.message, inner));
 		if (pending.prompt.type === "select") {

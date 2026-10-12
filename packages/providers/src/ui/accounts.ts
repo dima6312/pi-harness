@@ -287,7 +287,7 @@ export class AccountsView implements Component, Focusable {
 		const editing = this.mode.kind !== "browse" && this.mode.id === row.id;
 		// Pi's own field draws the cursor where it is and scrolls a name longer than the column.
 		if (editing && this.mode.kind === "rename") return this.input.render(width)[0] ?? "";
-		const label = truncateToWidth(row.label, NAME_LIMIT, "…");
+		const label = truncateToWidth(row.label, NAME_LIMIT, "...");
 		if (editing) return this.theme.fg("error", label);
 		return chosen ? this.theme.bold(label) : label;
 	}
@@ -368,7 +368,7 @@ export function describeState(theme: Theme, state: AccountState): string {
 		case "quota":
 			return quotaWindows(theme, state.windows);
 		case "reading":
-			return theme.fg("dim", "reading the plan…");
+			return theme.fg("dim", "reading the plan...");
 		case "signIn":
 			return theme.fg("error", "sign in again");
 		case "spent":

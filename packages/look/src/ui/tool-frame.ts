@@ -358,7 +358,7 @@ function inside(lines: readonly string[], width: number, theme: Theme): string[]
 	const inner = room(width);
 	return trim(lines).map((line) => {
 		// Measuring is cheap, and cutting a line that already fits is not.
-		const text = visibleWidth(line) > inner ? truncateToWidth(line, inner, "\u2026", true) : line;
+		const text = visibleWidth(line) > inner ? truncateToWidth(line, inner, "...", true) : line;
 		const pad = " ".repeat(Math.max(0, inner - visibleWidth(text)));
 		return `${paint("\u2502")} ${text}${pad} ${paint("\u2502")}`;
 	});

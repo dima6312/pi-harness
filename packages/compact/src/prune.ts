@@ -158,7 +158,7 @@ function shortenedValue(value: JsonValue): JsonValue {
 
 function clip(text: string): string {
 	const line = text.trim().split("\n")[0] ?? "";
-	return line.length <= SHOWN_CHARS ? line : `${line.slice(0, SHOWN_CHARS - 1)}\u2026`;
+	return line.length <= SHOWN_CHARS ? line : `${line.slice(0, SHOWN_CHARS - 3)}...`;
 }
 
 function rounded(tokens: number): string {

@@ -94,7 +94,7 @@ function clipSummary(summary: string): string[] {
 	const lines = summary.split("\n");
 	if (lines.length <= SUMMARY_LINES) return lines;
 	const more = lines.length - SUMMARY_LINES;
-	return [...lines.slice(0, SUMMARY_LINES), `\u2026 ${more} more ${more === 1 ? "line" : "lines"}`];
+	return [...lines.slice(0, SUMMARY_LINES), `... ${more} more ${more === 1 ? "line" : "lines"}`];
 }
 
 function questionText(call: Call, reason: string | undefined): string {

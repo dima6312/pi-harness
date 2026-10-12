@@ -76,7 +76,7 @@ export const NERD: Glyphs = {
 	fill: "█",
 	empty: "░",
 	levels: ["▂", "▃", "▄", "▅", "▆", "▇"],
-	ellipsis: "…",
+	ellipsis: "...",
 };
 
 export const UNICODE: Glyphs = {
@@ -106,7 +106,7 @@ export const UNICODE: Glyphs = {
 	fill: "█",
 	empty: "░",
 	levels: ["▂", "▃", "▄", "▅", "▆", "▇"],
-	ellipsis: "…",
+	ellipsis: "...",
 };
 
 export const ASCII: Glyphs = {

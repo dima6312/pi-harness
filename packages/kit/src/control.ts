@@ -55,5 +55,5 @@ export function sameJson(left: unknown, right: unknown): boolean {
 
 function firstLine(text: string): string {
 	const line = text.split("\n")[0] ?? "";
-	return text.includes("\n") ? `${line} …` : line;
+	return text.includes("\n") ? `${line} ...` : line;
 }

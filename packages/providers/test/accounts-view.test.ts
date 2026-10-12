@@ -87,7 +87,7 @@ test("the list shows each account, the one in use, its plan, and a way to add on
 	expect(body).toContain(
 		"❯ ranqia  subscription  in use  5h   100% resets in 46m   week  18% resets in 6d",
 	);
-	expect(body).toContain("  labora  subscription          reading the plan…");
+	expect(body).toContain("  labora  subscription          reading the plan...");
 	expect(body).toContain("+ Add an account");
 	expect(body).toContain("enter use");
 	for (const line of lines) expect(visibleWidth(line)).toBe(width);

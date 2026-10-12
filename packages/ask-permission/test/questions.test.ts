@@ -49,7 +49,7 @@ describe("the first question", () => {
 		const text = asked[0]!.questions[0]!.question;
 		expect(text).toContain("echo 2");
 		expect(text).not.toContain("echo 3");
-		expect(text).toContain("\u2026 27 more lines");
+		expect(text).toContain("... 27 more lines");
 	});
 
 	test("says what wants to run, and why it is asking", async () => {

@@ -10,7 +10,7 @@ export function frameInner(width: number): number {
 export function frameTop(theme: Theme, title: string, width: number): string {
 	const border = (text: string) => theme.fg("border", text);
 	const room = Math.max(0, width - 5);
-	const label = theme.fg("accent", truncateToWidth(title, Math.max(0, room - 3), "…"));
+	const label = theme.fg("accent", truncateToWidth(title, Math.max(0, room - 3), "..."));
 	const dashes = Math.max(0, room - visibleWidth(label));
 	return `${border("╭─ ")}${label}${border(` ${"─".repeat(dashes)}╮`)}`;
 }
