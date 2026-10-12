@@ -1,6 +1,6 @@
 {
 	"name": "@adeildo/pi-providers",
-	"version": "5.7.1",
+	"version": "5.7.2",
 	"description": "Provider features for Pi. Bills Anthropic OAuth requests to the Claude Pro or Max plan instead of extra usage.",
 	"keywords": [
 		"anthropic",

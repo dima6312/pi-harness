@@ -2,6 +2,13 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.7.2](https://github.com/felipeadeildo/pi-harness/compare/v5.7.1...v5.7.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* **compact:** price the whole cache rewrite ([c9493c4](https://github.com/felipeadeildo/pi-harness/commit/c9493c468bb88dc6a08b9b9d6ffd39df94b1111a))
+
 ## [5.7.1](https://github.com/felipeadeildo/pi-harness/compare/v5.7.0...v5.7.1) (2026-10-12)
 
 

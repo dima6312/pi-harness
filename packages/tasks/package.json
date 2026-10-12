@@ -1,6 +1,6 @@
 {
 	"name": "@adeildo/pi-tasks",
-	"version": "5.7.1",
+	"version": "5.7.2",
 	"description": "What a pi session is doing, what it did and with what result, what waits and on whom, and what was decided. Kept by a small model from your words and the agent's work, for you, the permission judge and other agents.",
 	"keywords": [
 		"pi",
