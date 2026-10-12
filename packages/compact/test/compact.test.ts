@@ -164,7 +164,7 @@ describe("what a prune hides", () => {
 	});
 });
 
-test("a prune waits for the context to pass the line, and for a fifth of it to go at once", () => {
+test("a prune waits for the context to pass the line, and for two fifths of it to go at once", () => {
 	const old = session(KEEP_TURNS + 10);
 	expect(pruneNow(old, 5_000, 10_000)).toBeUndefined();
 	expect(pruneNow(old, 20_000, 10_000)?.edits.length).toBeGreaterThan(0);
@@ -320,7 +320,7 @@ describe("the line a prune leaves", () => {
 
 	test("says what the next request pays to rewrite the cache, and when that pays back", () => {
 		expect(costRows(record)).toEqual([
-			["cache rewrite on the next request", "~$1.12"],
+			["cache rewrite on the next request, at most", "~$1.12"],
 			["saved on each request after, back in 5 requests", "~$0.23"],
 		]);
 		expect(costRows({ ...record, rewrite: 0 })).toEqual([
@@ -333,7 +333,7 @@ describe("the line a prune leaves", () => {
 		const lines = new PruneEntry(record, true, plain).render(80);
 		expect(lines.slice(0, 3)).toEqual([
 			` \u25cc pruned  2 old tool outputs${" ".repeat(32)}705k \u2192 250k tokens`,
-			`   cache rewrite on the next request${" ".repeat(37)}~$1.12`,
+			`   cache rewrite on the next request, at most${" ".repeat(28)}~$1.12`,
 			`   saved on each request after, back in 5 requests${" ".repeat(23)}~$0.23`,
 		]);
 		expect(lines.at(-1)).toBe(`   bash bun test packages/tasks${" ".repeat(45)}12k`);

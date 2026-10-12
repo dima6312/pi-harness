@@ -23,7 +23,7 @@ export const pruneAbove = setting({
 		section: PRUNE_SECTION,
 		label: "Above",
 		description:
-			"Context size that starts a prune. Each prune rewrites the prompt cache once, so it waits until it can free at least a fifth of the context.",
+			"Context size that starts a prune. Each prune rewrites the prompt cache once, so it waits until it can free at least two fifths of the context.",
 		control: { type: "number", min: 20_000, max: 2_000_000, step: 10_000, unit: " tokens" },
 	},
 });

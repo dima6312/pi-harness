@@ -15,7 +15,7 @@ import {
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
-import { describeCall, KEEP_TURNS, pruneNow, rewrittenAfter, sizeAfter } from "./prune.ts";
+import { describeCall, KEEP_TURNS, pruneNow, sizeAfter } from "./prune.ts";
 import {
 	hiddenCalls,
 	NOTE_MESSAGE,
@@ -86,7 +86,8 @@ export const compact = defineFeature({
 				message.usage,
 				ctx.model?.cost.cacheRead ?? 0,
 				before - after,
-				rewrittenAfter(plan, before),
+				// Only the system prompt stays cached, so the next request writes all of this again.
+				after,
 			);
 			const record: PruneRecord = {
 				before,

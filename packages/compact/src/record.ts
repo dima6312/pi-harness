@@ -113,7 +113,7 @@ export function costRows(record: PruneRecord): [string, string][] {
 	const requests = Math.ceil(rewrite / saving);
 	const back = requests === 1 ? "back in 1 request" : `back in ${requests} requests`;
 	return [
-		["cache rewrite on the next request", money(rewrite)],
+		["cache rewrite on the next request, at most", money(rewrite)],
 		[`saved on each request after, ${back}`, money(saving)],
 	];
 }

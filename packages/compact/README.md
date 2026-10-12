@@ -22,7 +22,9 @@ Output hidden to save context, about 4.2k tokens. It came from: read src/view.ts
 
 Long arguments go the same way, like a script sent to bash or a file sent to write. Your messages, the agent's own words, errors and the last 10 turns stay whole. After a prune the agent gets the session's [tasks](../tasks) at the end of its context, so it keeps its goals.
 
-Each prune leaves a line in the chat, with what the next request pays to rewrite the prompt cache and when that pays back. `Ctrl+O` lists the calls it hid.
+On Anthropic models that think, a prune also costs the agent its earlier reasoning. Anthropic signs each thinking block together with the conversation before it, and drops the blocks whose earlier conversation changed. pi then shows "Anthropic dropped N thinking blocks". The visible words stay.
+
+Each prune leaves a line in the chat, with the most the next request pays to rewrite the prompt cache and when that pays back. `Ctrl+O` lists the calls it hid.
 
 <!-- docs:compact/prune -->
 
@@ -42,10 +44,10 @@ On six recorded sessions, an agent that only had the summary answered 48 questio
 
 - Hiding old tool output works as well as summarizing it and costs less. Summaries made agents run 13 to 15% longer ([JetBrains, NeurIPS 2025](https://arxiv.org/abs/2508.21433)).
 - A model that picks what to keep cost 94% more with no gain in quality ([OpenHands, 2026](https://arxiv.org/abs/2605.18854)). The rules here are plain code.
-- Every edit rewrites the prompt cache ([Anthropic](https://platform.claude.com/docs/en/build-with-claude/context-editing)), so a prune waits until it frees at least a fifth of the context at once. Without that, the same sessions cost 12% more.
+- After a prune, the next request writes the whole conversation to the prompt cache again. Anthropic reuses cache only where an earlier request wrote it ([Anthropic](https://platform.claude.com/docs/en/build-with-claude/context-editing)), and the writes near old outputs have expired. So a prune waits until it frees at least two fifths of the context at once. Pruning a little every turn would cost 3.4 times as much.
 - Errors stay and every placeholder keeps its call, after [Manus](https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus).
 
-Replaying a week of real sessions through it, mostly Opus with a 1M context, costs 34% less, the cache rewrites included. `bun packages/compact/eval/replay.ts` replays yours.
+Replaying a week of real sessions through it, mostly Opus with a 1M context, costs 32% less. The replay has each prune's next request write all of the context again, so the real saving is at least that. `bun packages/compact/eval/replay.ts` replays yours.
 
 ## With pi's compaction
 
