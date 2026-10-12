@@ -22,7 +22,7 @@ import { fakeContext, fakePi } from "@adeildo/pi-kit/testing";
 import type { Api, Model } from "@earendil-works/pi-ai";
 
 import { darkTheme } from "../../../scripts/docs/theme.ts";
-import { TASKS_STATUS, tasks } from "../src/index.ts";
+import { nameFor, TASKS_STATUS, tasks } from "../src/index.ts";
 import { Keeper } from "../src/keeper.ts";
 import { messageOps, runOps } from "../src/ops.ts";
 import { doingOps, queuedOps } from "../src/screen.ts";
@@ -223,6 +223,27 @@ describe("your messages", () => {
 		});
 		expect(statuses.get(TASKS_STATUS)).toBe("\u25b8 Pesquisar OAuth no MCP");
 		expect(intentOf(state())).toBe("Session: OAuth no MCP\nDoing: Pesquisar OAuth no MCP");
+	});
+
+	test("the title names the session, unless you named it yourself", async () => {
+		const answer = {
+			haiku: {
+				language: "Portuguese",
+				ops: [{ op: "title", text: "OAuth no MCP" }],
+			},
+		};
+		const named = await mounted([answer]);
+		await named.say("m1", "pesquisa como expor oauth no mcp");
+		expect(named.fake.sessionName).toBe("OAuth no MCP");
+
+		const renamed = await mounted([answer]);
+		renamed.fake.sessionName = "meu nome";
+		await renamed.say("m1", "pesquisa como expor oauth no mcp");
+		expect(renamed.fake.sessionName).toBe("meu nome");
+
+		expect(nameFor("Deploy do MCP", "OAuth no MCP", "OAuth no MCP")).toBe("Deploy do MCP");
+		expect(nameFor("Deploy do MCP", "OAuth no MCP", "meu nome")).toBeUndefined();
+		expect(nameFor("OAuth no MCP", "OAuth no MCP", undefined)).toBeUndefined();
 	});
 
 	test("the model reads what the agent said just before, which a short yes answers", async () => {

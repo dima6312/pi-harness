@@ -11,7 +11,7 @@ import {
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import type { Keeper } from "./keeper.ts";
-import { MODEL_SECTION } from "./settings.ts";
+import { SETTINGS_SECTION } from "./settings.ts";
 
 const UNTITLED = "This session";
 
@@ -26,7 +26,7 @@ export function registerScreen(scope: FeatureScope, keeper: Keeper): void {
 	scope.screen.rows((ctx) => rows(keeper, sessionSection(ctx)));
 	scope.screen.info({
 		id: "tasks.spent",
-		section: MODEL_SECTION,
+		section: SETTINGS_SECTION,
 		label: "Spent",
 		description:
 			"What the tasks' model calls cost on this branch, at the model's catalog price. The look adds it to the session's cost.",

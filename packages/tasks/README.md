@@ -111,9 +111,10 @@ Sessions recorded by `@adeildo/pi-goal` open as tasks: the step under way is `do
 
 On the Tasks tab of `Alt+S`, stored under `tasks` in `~/.pi/agent/extensions/pi-harness/settings.json`:
 
-| Setting | Default | Does                                                                                                                                            |
-| ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Model   | `auto`  | `auto` is the cheapest model of the session's provider, `session` the one you talk to, or any model. When it fails, the session's model answers |
+| Setting          | Default | Does                                                                                                                                            |
+| ---------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model            | `auto`  | `auto` is the cheapest model of the session's provider, `session` the one you talk to, or any model. When it fails, the session's model answers |
+| Name the session | on      | Names the session after its title, so `/resume` and the look show it instead of your first message. A name you give with `/name` stays          |
 
 Each call is one short request. With Claude Haiku it takes about 3 seconds and costs about $0.003, and a turn makes two or three: your message, the end of the run and the tidy pass. Every call records what it cost, even one that changed nothing (`pi-tasks:usage`). The Tasks tab shows the total, and the look adds it to the session's cost. Updates run only when pi has a UI, so print runs and subagents make no extra calls.
 

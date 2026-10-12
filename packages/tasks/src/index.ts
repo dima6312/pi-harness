@@ -14,7 +14,7 @@ import { Key } from "@earendil-works/pi-tui";
 
 import { Keeper } from "./keeper.ts";
 import { registerScreen, sessionSection } from "./screen.ts";
-import { MODEL_SECTION, model, TASKS_SETTINGS } from "./settings.ts";
+import { model, nameSession, SETTINGS_SECTION, TASKS_SETTINGS } from "./settings.ts";
 import { type SkillNote, withSkills, yourWords } from "./transcript.ts";
 import { Updates } from "./updates.ts";
 import { TasksView } from "./view.ts";
@@ -26,14 +26,16 @@ export const tasks = defineFeature({
 	id: "tasks",
 	tab: "Tasks",
 	description: "Keeps what the session is doing, what it did, what waits and what was decided",
-	sections: (ctx) => [sessionSection(ctx), MODEL_SECTION],
+	sections: (ctx) => [sessionSection(ctx), SETTINGS_SECTION],
 	settings: TASKS_SETTINGS,
 	setup(scope) {
 		let session: ExtensionContext | undefined;
+		let titled: string | undefined;
 		const keeper = new Keeper(
 			(customType, data) => scope.appendEntry(customType, data),
 			(trigger) => {
 				if (trigger !== "tidy") updates.changed();
+				name();
 				show();
 			},
 		);
@@ -55,8 +57,16 @@ export const tasks = defineFeature({
 			scope.events.emit(TASKS_CHANGED, state);
 		}
 
+		function name(): void {
+			const { title } = keeper.state();
+			const next = nameFor(title, titled, scope.getSessionName());
+			if (next !== undefined && nameSession.get(scope)) scope.setSessionName(next);
+			titled = title;
+		}
+
 		function restore(ctx: ExtensionContext): void {
 			keeper.restore(ctx.sessionManager.getBranch());
+			titled = keeper.state().title;
 			updates.reset();
 			show();
 		}
@@ -138,4 +148,14 @@ function skillsOf(pi: Pick<ExtensionAPI, "getCommands">): SkillNote[] {
 			name: command.name.replace(/^skill:/, ""),
 			description: command.description,
 		}));
+}
+
+/** The session follows its title while it has no name, or still has the one the title gave it. */
+export function nameFor(
+	title: string | undefined,
+	before: string | undefined,
+	current: string | undefined,
+): string | undefined {
+	if (title === undefined || title === before) return undefined;
+	return current === undefined || current === before ? title : undefined;
 }
