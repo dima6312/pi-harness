@@ -189,12 +189,18 @@ function check(before: SessionTasks, after: SessionTasks, expect: Expect): strin
 		if (open !== count) problems.push(`${open} open tasks say ${pattern}, not ${count}`);
 	}
 	if (expect.wrongLanguage !== undefined) {
-		const written = [after.title ?? "", ...after.tasks.map((t) => t.text)];
+		const written = after.tasks.map((t) => t.text);
 		const wrong = written.filter((text) => expect.wrongLanguage?.test(text));
 		if (wrong.length > 0)
 			problems.push(`not in the operator's language: ${wrong.map((t) => `"${t}"`).join(", ")}`);
 	}
 	if (expect.title === "set" && after.title === undefined) problems.push("no title");
+	if (
+		expect.title === "set" &&
+		after.title !== undefined &&
+		!/^[\x20-\x7e]{1,48}$/.test(after.title)
+	)
+		problems.push(`title not short English: "${after.title}"`);
 	if (expect.title === "kept" && after.title !== before.title)
 		problems.push(`title "${after.title}"`);
 	return problems;

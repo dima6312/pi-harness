@@ -24,7 +24,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import { darkTheme } from "../../../scripts/docs/theme.ts";
 import { nameFor, TASKS_STATUS, tasks } from "../src/index.ts";
 import { Keeper } from "../src/keeper.ts";
-import { messageOps, runOps } from "../src/ops.ts";
+import { messageOps, runOps, tidyOps } from "../src/ops.ts";
 import { doingOps, queuedOps } from "../src/screen.ts";
 import {
 	clipMessage,
@@ -609,6 +609,18 @@ describe("what your message proves", () => {
 		expect(checked.rejected).toEqual([{ op: "title", text: "Other" }]);
 	});
 
+	test("a title too long for /resume waits for a shorter one", () => {
+		const untitled = { ...state, title: undefined };
+		const long = "Repensar a feature de goals com dados de uso real da semana";
+		expect(messageOps(titled(long), { message: "x", state: untitled }).rejected).toEqual([
+			{ op: "title", text: long },
+		]);
+		expect(
+			messageOps(titled("Rethink goals from usage"), { message: "x", state: untitled }).ops,
+		).toEqual([{ op: "title", text: "Rethink goals from usage" }]);
+		expect(tidyOps(titled(long), state).rejected).toEqual([{ op: "title", text: long }]);
+	});
+
 	test("an id the list does not have is ignored", () => {
 		expect(
 			messageOps({ ops: [{ op: "continue_task", id: "t9" }] }, { message: "x", state }),
@@ -621,6 +633,10 @@ describe("what your message proves", () => {
 
 function verdict(id: string, evidence: string, outcome = "done") {
 	return { id, evidence, outcome, result: "", left: "", waiting_on: "you", why: "" };
+}
+
+function titled(text: string) {
+	return { ops: [{ op: "title", text }] };
 }
 
 describe("what a run proves", () => {

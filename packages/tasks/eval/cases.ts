@@ -29,7 +29,7 @@ export interface Expect {
 	decidedAtMost?: number;
 	title?: "set" | "kept";
 	result?: Record<string, RegExp>;
-	/** Words that show the title or a task was written in a language you did not write in. */
+	/** Words that show a task was written in a language you did not write in. */
 	wrongLanguage?: RegExp;
 	/** No task says this. */
 	none?: RegExp;

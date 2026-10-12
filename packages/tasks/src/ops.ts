@@ -5,6 +5,8 @@ import type { Line } from "./transcript.ts";
 import { ASKING, echoes, isPlan, normalized, sameWords, sharesWord } from "./words.ts";
 
 const MAX_TEXT = 240;
+// The title names the session in /resume and the look, so it has to fit there.
+const MAX_TITLE = 48;
 const MIN_PROOF = 8;
 const MAX_DECISIONS = 1;
 
@@ -69,7 +71,9 @@ function fromMessage(
 				: undefined;
 		case "title":
 			// Set once here; the tidy pass moves it when the session moves.
-			return words ? [{ op: "title", text: words }, state.title === undefined] : undefined;
+			return words
+				? [{ op: "title", text: words }, state.title === undefined && words.length <= MAX_TITLE]
+				: undefined;
 		default:
 			return undefined;
 	}
@@ -156,7 +160,8 @@ export function tidyOps(answer: unknown, state: SessionTasks): Checked {
 	for (const raw of objects(isObject(answer) ? answer.ops : undefined)) {
 		const words = clean(raw.text);
 		const task = typeof raw.id === "string" ? find(state, raw.id) : undefined;
-		if (raw.op === "title" && words) keep(checked, { op: "title", text: words });
+		if (raw.op === "title" && words)
+			keep(checked, { op: "title", text: words }, words.length <= MAX_TITLE);
 		if (raw.op === "rename" && task && words)
 			keep(checked, { op: "rename", id: task.id, text: words });
 		if (raw.op === "merge" && task && typeof raw.into === "string") {

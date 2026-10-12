@@ -24,7 +24,7 @@ Text the operator pasted, like the agent's own plan, a log or an error, is conte
 - drop_task {id, why, proof}: the operator gives it up, or says a done task was only an idea.
 - you_did {id, proof}: the operator says they did it themselves, in the past tense, like a command they ran. Letting the agent go ahead ("pode fazer push", "go ahead") is continue_task, never you_did.
 - decide {instead_of, text, proof}: a choice between alternatives the operator made, that a later reader must not undo, like "one SECRET with a mode, not two keys" or "push straight to main". instead_of names the alternative they turned down; when there is none, it is no decision. Never a request for work, a step the operator confirms ("we'll tag v1.0.0 and release it"), or something they explain about how a tool behaves.
-- title {text}: only when the list has no session yet. What the session is about, broader than the task.
+- title {text}: only when the list has no session yet. What the session is about, broader than the task. In English whatever language the operator writes in, 2 to 5 words, at most 40 characters, like a pull request title: "OAuth for the MCP server".
 
 A question, a remark or a criticism with no task to attach it to changes nothing: send no ops. Words that say something is fine as it is ("everyone can open it, that's fine") ask for no work; when they settle a choice, they are a decide.
 language: the English name of the language the message is written in, like "Portuguese".
@@ -52,7 +52,7 @@ const TIDY = `${TASKS}
 The list was updated one message and one run at a time, and it drifts. Call ${TOOL} once with what cleans it, and leave everything else as it is:
 - merge {id, into}: two tasks that say the same work, in any words or language. Keep the one that says it best.
 - rename {id, text}: only to write it in the operator's language, or to say what it changes when it names code.
-- title {text}: when the session no longer says what most tasks are about, write one that does. Never the latest task.
+- title {text}: when the session no longer says what most tasks are about, or its title is not short English, write one that does: English, 2 to 5 words, at most 40 characters. Never the latest task.
 
 Usually nothing needs cleaning: send no ops.`;
 
@@ -66,9 +66,11 @@ function list(state: SessionTasks, done = 15): string {
 
 function language(state: SessionTasks): string[] {
 	if (state.language === undefined)
-		return ["Write the title and every task in the language the operator's message is written in."];
+		return [
+			"Write every task in the language the operator's message is written in. The title is in English.",
+		];
 	return [
-		`Write every task, title, result, left, why and decision in ${state.language}, even when the lines you read are in another language.`,
+		`Write every task, result, left, why and decision in ${state.language}, even when the lines you read are in another language. The title is in English.`,
 	];
 }
 

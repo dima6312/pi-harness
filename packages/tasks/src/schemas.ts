@@ -14,7 +14,7 @@ const ID = text("A task's id from the list, like t3.");
 const TASK = text("Imperative, under 60 characters, in the operator's language.");
 const PROOF = text("The operator's words that say it, copied exactly from the message.");
 const WHY = text("Why, in a few words.");
-const TITLE = text("What the session is about, broader than one task.");
+const TITLE = text("What the session is about, in English, 2 to 5 words, at most 40 characters.");
 const CHOICE = text("What was chosen, in a short sentence.");
 const INSTEAD_OF = text(
 	'The alternative that was not chosen, like "two separate keys", or "" when there was none.',
