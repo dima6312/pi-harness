@@ -13,6 +13,7 @@ import {
 import type { Api, Model } from "@earendil-works/pi-ai";
 
 import { type Asker, onMessage, onRun, onTidy, type Proposal } from "../src/ask.ts";
+import { clipMessage } from "../src/transcript.ts";
 import { type Case, CASES, type Expect, linesOf } from "./cases.ts";
 import { signedIn } from "./signin.ts";
 
@@ -84,7 +85,8 @@ function ask(c: Case, asker: Asker): Promise<Proposal | undefined> {
 	const { request } = c;
 	switch (request.moment) {
 		case "message":
-			return onMessage(asker, request);
+			// Clipped as a message is before it reaches the model.
+			return onMessage(asker, { ...request, message: clipMessage(request.message) });
 		case "run":
 			return onRun(asker, { state: request.state, run: request.run, lines: linesOf(request.run) });
 		case "tidy":
@@ -162,6 +164,13 @@ function check(before: SessionTasks, after: SessionTasks, expect: Expect): strin
 		);
 	const decided = after.decisions.length - before.decisions.length;
 	if (expect.decided !== undefined && decided < expect.decided) problems.push(`decided ${decided}`);
+	if (expect.decidedAtMost !== undefined && decided > expect.decidedAtMost)
+		problems.push(
+			`decided ${after.decisions
+				.slice(before.decisions.length)
+				.map((d) => `"${d.text}"`)
+				.join(", ")}`,
+		);
 
 	if (expect.mentions !== undefined) {
 		const said = [
@@ -173,6 +182,9 @@ function check(before: SessionTasks, after: SessionTasks, expect: Expect): strin
 		for (const pattern of expect.mentions)
 			if (!said.some((text) => pattern.test(text))) problems.push(`nothing says ${pattern}`);
 	}
+	const named = after.tasks.filter((t) => expect.none?.test(t.text));
+	if (named.length > 0)
+		problems.push(`a task says ${expect.none}: ${named.map((t) => `"${t.text}"`).join(", ")}`);
 	if (expect.openMatching !== undefined) {
 		const [pattern, count] = expect.openMatching;
 		const open = after.tasks.filter((t) => isOpen(t) && pattern.test(t.text)).length;

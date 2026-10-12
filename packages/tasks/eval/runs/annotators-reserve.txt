@@ -1,0 +1,71 @@
+L1 call: bash cd ~/Projects/ranqia-evals/api && sed -i 's/^from httpx import Response$/from httpx2 import Respons…
+L2 said: Backend pronto, com 81 testes passando. Antes da interface, os tipos do frontend contra uma API minha na porta 8011:
+L3 call: bash cd ~/Projects/ranqia-evals/api && export DATABASE_URL=sqlite+aiosqlite:////tmp/types.db API_KEY=k &…
+L4 call: bash cd ~/Projects/ranqia-evals/web && cat app/components/workbench/answer-nav.tsx app/components/workbe…
+L5 said: A tipagem já passa com o schema novo. Vejo o `SaveStatus` e o `openMark`/`pickSelection` para decidir como travar a edição quando outra pessoa está no prompt:
+L6 call: bash cd ~/Projects/ranqia-evals/web && sed -n 800,907p app/routes/workbench.tsx; grep -n "function pickS…
+L7 call: bash cd ~/Projects/ranqia-evals/web && cat app/components/ui/alert.tsx | head -60; grep -n "export" app/…
+L8 said: Para mostrar quem é quem, uso o Avatar do shadcn (as iniciais de cada anotador) em vez de escrever um à mão:
+L9 call: bash cd ~/Projects/ranqia-evals/web && bun x shadcn@latest add avatar --yes 2>&1 | tail -3; grep -n "^fu…
+L10 call: bash cd ~/Projects/ranqia-evals/web && sed -n 1,60p app/components/ui/avatar.tsx
+L11 said: Agora os componentes compartilhados: pessoas (iniciais), liberar o prompt e o aviso da passada.
+L12 call: bash mkdir -p ~/Projects/ranqia-evals/web/app/components && cd ~/Projects/ranqia-evals/web/app/component…
+L13 said: Agora o workbench. Vejo os trechos que vou tocar:
+L14 call: bash cd ~/Projects/ranqia-evals/web && sed -n 392,470p app/routes/workbench.tsx
+L15 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L16 call: bash cd ~/Projects/ranqia-evals/web && grep -n "export function spanId" -A3 app/lib/draft.ts && python3 …
+L17 call: bash cd ~/Projects/ranqia-evals/web && sed -n 752,775p app/routes/workbench.tsx
+L18 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L19 said: Agora a lista de entidades (com autoria), as ações inline ("by maria") e a lista de respostas com o estado de cada passada:
+L20 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L21 said: O `dispatch` agora é um `useCallback` estável, então entra nas dependências. O aviso vira uma `<section>` com rótulo, porque não é uma região "live":
+L22 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L23 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L24 said: Workbench pronto. Agora o `/annotate`, que pede a fila do anotador e mostra um estado vazio que explica *por que* não sobrou nada para você:
+L25 call: write /home/adeildo/Projects/ranqia-evals/web/app/routes/annotate.tsx
+L26 said: Agora a página de prompts: quem está com cada um, quem já passou, e o botão para liberar.
+L27 call: write /home/adeildo/Projects/ranqia-evals/web/app/routes/prompts.tsx
+L28 said: Agora a página de Settings, a "tela de admin". Ela mostra o fluxo das K passadas como diagrama e o impacto da mudança antes de salvar:
+L29 call: write /home/adeildo/Projects/ranqia-evals/web/app/routes/settings.tsx
+L30 said: O `plural` daria "passs" e "persons". Troco por um helper certo, registro a rota e coloco os ícones na navegação:
+L31 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L32 call: bash cd ~/Projects/ranqia-evals/web && sed -i 's|  const { passes } = (await request.json()) as { passes…
+L33 said: Lint limpo. Agora os ícones no resto do app: os botões que ainda estão só com texto.
+L34 call: bash cd ~/Projects/ranqia-evals/web && grep -n -A3 "<Button\b\|<AlertDialogAction\|<AlertDialogTrigger" …
+L35 call: bash cd ~/Projects/ranqia-evals/web && sed -n 1,3p app/routes/experiment.tsx app/routes/providers.tsx ap…
+L36 call: bash cd ~/Projects/ranqia-evals/web && head -3 app/routes/providers.tsx app/routes/login.tsx app/routes/…
+L37 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L38 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L39 call: bash ss -ltn | grep -E ":(8011|5181) " ; cd ~/Projects/ranqia-evals/api && sqlite3 data/evals.db ".backu…
+L40 call: bash cat > /tmp/pw/passes.mjs <<'EOF'
+L41 said: The fila fez o que devia: maria → revisão do prompt 1, joão → prompt 2, adeildo → prompt 3. Agora as telas:
+L42 call: read /tmp/shots/review.png
+L43 call: read /tmp/shots/review-hover.png
+L44 call: read /tmp/shots/locked.png
+L45 call: bash cd ~/Projects/ranqia-evals/web && sed -i 's|        <span className="inline-flex h-5 items-center p…
+L46 call: read /tmp/shots/first-pass.png
+L47 call: read /tmp/shots/prompts.png
+L48 call: read /tmp/shots/settings.png
+L49 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L50 call: read /tmp/shots/prompts.png
+L51 call: bash cat > /tmp/pw/flow.mjs <<'EOF'
+L52 call: read /tmp/shots/after-review.png
+L53 call: bash cd ~/Projects/ranqia-evals/web && python3 - <<'EOF'
+L54 said: Correto: o adeildo terminou o prompt 3 e foi para o prompt 2, que estava livre, já com a reserva no nome dele. Encerro meus servidores e rodo as checagens completas:
+L55 call: bash for f in /tmp/api8011.pid /tmp/web5181.pid; do pkill -P $(cat $f) 2>/dev/null; kill $(cat $f) 2>/de…
+L56 said: Antes do commit, uma varredura de código morto no que mudei:
+L57 call: bash cd ~/Projects/ranqia-evals && grep -rn "of_prompt\|AnswerUpdate\|\.pending()\|ClaimDTO\|SignoffCrea…
+L58 said: `SignoffRepository.of_prompt` ficou sem uso, e o `refresh_answer` grava com `update()` cru quando o repositório já tem o `AnswerUpdate` para isso. Enxugo os dois:
+L59 call: bash cd ~/Projects/ranqia-evals/api && python3 - <<'EOF'
+L60 said: Atualizo o README, depois faço os commits:
+L61 call: bash cd ~/Projects/ranqia-evals && sed -n 12,26p README.md
+L62 call: bash cd ~/Projects/ranqia-evals && python3 - <<'EOF'
+L63 call: memory_write {"target":"daily","content":"[[ranqia-evals]] annotation passes (3 local commits edabf27, beb43a6, …
+L64 report: Implementei a reserva de prompts e as passadas de revisão. Dividi em 3 commits e testei com três anotadores simultâneos no browser. Nada foi para o ar: estão no `main` local, junto com os 2 commits da prévia de custo, somando 5.
+L65 report: **Como funciona para o anotador** - **Reserva:** cada pessoa tem a própria fila. Ao clicar em "Annotate", ela recebe o primeiro prompt livre, e esse prompt passa a ser dela. Salvar algo num prompt também o reserva. Quem chegar depois pula os prompts reservados. - **Fim da reserva:** o prompt volta para a fila quando o dono marca todas as respostas como *done*, ou quando alguém clica em **Release** (na lista de prompts ou dentro do próprio prompt), como você escolheu. Esse botão pede confirmação. - **Prompt de outra pessoa:** se você abrir um prompt reservado por outra pessoa, aparece um aviso com cadeado ("joao is on this prompt") e a tela fica só para leitura. Assim ninguém perde edições. - **Revisão (K ≥ 2):** a segunda pessoa recebe o prompt com as marcações da primeira e um aviso "Review, pass 2 of 2". As iniciais mostram quem colocou cada entidade, e passar o mouse num destaque mostra "by adeildo". Ela corrige o que discordar e clica em **"Agree, next answer"**. Continua existindo um gabarito por resposta; uma entidade que ninguém alterou mantém o autor original. - **Quando a resposta conta como done:** depois que K pessoas diferentes a marcarem como *done*. Só a partir daí ela entra nos experimentos. - **Fila vazia:** em vez de só "acabou", a tela explica o motivo, por exemplo "2 prompts are with someone else", e mostra quem está com eles.
+L66 report: **Settings** (todo mundo acessa): você escolhe de 1 a 5 pessoas por prompt. A tela mostra o fluxo (Annotate → Review → Done) e o efeito da mudança antes de salvar: quantas respostas ficam *done*, quantas esperam revisão e quantas não começaram. Ao salvar, o status de todas as respostas é recalculado; experimentos já rodados não mudam.
+L67 report: **Prompts:** a lista ganhou as colunas *With* (quem está com o prompt, com Release) e *Passes* (quem já passou, "1 of 2"), e um botão "Annotate next".
+L68 report: **Ícones:** entraram na navegação (Annotate, Experiments, Providers e Settings), nos títulos de seção, nas abas e nos botões. As iniciais de cada anotador aparecem no menu de usuário.
+L69 report: **Testado** - 81 testes de API passam, 8 deles novos. Eles cobrem: dois anotadores recebem prompts diferentes, salvar no prompt de outro dá 409, terminar libera, o Release funciona, a revisão preserva os autores, desmarcar *done* reabre a resposta, e mudar K recalcula as respostas *done*. - No browser, com uma cópia do seu banco: - a maria caiu na revisão do prompt 1, o joão no prompt 2 e o adeildo no prompt 3; - o Release funcionou; - a maria concordou nas 5 respostas e o prompt 1 ficou 5/5 *done*, com as passadas adeildo e maria. - Nesse teste achei e corrigi uma brecha: ao terminar um prompt, o "next" abria o próximo **sem reservá-lo**, então outra pessoa podia cair nele ao mesmo tempo. Agora ele reserva antes de abrir.
+L70 report: **Ao fazer push:** o deploy roda a migração no banco de produção. Cada resposta já *done* ganha uma marcação de *done* no nome de quem colocou a maioria das entidades dela. Com K = 1 (o padrão), nada muda para quem já anotou.
+L71 report: Faço o push dos 5 commits?

@@ -1,0 +1,57 @@
+Concordo com o web na Cloudflare apontando para um backend no ranqia-infra. Olhei o ranqia-infra, e o mary-dev já é quase o
+molde que precisamos. Não alterei nada ainda.
+
+Como eu faria
+
+Web, na Cloudflare. Eu usaria um Worker servindo só os arquivos estáticos, não Pages. É o caminho que a Cloudflare recomenda
+para projetos novos, e o deploy por Git continua igual ao do mary-web.
+- Config: um wrangler.jsonc em web/ apontando para build/client, com o modo de SPA ligado, para qualquer URL abrir o
+  index.html.
+- Endereço da API: o VITE_API_URL entra no build. O README do corpus/ já cita https://evals.ranqia.io como API de produção,
+  então o web ficaria em evals.ranqia.ai, seguindo o par do mary (dev-mary.ranqia.ai para o web e .io para a API).
+- Opcional: Cloudflare Access na frente do web, para só o time abrir a interface. A API continua exigindo a chave de qualquer
+  jeito.
+
+API, um host EC2 com docker compose, igual ao mary-dev. Seria um root novo, environments/prod/evals, com:
+- Host: uma instância t3a.small na subnet privada, sem porta 22 e acessada via SSM.
+- Compose: um passo init que roda alembic upgrade head, mais o api (uvicorn) e o worker (evals-worker).
+- Rede: uma regra no ALB compartilhado para o host evals.ranqia.io, na prioridade 150, que é a próxima livre.
+- Segredo: prod/evals/app no Secrets Manager, com o API_KEY.
+- Imagem e deploy: um repositório ECR e uma role do GitHub Actions para ranqialabs/evals. O CI builda, faz push e chama o
+  deploy.sh via SSM, como o deploy-staging do mary.
+
+ECS fica de fora por causa do SQLite. Ele precisa de um único escritor e de um disco local, e a API e o worker leem o mesmo
+arquivo. No Fargate o banco teria que ficar no EFS, que lida mal com os locks do SQLite.
+
+O ponto que muda em relação ao mary-dev: durabilidade
+
+No mary-dev o Postgres fica num volume do disco raiz. Se a instância for recriada, os dados somem, e para staging tudo bem.
+Aqui o banco guarda as anotações, que são horas de trabalho humano. Opções:
+
+1. Litestream (a que eu recomendo): um sidecar no compose replica o evals.db continuamente para um bucket S3 privado e
+   criptografado. No boot, o init restaura o banco do S3 se ele não existir no disco. Assim a instância pode ser recriada sem
+   perder nada, e o custo fica em centavos. As chaves dos providers ficam em texto puro no banco e iriam junto para o S3; com
+   o bucket privado e criptografado, considero aceitável.
+2. Snapshot diário do disco: mais simples, mas pode perder até um dia de anotação.
+3. Migrar para o Aurora compartilhado: é o mais robusto, mas exige trocar o driver para asyncpg e validar as migrações e o
+   claim_next no Postgres. É mais trabalho do que o projeto pede hoje.
+
+O que falta criar no repo
+
+- api/Dockerfile, que ainda não existe.
+- O workflow do CI: testes, depois build, push para o ECR e deploy via SSM. O web fica com o build por Git da Cloudflare.
+- web/wrangler.jsonc.
+- CORS_ORIGINS=https://evals.ranqia.ai na API.
+- Depois do primeiro deploy, rodar corpus/build.py push ... --api https://evals.ranqia.io para carregar as respostas.
+
+Antes de começar, preciso de quatro decisões suas:
+
+- Domínios: evals.ranqia.ai para o web e evals.ranqia.io para a API?
+- Hospedagem do web: Worker com arquivos estáticos, ou Pages para ficar igual ao mary-web?
+- Durabilidade: Litestream?
+- Login: Cloudflare Access na frente do web, ou só a chave da API?
+
+
+vamos implementar oq se fizer necessario aqui, e abrir pr dentro de @../ranqia-infra/ (em cima da main atualizada) para deploy desse negocio.. ok?
+
+sobre deployment, eu tava pensando em ser evals.ranqia.io mesmo, ai um manda pro SPA, e o outro eh um proxy direto para a api.. oq acha veja como o @../grace/ funciona, por exempllo;

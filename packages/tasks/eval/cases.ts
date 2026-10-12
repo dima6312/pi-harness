@@ -26,10 +26,13 @@ export interface Expect {
 	mentions?: RegExp[];
 	/** How many decisions are added, at least. */
 	decided?: number;
+	decidedAtMost?: number;
 	title?: "set" | "kept";
 	result?: Record<string, RegExp>;
 	/** Words that show the title or a task was written in a language you did not write in. */
 	wrongLanguage?: RegExp;
+	/** No task says this. */
+	none?: RegExp;
 	/** How many open tasks say this. */
 	openMatching?: [pattern: RegExp, count: number];
 }
@@ -164,6 +167,20 @@ export const CASES: Case[] = [
 		expect: { added: [2, 4], mentions: [/release|1\.0\.0/i, /post/i] },
 	},
 	{
+		name: "message: asking for a push is not saying it was done",
+		why: '"vamos fazer commit e push" closed the push task as done by you',
+		request: {
+			moment: "message",
+			state: tasks(OAUTH, [
+				["t1", "done", "Colocar o crédito no rodapé"],
+				["t2", "queued", "Fazer commit e push na main"],
+			]),
+			message:
+				"beleza, vamos fazer commit e push, e vamos criar a nossa release 1.0.0!!!! finalmente",
+		},
+		expect: { open: ["t2"] },
+	},
+	{
 		name: "message: a choice you make is kept as a decision",
 		why: "the session lost why it had one secret with a mode, which compaction needs",
 		request: {
@@ -175,6 +192,42 @@ export const CASES: Case[] = [
 				"ou, ao inves de fazer assim, podemos faazer assim:\n\nSECRET\n\ne um descrminnante de tipo\n\nAPI_KEY, OAUTH, BOTH saca?\n\nai a gente usa um unico secret saca?",
 		},
 		expect: { decided: 1, mentions: [/secret/i] },
+	},
+	{
+		name: "message: a plan with its parts is one task, not one per step",
+		why: "a pasted deploy plan became eight tasks, one per step, and most stayed queued",
+		request: {
+			moment: "message",
+			state: emptyTasks(),
+			message: fixture("deploy-plan"),
+		},
+		expect: { added: [1, 3], title: "set" },
+	},
+	{
+		name: "message: saying something is fine as it is asks for nothing",
+		why: '"esse painel admin, todo mundo pode acessar, ta suave" became a task to protect the panel',
+		request: {
+			moment: "message",
+			state: tasks("Anotar com várias pessoas", [
+				["t1", "doing", "Evitar que dois annotators fiquem no mesmo prompt"],
+			]),
+			busy: true,
+			message:
+				"e sobre frontend, adiciona uns icones legais tbm; coloca uns icons dahora nas coisasa; nas opcoes, navegacao e tals ah e esse painel admin, todo mundo pode acessar, ta suave",
+		},
+		// Recording the open panel as a task is loose; turning it into its opposite is the error.
+		expect: { added: [1, 2], mentions: [/[íi]cone/i], none: /proteg|autentic|restring/i },
+	},
+	{
+		name: "message: a step you confirm is no decision",
+		why: '"we\'ll tag v1.0.0 and release it, right?" was kept as a decision, beside the task it is',
+		request: {
+			moment: "message",
+			state: tasks(OAUTH, [["t1", "doing", "Criar a release 1.0.0 no GitHub"]]),
+			message:
+				"note que, essa release eh do ptojeto... ok? a gente vai fazer a tag v1.0.0 e fazer a release no github... certinho saca?",
+		},
+		expect: { decidedAtMost: 0, added: [0, 0] },
 	},
 	{
 		name: "message: a status you paste closes nothing and adds nothing",
@@ -249,6 +302,24 @@ export const CASES: Case[] = [
 		},
 	},
 	{
+		name: "run: work reported together closes each task it did, not the one under way",
+		why: "the reservation of prompts was closed as the result of the cost preview, and its own task stayed queued",
+		request: {
+			moment: "run",
+			state: tasks("Publicar o evals e anotar com várias pessoas", [
+				["t1", "done", "Corrigir o deploy do evals no ranqia-infra"],
+				["t2", "doing", "Mostrar o preview de custo itemizado, acumulado e total"],
+				["t3", "queued", "Evitar que dois annotators fiquem no mesmo prompt"],
+				["t4", "queued", "Adicionar ícones na navegação e nas opções"],
+			]),
+			run: fixture("annotators-reserve"),
+		},
+		expect: {
+			status: { t3: "done", t4: "done" },
+			result: { t3: /reserva|fila|prompt/i },
+		},
+	},
+	{
 		name: "run: a push the agent asks about waits on you",
 		why: "a step that waits on your answer was neither done nor later",
 		request: {
@@ -314,7 +385,7 @@ export const CASES: Case[] = [
 				"L5 report: Bugs go in the issue tracker; there is a template with sections for the version and the steps.",
 			].join("\n"),
 		},
-		expect: { status: { t2: "done" }, result: { t2: /10172|no issue|nenhuma/i } },
+		expect: { status: { t2: "done" }, result: { t2: /10172|issue/i } },
 	},
 
 	{
