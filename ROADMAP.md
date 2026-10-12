@@ -90,14 +90,14 @@ It replaced `@adeildo/pi-goal`. In a week of sessions, the goal timeline left mo
 
 Hiding old tool output works as well as summarizing it and costs less ([JetBrains, NeurIPS 2025](https://arxiv.org/abs/2508.21433)), so the rules are plain code and a model only writes pi's summary.
 
-| Item                   | Status  | Note                                                                                                                                          |
-| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hide old tool output   | done    | past 150k tokens and outside the last 10 turns, in batches that free a fifth or more. 34% less on a week of sessions, cache rewrites included |
-| The prune's line       | done    | in the chat, with what the cache rewrite costs and in how many requests it pays back                                                          |
-| Summary from the tasks | done    | pi's prompt on the side model, with the tasks and my words on top. As good as pi on Opus on 48 probes, at 1/40 of the price                   |
-| Re-read share          | done    | each hidden call the agent runs again is counted on the Compact tab. 1 of 181 in the first live prune                                         |
-| Prune after a pause    | planned | once the cache has expired the rewrite is free, so a prune right after a pause should not wait for a fifth                                    |
-| Jev keeps exceptions   | later   | only if the re-read share passes ~10%. A model picking what stays cost 94% more in [OpenHands' study](https://arxiv.org/abs/2605.18854)       |
+| Item                   | Status  | Note                                                                                                                                                                       |
+| ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hide old tool output   | done    | past 150k tokens and outside the last 10 turns, in batches that free two fifths or more. At least 32% less on a week of sessions, counting all of the context as rewritten |
+| The prune's line       | done    | in the chat, with the most the cache rewrite costs and in how many requests it pays back                                                                                   |
+| Summary from the tasks | done    | pi's prompt on the side model, with the tasks and my words on top. As good as pi on Opus on 48 probes, at 1/40 of the price                                                |
+| Re-read share          | done    | each hidden call the agent runs again is counted on the Compact tab. 1 of 181 in the first live prune                                                                      |
+| Prune after a pause    | planned | once the cache has expired the rewrite is free. pi takes edits only at a turn's end, so the first request after the pause needs pi's `context` event                       |
+| Jev keeps exceptions   | later   | only if the re-read share passes ~10%. A model picking what stays cost 94% more in [OpenHands' study](https://arxiv.org/abs/2605.18854)                                    |
 
 Open:
 
