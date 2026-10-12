@@ -1,5 +1,6 @@
 import {
 	answerTasks,
+	modelsFor,
 	createApp,
 	defineFeature,
 	TASKS_CHANGED,
@@ -12,7 +13,6 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { Key } from "@earendil-works/pi-tui";
 
 import { Keeper } from "./keeper.ts";
-import { modelsFor } from "./models.ts";
 import { registerScreen, sessionSection } from "./screen.ts";
 import { MODEL_SECTION, model, TASKS_SETTINGS } from "./settings.ts";
 import { type SkillNote, withSkills, yourWords } from "./transcript.ts";

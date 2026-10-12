@@ -24,7 +24,6 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import { darkTheme } from "../../../scripts/docs/theme.ts";
 import { TASKS_STATUS, tasks } from "../src/index.ts";
 import { Keeper } from "../src/keeper.ts";
-import { modelsFor } from "../src/models.ts";
 import { messageOps, runOps } from "../src/ops.ts";
 import { doingOps, queuedOps } from "../src/screen.ts";
 import {
@@ -846,16 +845,6 @@ test("on Alt+S, a line removed from doing is done, and one removed from queued i
 		{ op: "drop", id: "t3" },
 		{ op: "ask", text: "d" },
 	]);
-});
-
-test("the model setting picks, and the session's model always comes after", () => {
-	const known = {
-		getAvailable: () => [OPUS, HAIKU],
-		find: (_: string, id: string) => [OPUS, HAIKU].find((entry) => entry.id === id),
-	};
-	expect(modelsFor("auto", known, OPUS).map((entry) => entry.id)).toEqual(["haiku", "opus"]);
-	expect(modelsFor("session", known, OPUS).map((entry) => entry.id)).toEqual(["opus"]);
-	expect(modelsFor("anthropic/haiku", known, HAIKU).map((entry) => entry.id)).toEqual(["haiku"]);
 });
 
 /** The Alt+T panel, drawn once so its cursor is on the first task. */

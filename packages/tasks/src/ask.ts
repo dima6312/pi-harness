@@ -1,9 +1,8 @@
 // The model answers with operations, never a new list, so it cannot rewrite what happened.
-import type { SessionTasks, TaskOp, TasksUsage } from "@adeildo/pi-kit";
+import { modelRef, type SessionTasks, type TaskOp, type TasksUsage } from "@adeildo/pi-kit";
 import type { Api, Model, Tool } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-import { modelRef } from "./models.ts";
 import { type Checked, messageOps, runOps, tidyOps } from "./ops.ts";
 import {
 	type MessageRequest,

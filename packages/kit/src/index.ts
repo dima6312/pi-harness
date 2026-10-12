@@ -11,6 +11,7 @@ export * from "./tasks/index.ts";
 export * from "./control.ts";
 export * from "./decode.ts";
 export * from "./events.ts";
+export * from "./models.ts";
 export * from "./one-at-a-time.ts";
 export * from "./typing.ts";
 export {
