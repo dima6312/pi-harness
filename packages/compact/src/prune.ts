@@ -26,6 +26,8 @@ export interface PrunePlan {
 	/** Estimated, like `total`: compare them, never `freed` with tokens the API reported. */
 	freed: number;
 	total: number;
+	/** Estimated tokens before the first edit, which the prompt cache keeps. */
+	cachedPrefix: number;
 }
 
 export type AgentMessage = ProjectedSessionEntry["messages"][number];
@@ -41,7 +43,7 @@ interface Visible {
 }
 
 export function planPrune(entries: readonly ProjectedSessionEntry[]): PrunePlan {
-	const plan: PrunePlan = { edits: [], hidden: [], freed: 0, total: 0 };
+	const plan: PrunePlan = { edits: [], hidden: [], freed: 0, total: 0, cachedPrefix: 0 };
 	const visible = entries.flatMap(({ sourceEntry, messages }): Visible[] =>
 		sourceEntry.type === "message" && messages.length === 1 && messages[0] !== undefined
 			? [{ id: sourceEntry.id, message: messages[0] }]
@@ -67,6 +69,11 @@ export function planPrune(entries: readonly ProjectedSessionEntry[]): PrunePlan 
 		if (message.role === "toolResult") hideOutput(plan, id, message, calls.get(message.toolCallId));
 		if (message.role === "assistant") cutArguments(plan, id, message);
 	}
+	const edited = new Set(plan.edits.map((edit) => edit.targetId));
+	const first = visible.findIndex(({ id }) => edited.has(id));
+	plan.cachedPrefix = visible
+		.slice(0, Math.max(0, first))
+		.reduce((sum, { message }) => sum + estimateTokens(message), 0);
 	return plan;
 }
 
@@ -85,9 +92,17 @@ export function pruneNow(
 
 /** The context's size after `plan`, in the tokens the API reported for it before. */
 export function sizeAfter(plan: PrunePlan, contextTokens: number): number {
-	return plan.total === 0
-		? contextTokens
-		: Math.round(contextTokens * (1 - plan.freed / plan.total));
+	return Math.round(contextTokens - plan.freed * scale(plan, contextTokens));
+}
+
+/** What the next request writes to the cache again: everything after the first edit. */
+export function rewrittenAfter(plan: PrunePlan, contextTokens: number): number {
+	const kept = plan.cachedPrefix * scale(plan, contextTokens);
+	return Math.max(0, Math.round(sizeAfter(plan, contextTokens) - kept));
+}
+
+function scale(plan: PrunePlan, contextTokens: number): number {
+	return plan.total === 0 ? 0 : contextTokens / plan.total;
 }
 
 function hideOutput(

@@ -15,11 +15,12 @@ import {
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
-import { describeCall, KEEP_TURNS, pruneNow, sizeAfter } from "./prune.ts";
+import { describeCall, KEEP_TURNS, pruneNow, rewrittenAfter, sizeAfter } from "./prune.ts";
 import {
 	hiddenCalls,
 	NOTE_MESSAGE,
 	PRUNE_ENTRY,
+	priced,
 	PruneEntry,
 	type PruneRecord,
 	recordOf,
@@ -80,11 +81,19 @@ export const compact = defineFeature({
 					);
 				return undefined;
 			}
+			const after = sizeAfter(plan, before);
+			const cost = priced(
+				message.usage,
+				ctx.model?.cost.cacheRead ?? 0,
+				before - after,
+				rewrittenAfter(plan, before),
+			);
 			const record: PruneRecord = {
 				before,
-				after: sizeAfter(plan, before),
+				after,
 				hidden: plan.hidden,
 				...(asked ? { forced: true } : {}),
+				...cost,
 			};
 			for (const { call } of plan.hidden) hidden.add(call);
 			const tasks =

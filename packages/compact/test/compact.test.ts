@@ -11,11 +11,20 @@ import {
 	TASKS_ENTRY,
 } from "@adeildo/pi-kit";
 import { fakeContext, fakePi } from "@adeildo/pi-kit/testing";
-import type { ProjectedSessionEntry } from "@earendil-works/pi-coding-agent";
+import type { ProjectedSessionEntry, Theme } from "@earendil-works/pi-coding-agent";
+import { visibleWidth } from "@earendil-works/pi-tui";
 
 import { compact, spentText } from "../src/index.ts";
 import { type AgentMessage, describeCall, KEEP_TURNS, planPrune, pruneNow } from "../src/prune.ts";
-import { hiddenCalls, PRUNE_ENTRY, pruneLine, REREAD_ENTRY, spentOn } from "../src/record.ts";
+import {
+	costRows,
+	hiddenCalls,
+	priced,
+	PRUNE_ENTRY,
+	PruneEntry,
+	REREAD_ENTRY,
+	spentOn,
+} from "../src/record.ts";
 import { summaryText } from "../src/summary.ts";
 
 const BIG = "x".repeat(8000);
@@ -288,13 +297,55 @@ test("the session's prunes add up, with how much of what they hid was read again
 	);
 	expect(hiddenCalls(branch)).toEqual(new Set(["read b", "read c", "read d", "read e"]));
 	expect(spentText(spentOn([]))).toBe("nothing hidden yet");
-	expect(
-		pruneLine({
-			before: 412_000,
-			after: 168_000,
-			hidden: [{ entry: "a", call: "read a", tokens: 1 }],
-		}),
-	).toBe("Hid 1 old tool output to save context: 412k \u2192 168k tokens");
+});
+
+describe("the line a prune leaves", () => {
+	const billed = {
+		input: 1_000,
+		cacheRead: 500_000,
+		cacheWrite: 10_000,
+		cost: { input: 0.005, cacheRead: 0.25, cacheWrite: 0.0625 },
+	};
+	const hidden = [
+		{ entry: "a", call: "read src/view.ts", tokens: 4_200 },
+		{ entry: "b", call: "bash bun test packages/tasks", tokens: 12_000 },
+	];
+	const record = {
+		before: 705_000,
+		after: 250_000,
+		hidden,
+		...priced(billed, 0, 455_000, 198_000),
+	};
+	const plain = { fg: (_color: string, text: string) => text } as unknown as Theme;
+
+	test("says what the next request pays to rewrite the cache, and when that pays back", () => {
+		expect(costRows(record)).toEqual([
+			["cache rewrite on the next request", "~$1.12"],
+			["saved on each request after, back in 5 requests", "~$0.23"],
+		]);
+		expect(costRows({ ...record, rewrite: 0 })).toEqual([
+			["saved on each request after", "~$0.23"],
+		]);
+		expect(priced({ ...billed, cacheRead: 0 }, 0, 455_000, 198_000)).toBeUndefined();
+	});
+
+	test("lines up with the tool box above it: glyph on the border, text on the content, numbers on the edge", () => {
+		const lines = new PruneEntry(record, true, plain).render(80);
+		expect(lines.slice(0, 3)).toEqual([
+			` \u25cc pruned  2 old tool outputs${" ".repeat(32)}705k \u2192 250k tokens`,
+			`   cache rewrite on the next request${" ".repeat(37)}~$1.12`,
+			`   saved on each request after, back in 5 requests${" ".repeat(23)}~$0.23`,
+		]);
+		expect(lines.at(-1)).toBe(`   bash bun test packages/tasks${" ".repeat(45)}12k`);
+		for (const line of lines) expect(visibleWidth(line)).toBe(79);
+	});
+
+	test("a prune recorded before it was priced shows no cost", () => {
+		const lines = new PruneEntry({ before: 705_000, after: 250_000, hidden }, false, plain).render(
+			80,
+		);
+		expect(lines).toHaveLength(1);
+	});
 });
 
 describe("the compaction summary", () => {

@@ -22,11 +22,17 @@ Output hidden to save context, about 4.2k tokens. It came from: read src/view.ts
 
 Long arguments go the same way, like a script sent to bash or a file sent to write. Your messages, the agent's own words, errors and the last 10 turns stay whole. After a prune the agent gets the session's [tasks](../tasks) at the end of its context, so it keeps its goals.
 
-Each prune leaves a line in the chat. Expand it to see the calls it hid.
+Each prune leaves a line in the chat, with what the next request pays to rewrite the prompt cache and when that pays back. `Ctrl+O` lists the calls it hid.
 
-```text
-✂ Hid 38 old tool outputs to save context: 412k → 168k tokens
-```
+<!-- docs:compact/prune -->
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/compact/assets/prune.png" alt="After a tool call, the prune's line: 181 old tool outputs hidden, 705k to 250k tokens, and below it what the next request pays to rewrite the cache and in how many requests that pays back. Then pi's cache miss notice for that rewrite." width="860">
+  <br>
+  <em>A prune's line, and the one cache rewrite it costs on the next request.</em>
+</p>
+
+<!-- /docs -->
 
 When pi compacts anyway, the summary is the tasks, your words and the files touched, plus the facts a small model finds missing. The decisions go in as they are, so no model rephrases them. Without tasks, pi writes its own summary.
 

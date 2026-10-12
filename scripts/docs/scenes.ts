@@ -20,6 +20,7 @@ import {
 	AVAILABLE,
 } from "../../packages/kit/src/index.ts";
 import { drawCalls, type CallSpec } from "./calls.ts";
+import { pruneLine } from "./compact.ts";
 import { KEYS, openDialog, press, type, WIDTH } from "./drive.ts";
 import { drawLook, lookParts } from "./look.ts";
 import { assistantText, userMessage } from "./messages.ts";
@@ -316,6 +317,12 @@ export const SCENES: readonly Scene[] = [
 			"Alt+T: what the agent is doing, what waits on you, what is queued, what got done and what was decided.",
 		alt: "The session's tasks over the chat: the session as the title, one task under way, one waiting on you with the cursor on it, two queued, four done with the time each finished, one decision, and a pane with the selected task's reason.",
 		draw: tasksPanel,
+	},
+	{
+		name: "compact/prune",
+		caption: "A prune's line, and the one cache rewrite it costs on the next request.",
+		alt: "After a tool call, the prune's line: 181 old tool outputs hidden, 705k to 250k tokens, and below it what the next request pays to rewrite the cache and in how many requests that pays back. Then pi's cache miss notice for that rewrite.",
+		draw: pruneLine,
 	},
 	{
 		name: "harness/conversation",
