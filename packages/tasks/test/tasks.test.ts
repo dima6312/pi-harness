@@ -507,22 +507,36 @@ describe("what your message proves", () => {
 	test("you finish a task only with words that name it", () => {
 		const named = messageOps(
 			{ ops: [{ op: "you_did", id: "t1", proof: "publiquei no npm agora" }] },
-			"pronto, publiquei no npm agora",
-			state,
+			{ message: "pronto, publiquei no npm agora", state },
 		);
 		expect(named.ops).toEqual([{ op: "done", id: "t1" }]);
 		const asked = messageOps(
 			{ ops: [{ op: "you_did", id: "t1", proof: "vamos publicar no npm" }] },
-			"beleza, vamos publicar no npm",
-			state,
+			{ message: "beleza, vamos publicar no npm", state },
 		);
 		expect(asked.rejected).toEqual([{ op: "done", id: "t1" }]);
 		const vague = messageOps(
 			{ ops: [{ op: "you_did", id: "t1", proof: "deu certo aqui" }] },
-			"deu certo aqui",
-			state,
+			{ message: "deu certo aqui", state },
 		);
 		expect(vague.rejected).toEqual([{ op: "done", id: "t1" }]);
+	});
+
+	test("a task waiting on you closes when you say you did what the agent just asked", () => {
+		const waiting = applyTaskOps(
+			state,
+			[{ op: "wait", id: "t1", on: "you", why: "precisa do seu login e 2FA no npm" }],
+			{ at: 2, origin: "agent" },
+		);
+		const did = { ops: [{ op: "you_did", id: "t1", proof: "fiz as duas coisas" }] };
+		const reply =
+			"Falta só depreciar o pi-goal, que precisa do seu login no npm: npm deprecate ...";
+		expect(messageOps(did, { message: "fiz as duas coisas", reply, state: waiting }).ops).toEqual([
+			{ op: "done", id: "t1" },
+		]);
+		// Without the agent asking for it, or with a task that waits on no one, "did both" names nothing.
+		expect(messageOps(did, { message: "fiz as duas coisas", state: waiting }).ops).toEqual([]);
+		expect(messageOps(did, { message: "fiz as duas coisas", reply, state }).ops).toEqual([]);
 	});
 
 	test("a new task needs your words that ask for it, in any order", () => {
@@ -535,8 +549,7 @@ describe("what your message proves", () => {
 					{ op: "new_task", text: "Gravar um podcast", proof: "gravar um podcast" },
 				],
 			},
-			message,
-			state,
+			{ message: message, state },
 		);
 		expect(checked.ops).toEqual([
 			{ op: "ask", text: "Fazer o deploy" },
@@ -548,8 +561,7 @@ describe("what your message proves", () => {
 	test("words that are not in the message prove nothing", () => {
 		const checked = messageOps(
 			{ ops: [{ op: "defer_task", id: "t2", why: "later", proof: "deixa o post pra depois" }] },
-			"faz o npm",
-			state,
+			{ message: "faz o npm", state },
 		);
 		expect(checked.ops).toEqual([]);
 		expect(checked.rejected).toHaveLength(1);
@@ -559,25 +571,26 @@ describe("what your message proves", () => {
 		const message = "vamos usar um secret so, nao duas chaves";
 		const choice = { op: "decide", text: "One secret", proof: "um secret so, nao duas chaves" };
 		expect(
-			messageOps({ ops: [{ ...choice, instead_of: "two keys" }] }, message, state).ops,
+			messageOps({ ops: [{ ...choice, instead_of: "two keys" }] }, { message: message, state }).ops,
 		).toEqual([{ op: "decide", text: "One secret" }]);
-		expect(messageOps({ ops: [{ ...choice, instead_of: "" }] }, message, state).rejected).toEqual([
-			{ op: "decide", text: "One secret" },
-		]);
+		expect(
+			messageOps({ ops: [{ ...choice, instead_of: "" }] }, { message: message, state }).rejected,
+		).toEqual([{ op: "decide", text: "One secret" }]);
 	});
 
 	test("the title is set once, and the language only when it changes", () => {
 		const checked = messageOps(
 			{ language: "Portuguese", ops: [{ op: "title", text: "Other" }] },
-			"x",
-			{ ...state, language: "Portuguese" },
+			{ message: "x", state: { ...state, language: "Portuguese" } },
 		);
 		expect(checked.ops).toEqual([]);
 		expect(checked.rejected).toEqual([{ op: "title", text: "Other" }]);
 	});
 
 	test("an id the list does not have is ignored", () => {
-		expect(messageOps({ ops: [{ op: "continue_task", id: "t9" }] }, "x", state)).toEqual({
+		expect(
+			messageOps({ ops: [{ op: "continue_task", id: "t9" }] }, { message: "x", state }),
+		).toEqual({
 			ops: [],
 			rejected: [],
 		});

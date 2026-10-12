@@ -268,6 +268,32 @@ export const CASES: Case[] = [
 		expect: { status: { t1: "done" }, added: [0, 0] },
 	},
 	{
+		name: "message: saying you did what the agent asked closes what waited on you",
+		why: '"fiz as duas coisas" answered the agent asking for a publish and a deprecate, and both stayed waiting',
+		request: {
+			moment: "message",
+			state: tasks("Trocar o goal pelo pi-tasks", [
+				["t1", "done", "Mostrar as tasks no Alt+T"],
+				[
+					"t2",
+					"waiting",
+					"Publicar a versão com os comandos",
+					{ waitingOn: "you", why: "precisa do seu login e 2FA no npm" },
+				],
+				[
+					"t3",
+					"waiting",
+					"Apagar o pacote @adeildo/pi-goal",
+					{ waitingOn: "you", why: "unpublish bloqueado; rodar npm deprecate com seu login" },
+				],
+			]),
+			reply:
+				"Editei as notas da release. Falta só depreciar o pi-goal, que precisa do seu login no npm: npm deprecate @adeildo/pi-goal. O placeholder do pi-tasks e o trust também dependem do seu login.",
+			message: "fiz as duas coisas; e acho que ja fizemos tudo que ta queued;",
+		},
+		expect: { status: { t2: "done", t3: "done" }, added: [0, 0] },
+	},
+	{
 		name: "message: what you put off is deferred, not dropped",
 		why: "later used to mean four things",
 		request: {

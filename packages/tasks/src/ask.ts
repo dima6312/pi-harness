@@ -34,9 +34,7 @@ export interface Asker {
 }
 
 export function onMessage(asker: Asker, request: MessageRequest): Promise<Proposal | undefined> {
-	return ask(asker, "message", messagePrompt(request), (answer) =>
-		messageOps(answer, request.message, request.state),
-	);
+	return ask(asker, "message", messagePrompt(request), (answer) => messageOps(answer, request));
 }
 
 export function onRun(

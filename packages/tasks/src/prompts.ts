@@ -67,7 +67,9 @@ function list(state: SessionTasks, done = 15): string {
 function language(state: SessionTasks): string[] {
 	if (state.language === undefined)
 		return ["Write the title and every task in the language the operator's message is written in."];
-	return [`Write in ${state.language}.`];
+	return [
+		`Write every task, title, result, left, why and decision in ${state.language}, even when the lines you read are in another language.`,
+	];
 }
 
 export interface MessageRequest {

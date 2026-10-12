@@ -1,6 +1,7 @@
 // The model's answers, read defensively and checked against what it read.
 import { isObject, type SessionTasks, type Task, type TaskOp } from "@adeildo/pi-kit";
 
+import type { MessageRequest } from "./prompts.ts";
 import type { Line } from "./transcript.ts";
 import { ASKING, echoes, isPlan, normalized, sameWords, sharesWord } from "./words.ts";
 
@@ -21,15 +22,16 @@ function objects(value: unknown): Record<string, unknown>[] {
 	return Array.isArray(value) ? value.filter(isObject) : [];
 }
 
-/** Your message: only what its own words say. */
-export function messageOps(answer: unknown, message: string, state: SessionTasks): Checked {
+/** Your message: only what its own words say, read beside what the agent said just before. */
+export function messageOps(answer: unknown, request: MessageRequest): Checked {
+	const { state } = request;
 	const checked: Checked = { ops: [], rejected: [] };
 	if (!isObject(answer)) return checked;
 	const language = clean(answer.language);
 	if (language !== undefined && language !== state.language)
 		keep(checked, { op: "language", text: language });
 	for (const raw of objects(answer.ops)) {
-		const found = fromMessage(raw, message, state);
+		const found = fromMessage(raw, request);
 		if (found !== undefined) keep(checked, ...found);
 	}
 	return checked;
@@ -37,8 +39,7 @@ export function messageOps(answer: unknown, message: string, state: SessionTasks
 
 function fromMessage(
 	raw: Record<string, unknown>,
-	message: string,
-	state: SessionTasks,
+	{ message, reply, state }: MessageRequest,
 ): [TaskOp, boolean] | undefined {
 	const task = typeof raw.id === "string" ? find(state, raw.id) : undefined;
 	const words = clean(raw.text);
@@ -57,14 +58,12 @@ function fromMessage(
 		case "drop_task":
 			return task ? [{ op: "drop", id: task.id, ...why }, proven !== undefined] : undefined;
 		case "you_did": {
-			// Your line has to name the task, since "it showed up" could be about anything, and say
-			// it was done, since "let's push" asks for it.
-			const named =
-				proven !== undefined &&
-				task !== undefined &&
-				!ASKING.test(proven) &&
-				sharesWord(lineOf(message, proven), task.text);
-			return task ? [{ op: "done", id: task.id }, named] : undefined;
+			if (task === undefined) return undefined;
+			// Your words have to say it was done, since "let's push" asks for it, and be about the
+			// task: they name it, or they answer the agent asking you for it ("did both").
+			const done = proven !== undefined && !ASKING.test(proven);
+			const named = done && sharesWord(lineOf(message, proven), task.text);
+			return [{ op: "done", id: task.id }, named || (done && answersAsk(task, reply))];
 		}
 		case "decide":
 			return words
@@ -143,6 +142,12 @@ function verdict(
 			keep(checked, progress);
 			return true;
 	}
+}
+
+/** A task that waits on you, which the agent's last words were about. */
+function answersAsk(task: Task, reply: string | undefined): boolean {
+	if (task.status !== "waiting" || task.waitingOn !== "you" || reply === undefined) return false;
+	return sharesWord(reply, `${task.text} ${task.why ?? ""}`);
 }
 
 /** A choice names what it was chosen over; a step has nothing to be chosen over. */
