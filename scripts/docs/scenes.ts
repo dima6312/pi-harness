@@ -9,6 +9,7 @@ import {
 	type AskExtras,
 	askThroughQuestions,
 } from "../../packages/ask-permission/src/ui/questions.ts";
+import type { QuestionDialog } from "../../packages/ask-questions/src/ui/dialog.ts";
 // A scene `pkg/file` draws `packages/pkg/assets/file.png`. A page shows it with an empty
 // `<!-- docs:pkg/file -->` `<!-- /docs -->` block, which `bun run docs` fills.
 import {
@@ -86,10 +87,47 @@ function questionsMulti(theme: Theme): string[] {
 	return dialog.render(WIDTH);
 }
 
+/** A note on the pick and one on the option turned down, an answer in your words, then two rules. */
+function answerAll(dialog: QuestionDialog): void {
+	press(dialog, KEYS.tab);
+	type(dialog, "fits how I think");
+	press(dialog, KEYS.enter, KEYS.down, KEYS.tab);
+	type(dialog, "too long with five accounts");
+	press(dialog, KEYS.enter, KEYS.up, KEYS.enter, KEYS.down, KEYS.down);
+	type(dialog, "only on this branch");
+	press(dialog, KEYS.enter, KEYS.space, KEYS.down, KEYS.space, KEYS.enter);
+}
+
 function questionsReview(theme: Theme): string[] {
 	const dialog = openDialog(theme, [LAYOUT, SCOPE, RULES]);
-	press(dialog, KEYS.enter, KEYS.enter, KEYS.space, KEYS.right);
+	answerAll(dialog);
 	return dialog.render(WIDTH);
+}
+
+/** The call while the model writes it, then once you answered. */
+function questionsTranscript(theme: Theme): string[] {
+	const dialog = openDialog(theme, [LAYOUT, SCOPE, RULES], WIDTH, (result) => (answered = result));
+	let answered: AskResult | undefined;
+	answerAll(dialog);
+	press(dialog, KEYS.enter);
+	const questions = [LAYOUT, SCOPE, RULES];
+	const writing = {
+		questions: [LAYOUT, { ...SCOPE, question: "Where should the choice", options: [] }],
+	};
+	return drawCalls(
+		[
+			{ tool: "ask_questions", args: writing, writing: true, wroteMs: 6_400, ranMs: 0 },
+			{
+				tool: "ask_questions",
+				args: { questions },
+				output: "",
+				details: answered,
+				wroteMs: 9_100,
+				ranMs: 41_000,
+			},
+		],
+		WIDTH,
+	);
 }
 
 function chosen(header: string, option: string): AskResult {
@@ -268,6 +306,13 @@ export const SCENES: readonly Scene[] = [
 		caption: "Every answer on one tab, before it goes to the model.",
 		alt: "The review tab: every question with its answer, before submitting.",
 		draw: questionsReview,
+	},
+	{
+		name: "ask-questions/transcript",
+		caption:
+			"In the chat: the questions as the model writes them, then each one with your answer and notes.",
+		alt: "Two ask_questions calls in the chat. The first is still being written and lists the questions so far. The second lists each question with the picked option, a note under it, a note on an option not picked, and an answer in quotes.",
+		draw: questionsTranscript,
 	},
 	{
 		name: "ask-permission/preview",

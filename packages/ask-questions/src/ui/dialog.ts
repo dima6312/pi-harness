@@ -1,4 +1,4 @@
-import { type AskAnswer, type AskResult, answerSummary, isAnswered } from "@adeildo/pi-kit";
+import { type AskAnswer, type AskResult, isAnswered } from "@adeildo/pi-kit";
 // Drawn inline instead of as an overlay, so a tall dialog scrolls with the terminal.
 import { getSelectListTheme, type Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -17,6 +17,7 @@ import {
 } from "@earendil-works/pi-tui";
 
 import { hasTypedRow, type Option, type Question, TYPED_LABEL } from "../schema.ts";
+import { answerBlock, NOTE_MARK } from "./answered.ts";
 import {
 	bodyRows,
 	layoutFor,
@@ -43,8 +44,6 @@ const BOX_WIDTH = 4;
 const ROW_PREFIX = ROW_LEAD + BOX_WIDTH + CHECK.length;
 /** What the typed answer asks of the panel while it is still empty. */
 const TYPED_NEED = 5;
-/** The arrow that opens a note in the panel, and marks on its row that the option has one. */
-const NOTE_MARK = "\u203a";
 /** A blank line and the line of the note editor, under the detail of an option. */
 const NOTE_EDITOR_ROWS = 2;
 
@@ -353,12 +352,9 @@ export class QuestionDialog implements Component, Focusable {
 
 	private collect(): AskAnswer[] {
 		const answers: AskAnswer[] = [];
-		for (const [index, question] of this.questions.entries()) {
-			const answer = this.answerOf(index);
-			const notes = this.notesOf(index);
+		for (const index of this.questions.keys()) {
+			const answer = this.answerOf(index) ?? this.unanswered(index);
 			if (answer !== undefined) answers.push(answer);
-			else if (notes.length > 0)
-				answers.push({ question: question.question, header: question.header, picked: [], notes });
 		}
 		return answers;
 	}
@@ -658,39 +654,27 @@ export class QuestionDialog implements Component, Focusable {
 		return ["", lead + (input.render(Math.max(1, width - 2))[0] ?? "")];
 	}
 
+	/** The same blocks the transcript keeps, so what you review is what stays. */
 	private submitLines(inner: number): string[] {
 		const lines = [this.theme.bold("Review your answers"), ""];
-		const width = Math.max(...this.questions.map((question) => visibleWidth(question.header)));
-		let missing = 0;
 		for (const [index, question] of this.questions.entries()) {
-			const answer = this.answerOf(index);
-			const head = truncateToWidth(question.header, width, "").padEnd(width + 2);
-			if (answer === undefined) {
-				missing++;
-				lines.push(
-					truncateToWidth(
-						`${this.theme.fg("muted", `\u25cb ${head}`)}${this.theme.fg("warning", "not answered")}`,
-						inner,
-					),
-				);
-				continue;
-			}
-			lines.push(
-				truncateToWidth(
-					`${this.theme.fg("success", `\u2713 ${head}`)}${answerSummary(answer)}`,
-					inner,
-				),
-			);
-			for (const { option, note } of answer.notes)
-				lines.push(
-					truncateToWidth(this.theme.fg("muted", `    \u203a note on ${option}: ${note}`), inner),
-				);
+			const answer = this.answerOf(index) ?? this.unanswered(index);
+			lines.push(...answerBlock(question, answer, this.theme, inner, false));
 		}
+		const missing = this.questions.length - this.answeredCount();
 		if (missing > 0) {
 			const word = missing === 1 ? "question goes" : "questions go";
 			lines.push("", this.theme.fg("warning", `${missing} ${word} back unanswered.`));
 		}
 		return lines;
+	}
+
+	/** An unanswered question that has notes, so the review shows them. */
+	private unanswered(index: number): AskAnswer | undefined {
+		const notes = this.notesOf(index);
+		const question = this.questions[index];
+		if (question === undefined || notes.length === 0) return undefined;
+		return { question: question.question, header: question.header, picked: [], notes };
 	}
 
 	private hint(): string {

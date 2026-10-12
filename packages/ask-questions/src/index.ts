@@ -33,7 +33,7 @@ import {
 	typingPause,
 } from "./settings.ts";
 import { QuestionDialog } from "./ui/dialog.ts";
-import { renderCall, renderResult } from "./ui/transcript.ts";
+import { ASK_RENDERERS } from "./ui/transcript.ts";
 import { normalizeParams, problemWith } from "./validate.ts";
 
 export type { AskAnswer, AskQuestion, AskResult } from "@adeildo/pi-kit";
@@ -116,8 +116,7 @@ export const questions = defineFeature({
 			exposure: "model-only",
 			annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
 			executionMode: "sequential",
-			renderCall: (args, theme) => renderCall(args, theme),
-			renderResult: (result, options, theme) => renderResult(result, options, theme),
+			...ASK_RENDERERS,
 			execute: (_id, params, signal, _onUpdate, ctx) =>
 				askTool(ctx, normalizeParams(params), showForModel, signal),
 		});

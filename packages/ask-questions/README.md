@@ -24,7 +24,7 @@
 
 ## The dialog
 
-The options sit on the left, one line each. The panel on the right shows the option under the cursor: what it means, then what it looks like. The panel is as tall as the tallest option, so the dialog keeps its size while you move, and a preview longer than the panel scrolls with `pgup` and `pgdn`. Under 100 columns the panel moves below the options.
+The options sit on the left, one line each. The panel on the right shows the option under the cursor: what it means, then what it looks like. The panel is as tall as the tallest option, so the dialog keeps its size while you move. A preview longer than the panel scrolls with `pgup` and `pgdn`. Under 100 columns the panel moves below the options.
 
 Several questions become tabs. `●` is where you are, `✓` is a question already answered, and `submit` turns green once every one has an answer.
 
@@ -72,7 +72,21 @@ The last row, **Type something.**, opens an editor in the panel, where `shift+en
 
 <!-- /docs -->
 
-The review tab lists what you said and names what is still blank. `enter` sends it anyway, and the model is told which questions were left unanswered.
+The review tab lists each question with what you said under it: `✓` for an answer, `›` for a note, and a note on an option you turned down names that option. It names what is still blank. `enter` sends it anyway, and the model is told which questions were left unanswered.
+
+## In the chat
+
+<!-- docs:ask-questions/transcript -->
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/transcript.png" alt="Two ask_questions calls in the chat. The first is still being written and lists the questions so far. The second lists each question with the picked option, a note under it, a note on an option not picked, and an answer in quotes." width="860">
+  <br>
+  <em>In the chat: the questions as the model writes them, then each one with your answer and notes.</em>
+</p>
+
+<!-- /docs -->
+
+While the model writes the call, it lists the questions as they arrive, so you can read them before the dialog opens. Once you answer, it keeps the same blocks as the review tab. `ctrl+o` shows the questions uncut.
 
 Pi draws this dialog in the flow of the screen, like the permission dialog, so a tall one scrolls with the terminal and the chat above it stays in the scrollback. Over RPC, in an editor plugin or an ACP client, the questions go one at a time through the host's own select and input dialogs, without previews or notes. With no UI at all, the model never sees the tool.
 

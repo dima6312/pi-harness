@@ -6,6 +6,7 @@ import { type KeybindingsManager, type TUI, visibleWidth } from "@earendil-works
 
 import type { Question } from "../src/schema.ts";
 import { QuestionDialog } from "../src/ui/dialog.ts";
+import { renderCall, renderResult } from "../src/ui/transcript.ts";
 
 const plain = {
 	fg: (_color: string, text: string) => text,
@@ -391,5 +392,49 @@ describe("notes", () => {
 		press(dialog, KEYS.tab);
 		type(dialog, "a note");
 		expect(dialog.render(120).length).toBe(before);
+	});
+});
+
+function draw(component: { render(width: number): string[] }): string {
+	return component.render(90).join("\n");
+}
+
+describe("in the transcript", () => {
+	test("while the model writes, each question shows as it arrives", () => {
+		const text = draw(
+			renderCall({ questions: [AUTH, { header: "Feat" } as Question] }, plain, true),
+		);
+		expect(text).toContain("ask 2 questions so far");
+		expect(text).toMatch(/Auth\s+Which auth method\?\s+2 options/);
+		expect(text).toMatch(/Feat\s+writing/);
+		expect(draw(renderCall({ questions: [AUTH] }, plain, false)).trimEnd()).toBe("ask 1 question");
+	});
+
+	test("each question keeps its answer, the notes on it, and the notes on what you did not pick", () => {
+		const result = {
+			content: [],
+			details: {
+				cancelled: false,
+				answers: [
+					{
+						question: AUTH.question,
+						header: AUTH.header,
+						picked: ["OAuth"],
+						notes: [
+							{ option: "OAuth", note: "we have it" },
+							{ option: "API key", note: "leaks" },
+						],
+					},
+				],
+			},
+		};
+		expect(draw(renderResult(result, false, plain, [AUTH, FEATURES])).split("\n")).toEqual([
+			"Auth  Which auth method?",
+			"  \u2713 OAuth",
+			"    \u203a we have it",
+			"  \u203a on API key: leaks",
+			"Features  Which features?",
+			"  \u25cb not answered",
+		]);
 	});
 });

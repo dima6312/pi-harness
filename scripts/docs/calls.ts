@@ -11,16 +11,21 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { TUI } from "@earendil-works/pi-tui";
 
+import { ASK_RENDERERS } from "../../packages/ask-questions/src/ui/transcript.ts";
 import { RULING } from "../../packages/kit/src/contracts/calls.ts";
 import { createApp, type CallRuling } from "../../packages/kit/src/index.ts";
 import { fakePi } from "../../packages/kit/src/testing.ts";
 import { look } from "../../packages/look/src/index.ts";
 
 export interface CallSpec {
-	tool: "bash" | "read" | "edit" | "write";
+	tool: "bash" | "read" | "edit" | "write" | "ask_questions";
 	args: Record<string, unknown>;
 	/** What the call printed. Without it the call is drawn as one that has not answered yet. */
 	output?: string;
+	/** What the tool kept beside its output, for the tools that draw from it. */
+	details?: unknown;
+	/** The model is still writing the call. */
+	writing?: boolean;
 	/** How long the model took to write the call. */
 	wroteMs: number;
 	/** How long the call ran, or has run so far. */
@@ -37,6 +42,7 @@ const TOOLS = {
 	read: createReadToolDefinition("/repo"),
 	edit: createEditToolDefinition("/repo"),
 	write: createWriteToolDefinition("/repo"),
+	ask_questions: ASK_RENDERERS,
 } as Record<CallSpec["tool"], ToolRenderers>;
 
 /**
@@ -94,12 +100,14 @@ export function drawCall(spec: CallSpec, width: number): string[] {
 		// The frame times the whole call: the model writing it, then it running.
 		call.render(width);
 		behind = spec.wroteMs;
+		if (spec.writing) return call.render(width);
 		call.setArgsComplete();
 		call.markExecutionStarted();
 		if (spec.output === undefined) return call.render(width);
 
 		const result = {
 			content: [{ type: "text" as const, text: spec.output }],
+			details: spec.details,
 			isError: spec.error === true,
 		};
 		behind = spec.wroteMs + spec.ranMs;
