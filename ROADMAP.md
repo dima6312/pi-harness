@@ -75,16 +75,33 @@ flowchart TD
 
 It replaced `@adeildo/pi-goal`. In a week of sessions, the goal timeline left most finished work in `later`. A message sent while the agent worked had pushed 72 of the 87 items there aside, and the end of the run could only close the one step under way.
 
-| Item                     | Status | Note                                                                                                                    |
-| ------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Six states               | done   | doing (several at once), queued, waiting on me or on something outside, deferred, done with its result, and dropped     |
-| Decisions                | done   | the choices I made or the agent reported, kept apart so a later reader does not undo them                               |
-| Asks while it works      | done   | they queue instead of pushing the task under way aside, and the end of the run settles each one it worked on            |
-| A change needs its words | done   | a close cites the line that reports the work, a wait the line that asks, a new task your words, a decision what it beat |
-| Only my words are intent | done   | the judge reads the title and what is under way from my words only, and the model never sees what a tool returned       |
-| `Alt+T`                  | done   | the tasks by state over the chat, with the result of each done one beside it and the selected one in full               |
-| Measured                 | done   | `bun run tasks:eval` with cases from real sessions, 99% on Claude Haiku, and a replay of any recorded session           |
-| Closed by the agent      | later  | a tool the agent calls to close a task with its result, with the end of the run as the fallback when it forgets         |
+| Item                     | Status | Note                                                                                                                                                     |
+| ------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Six states               | done   | doing (several at once), queued, waiting on me or on something outside, deferred, done with its result, and dropped                                      |
+| Decisions                | done   | the choices I made or the agent reported, kept apart so a later reader does not undo them                                                                |
+| Asks while it works      | done   | they queue instead of pushing the task under way aside, and the end of the run settles each one it worked on                                             |
+| A change needs its words | done   | a close cites the line that reports the work, a wait the line that asks, a new task your words, a decision what it beat                                  |
+| Only my words are intent | done   | the judge reads the title and what is under way from my words only. The model never sees what a tool returned, except my answers in the questions dialog |
+| `Alt+T`                  | done   | the tasks by state over the chat, the result beside each done one, and keys that put the selected one under way, close, defer or drop it                 |
+| Measured                 | done   | `bun run tasks:eval` with cases from real sessions, 97 to 99% on Claude Haiku, and a replay of any recorded session                                      |
+| Closed by the agent      | later  | a tool the agent calls to close a task with its result, with the end of the run as the fallback when it forgets                                          |
+
+## Context. `@adeildo/pi-compact`
+
+Hiding old tool output works as well as summarizing it and costs less ([JetBrains, NeurIPS 2025](https://arxiv.org/abs/2508.21433)), so the rules are plain code and a model only writes pi's summary.
+
+| Item                   | Status  | Note                                                                                                                                          |
+| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hide old tool output   | done    | past 150k tokens and outside the last 10 turns, in batches that free a fifth or more. 34% less on a week of sessions, cache rewrites included |
+| The prune's line       | done    | in the chat, with what the cache rewrite costs and in how many requests it pays back                                                          |
+| Summary from the tasks | done    | pi's compaction summary is the tasks, my words and the files, plus the facts a small model finds missing. Not seen live yet                   |
+| Re-read share          | done    | each hidden call the agent runs again is counted on the Compact tab. 1 of 181 in the first live prune                                         |
+| Prune after a pause    | planned | once the cache has expired the rewrite is free, so a prune right after a pause should not wait for a fifth                                    |
+| Jev keeps exceptions   | later   | only if the re-read share passes ~10%. A model picking what stays cost 94% more in [OpenHands' study](https://arxiv.org/abs/2605.18854)       |
+
+Open:
+
+- The re-read count matches a call by its name and the start of its target, so two inline scripts with the same first line count as one. Fine while the share stays low.
 
 ## Accounts. `@adeildo/pi-providers`
 
@@ -140,14 +157,12 @@ Open:
 
 ## Sessions
 
-| Item                     | Status  | Needs                     | Note                                                                                                                                                      |
-| ------------------------ | ------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session naming           | planned |                           | A name from the first turns. The look already shows it                                                                                                    |
-| Session state            | planned |                           | What is doing, done, waiting and decided comes from `pi-tasks`. Touched files and the last summary are left                                               |
-| Structured compaction    | done    | Session state             | `@adeildo/pi-compact`: old tool output hidden past 150k tokens, 34% less on a week of sessions. pi's summary comes from the tasks                         |
-| Memory                   | planned | Session state, compaction | Replaces `pi-memory`. Markdown is the source of truth, and a command reviews and deletes what was stored                                                  |
-| Compaction by classifier | later   | Re-read share             | Jev keeps an output the rules would hide. Only if the agent re-reads more than ~10% of what is hidden: a model picking what stays cost 94% more elsewhere |
-| Mentions                 | later   |                           | `#entry`, `@file` and session references expanded before the turn                                                                                         |
+| Item           | Status  | Needs         | Note                                                                                                                                                        |
+| -------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session naming | planned |               | A name from the first turns. The look already shows it                                                                                                      |
+| Session state  | planned |               | `pi-tasks` keeps what is doing, done, waiting and decided, and `currentTasks()` hands it to other features. The files touched and the last summary are left |
+| Memory         | planned | Session state | Replaces `pi-memory`. Markdown is the source of truth, and a command reviews and deletes what was stored                                                    |
+| Mentions       | later   |               | `#entry`, `@file` and session references expanded before the turn                                                                                           |
 
 Open:
 
@@ -206,6 +221,8 @@ Open:
 
 What each pi release changed in this plan.
 
+- **1.1.0 (2026-10-07).** Terminals and dashboards see when pi waits on a dialog (OSC 7501), which the remote bridge can use to notice an approval waiting. `agent_settled` says when a run was cancelled.
+- **1.0.2 to 1.0.4 (2026-10-04 and 05).** Nothing for this plan.
 - **1.0.1 (2026-10-03).** Extensions call classifiers through `ctx.modelRegistry.classify()`, and Cloudflare's Clef joins Jev. The judge runs on them, and its own TypeSafe client and the chat model path came out. `.pi/mcp.json` can switch a user's MCP server for one project, which the MCP policy reads as any other server.
 - **1.0.0 (2026-10-01).** Fullscreen is the default `tuiMode`.
 - **0.99.2 (2026-09-30).** `/reload` turns on tools newly added to `defaultTools`, so `/harness setup` can add a tool without a restart.
