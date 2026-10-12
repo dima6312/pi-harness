@@ -140,14 +140,14 @@ Open:
 
 ## Sessions
 
-| Item                     | Status  | Needs                     | Note                                                                                                        |
-| ------------------------ | ------- | ------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Session naming           | planned |                           | A name from the first turns. The look already shows it                                                      |
-| Session state            | planned |                           | What is doing, done, waiting and decided comes from `pi-tasks`. Touched files and the last summary are left |
-| Structured compaction    | planned | Session state             | `describeTasks()` with the decisions, open questions and files, from the session state instead of prose     |
-| Memory                   | planned | Session state, compaction | Replaces `pi-memory`. Markdown is the source of truth, and a command reviews and deletes what was stored    |
-| Compaction by classifier | later   | Structured compaction     | A classifier picks which entries stay, in place of a summary                                                |
-| Mentions                 | later   |                           | `#entry`, `@file` and session references expanded before the turn                                           |
+| Item                     | Status  | Needs                     | Note                                                                                                                                                      |
+| ------------------------ | ------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session naming           | planned |                           | A name from the first turns. The look already shows it                                                                                                    |
+| Session state            | planned |                           | What is doing, done, waiting and decided comes from `pi-tasks`. Touched files and the last summary are left                                               |
+| Structured compaction    | done    | Session state             | `@adeildo/pi-compact`: old tool output hidden past 150k tokens, 34% less on a week of sessions. pi's summary comes from the tasks                         |
+| Memory                   | planned | Session state, compaction | Replaces `pi-memory`. Markdown is the source of truth, and a command reviews and deletes what was stored                                                  |
+| Compaction by classifier | later   | Re-read share             | Jev keeps an output the rules would hide. Only if the agent re-reads more than ~10% of what is hidden: a model picking what stays cost 94% more elsewhere |
+| Mentions                 | later   |                           | `#entry`, `@file` and session references expanded before the turn                                                                                         |
 
 Open:
 
