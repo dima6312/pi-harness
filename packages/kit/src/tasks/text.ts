@@ -40,7 +40,7 @@ export function describeTasks(state: SessionTasks, options: DescribeOptions = {}
 }
 
 /** Your intent for the judge: the session and what is under way, only where they came from you. */
-export function intentOfTasks(state: SessionTasks): string | undefined {
+export function intentOf(state: SessionTasks): string | undefined {
 	const parts: string[] = [];
 	if (state.title !== undefined && state.titleOrigin === "you")
 		parts.push(`Session: ${state.title}`);

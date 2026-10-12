@@ -130,7 +130,7 @@ The policy is plain text, so start from a preset and edit it:
 Ask me.
 ```
 
-`Always ask me` lists patterns the judge never approves, like `git push*`. The judge also reads your last message to tell whether a call is a step of what you asked, and nothing in the message overrides the policy or `Always ask me`. With [`@adeildo/pi-goal`](../goal) installed, the judge also reads the session's goal and current step, when they came from your own words. After you send a message, it waits up to 3 seconds for the goal to take that message in. When calls come back as `the judge could not decide`, `Test the judge` in the Judge section of the settings sends one request and reports the model, the latency and the error.
+`Always ask me` lists patterns the judge never approves, like `git push*`. The judge also reads your last message to tell whether a call is a step of what you asked, and nothing in the message overrides the policy or `Always ask me`. With [`@adeildo/pi-tasks`](../tasks) installed, the judge also reads what the session is about and what it is doing, when they came from your own words. After you send a message, it waits up to 3 seconds for the tasks to take that message in. When calls come back as `the judge could not decide`, `Test the judge` in the Judge section of the settings sends one request and reports the model, the latency and the error.
 
 ## Limits
 

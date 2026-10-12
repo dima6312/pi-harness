@@ -15,7 +15,7 @@
 <!-- docs:look/preview -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/look/assets/preview.png" alt="Pi with the look: the start card, then the strip with the stopwatch and the last call, the step under way with how many are done and wait, the framed editor with the branch, the model and the context, and below it the cost, the tokens, the cache and the average speeds." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/look/assets/preview.png" alt="Pi with the look: the start card, then the strip with the stopwatch and the last call, the task under way with how many wait, are queued and are done, the framed editor with the branch, the model and the context, and below it the cost, the tokens, the cache and the average speeds." width="860">
   <br>
   <em>The start card, then a prompt halfway through its answer.</em>
 </p>

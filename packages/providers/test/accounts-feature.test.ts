@@ -738,7 +738,7 @@ test("requests that hit a limit at once share one dialog and its answer", async 
 	const watch: Watch = { limited: new Map(), usage: new Map(), quota: new Quota({}) };
 	const session = sessionFor(scope, store, pins, watch, ctx, "anthropic");
 
-	// The turn and the goal's call, both on the account that just ran out.
+	// The turn and the tasks' call, both on the account that just ran out.
 	const [turn, goal] = await Promise.all([
 		session.afterLimit(personal.id, "429"),
 		session.afterLimit(personal.id, "429"),

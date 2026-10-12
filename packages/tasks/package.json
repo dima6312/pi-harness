@@ -1,16 +1,17 @@
 {
-	"name": "@adeildo/pi-goal",
+	"name": "@adeildo/pi-tasks",
 	"version": "5.5.0",
-	"description": "Keeps what a session is after: its goal, the step it is on, what it did and what it left for later. The judge reads it as your intent.",
+	"description": "What a pi session is doing, what it did and with what result, what waits and on whom, and what was decided. Kept by a small model from your words and the agent's work, for you, the permission judge and other agents.",
 	"keywords": [
-		"goal",
 		"pi",
 		"pi-coding-agent",
 		"pi-extension",
 		"pi-package",
+		"session-memory",
+		"tasks",
 		"todo"
 	],
-	"homepage": "https://github.com/felipeadeildo/pi-harness/tree/main/packages/goal#readme",
+	"homepage": "https://github.com/felipeadeildo/pi-harness/tree/main/packages/tasks#readme",
 	"bugs": "https://github.com/felipeadeildo/pi-harness/issues",
 	"license": "MIT",
 	"author": {
@@ -21,7 +22,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/felipeadeildo/pi-harness.git",
-		"directory": "packages/goal"
+		"directory": "packages/tasks"
 	},
 	"files": [
 		"src",

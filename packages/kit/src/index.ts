@@ -4,8 +4,6 @@ export * from "./app/feature.ts";
 export * from "./contracts/accounts.ts";
 export * from "./contracts/ask.ts";
 export * from "./contracts/calls.ts";
-export * from "./contracts/goal.ts";
-export * from "./goal/index.ts";
 export * from "./contracts/screen.ts";
 export * from "./contracts/skills.ts";
 export * from "./contracts/tasks.ts";

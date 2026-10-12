@@ -8,7 +8,7 @@ import {
 	applyTaskOps,
 	describeTasks,
 	emptyTasks,
-	intentOfTasks,
+	intentOf,
 	isStale,
 	LEGACY_ENTRY,
 	type SessionTasks,
@@ -174,9 +174,9 @@ test("the agent's rewrite of your task stops reaching the judge", () => {
 		{ op: "title", text: "OAuth on the MCP" },
 		{ op: "ask", text: "a" },
 	]);
-	expect(intentOfTasks(state)).toBe("Session: OAuth on the MCP\nDoing: a");
+	expect(intentOf(state)).toBe("Session: OAuth on the MCP\nDoing: a");
 	state = apply(state, [{ op: "rename", id: "t1", text: "b" }], { origin: "agent" });
-	expect(intentOfTasks(state)).toBe("Session: OAuth on the MCP");
+	expect(intentOf(state)).toBe("Session: OAuth on the MCP");
 });
 
 test("the description carries results, what is left, who a task waits on, and decisions", () => {

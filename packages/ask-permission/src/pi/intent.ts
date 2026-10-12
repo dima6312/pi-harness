@@ -1,23 +1,23 @@
-// The judge's intent: the session's goal in your words, and your last message.
-import { currentGoal, goalSettled, intentOf } from "@adeildo/pi-kit";
+// The judge's intent: the session and what it is doing in your words, and your last message.
+import { currentTasks, intentOf, tasksSettled } from "@adeildo/pi-kit";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { isRecord } from "#util/primitives.ts";
 
-/** How long the judge waits for the goal to take in your last message. */
-const GOAL_WAIT_MS = 3000;
+/** How long the judge waits for the tasks to take in your last message. */
+const TASKS_WAIT_MS = 3000;
 
 export async function intentFor(
 	ctx: Pick<ExtensionContext, "sessionManager">,
 	events: ExtensionAPI["events"],
 ): Promise<string | undefined> {
 	const last = currentIntent(ctx);
-	if (currentGoal(events) === undefined) return last;
-	await goalSettled(events, GOAL_WAIT_MS);
+	if (currentTasks(events) === undefined) return last;
+	await tasksSettled(events, TASKS_WAIT_MS);
 
-	const goal = currentGoal(events)?.state;
+	const tasks = currentTasks(events)?.state;
 	const parts: string[] = [];
-	const ours = goal === undefined ? undefined : intentOf(goal);
+	const ours = tasks === undefined ? undefined : intentOf(tasks);
 	if (ours !== undefined) parts.push(ours);
 	if (last !== undefined) parts.push(`Last message: ${last}`);
 	return parts.length === 0 ? undefined : parts.join("\n");

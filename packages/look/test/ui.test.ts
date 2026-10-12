@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { applyGoalOps, emptyGoal } from "@adeildo/pi-kit";
+import { applyTaskOps, emptyTasks, type TaskOp } from "@adeildo/pi-kit";
 import {
 	type KeybindingsManager,
 	type ReadonlyFooterDataProvider,
@@ -167,7 +167,13 @@ describe("editor", () => {
 });
 
 function stripLines(data: ReturnType<typeof snapshot>): number {
-	return new StripComponent(screen(data, { slots: { stripRight: ["goal"] } })).render(90).length;
+	return new StripComponent(screen(data, { slots: { stripRight: ["tasks"] } })).render(90).length;
+}
+
+/** A task under way, and the ones after it queued behind. */
+function tasksOf(doing: string, ...queued: string[]) {
+	const asks: TaskOp[] = [doing, ...queued].map((text) => ({ op: "ask", text }));
+	return applyTaskOps(emptyTasks(), asks, { at: 1, origin: "you" });
 }
 
 describe("strip and footer", () => {
@@ -180,54 +186,37 @@ describe("strip and footer", () => {
 		expect(new StripComponent(screen(data)).render(80).map(plain)).toEqual(["  0:09"]);
 	});
 
-	test("the goal sits on the right of the strip when there is room, and under it when not", () => {
-		const goal = applyGoalOps(emptyGoal(), [{ op: "start", text: "draw the strip" }], {
-			at: 1,
-			source: "you",
-		});
-		const data = snapshot({ goal, run: { running: false, elapsedMs: 9_000, requests: 1 } });
-		const strip = new StripComponent(screen(data, { slots: { stripRight: ["goal"] } }));
+	test("the tasks sit on the right of the strip when there is room, and under it when not", () => {
+		const tasks = tasksOf("draw the strip");
+		const data = snapshot({ tasks, run: { running: false, elapsedMs: 9_000, requests: 1 } });
+		const strip = new StripComponent(screen(data, { slots: { stripRight: ["tasks"] } }));
 
 		const [wide = ""] = strip.render(100).map(plain);
 		expect(strip.render(100)).toHaveLength(1);
 		expect(wide).toMatch(/^ {2}0:09 +> draw the strip$/);
 		expect(wide).toHaveLength(98);
 
-		// Narrower than the room kept for the strip: the goal gets its own line, on the left.
+		// Narrower than the room kept for the strip: the tasks get their own line, on the left.
 		expect(strip.render(70).map(plain)).toEqual(["  0:09", "  > draw the strip"]);
 	});
 
 	test("on its own line a long step uses the whole width, and its words give way before its counts", () => {
-		const step = "verify the goal on the strip, its line of its own, and how it cuts a long step";
-		const goal = applyGoalOps(
-			emptyGoal(),
-			[
-				{ op: "later", text: "frame" },
-				{ op: "start", text: step },
-			],
-			{ at: 1, source: "you" },
-		);
+		const step = "verify the tasks on the strip, its line of its own, and how it cuts a long step";
+		const tasks = tasksOf(step, "frame");
 		const strip = new StripComponent(
-			screen(snapshot({ goal }), { slots: { stripRight: ["goal"] } }),
+			screen(snapshot({ tasks }), { slots: { stripRight: ["tasks"] } }),
 		);
 
-		expect(strip.render(100).map(plain)).toEqual(["", `  > ${step}  1 later`]);
+		expect(strip.render(100).map(plain)).toEqual(["", `  > ${step}  1 queued`]);
 		const [, cut = ""] = strip.render(60).map(plain);
 		expect(cut).toHaveLength(58);
-		expect(cut).toEndWith("...  1 later");
+		expect(cut).toEndWith("...  1 queued");
 	});
 
-	test("beside a busy strip the goal keeps its counts, and the strip gives way", () => {
-		const goal = applyGoalOps(
-			emptyGoal(),
-			[
-				{ op: "start", text: "draw the strip" },
-				{ op: "later", text: "frame" },
-			],
-			{ at: 1, source: "you" },
-		);
+	test("beside a busy strip the tasks keep its counts, and the strip gives way", () => {
+		const tasks = tasksOf("draw the strip", "frame");
 		const busy = snapshot({
-			goal,
+			tasks,
 			run: { running: true, elapsedMs: 3_600_000, requests: 40 },
 			last: {
 				firstTokenMs: 6_600,
@@ -237,19 +226,16 @@ describe("strip and footer", () => {
 				elapsedMs: 9_000,
 			} as never,
 		});
-		const [line = ""] = new StripComponent(screen(busy, { slots: { stripRight: ["goal"] } }))
+		const [line = ""] = new StripComponent(screen(busy, { slots: { stripRight: ["tasks"] } }))
 			.render(100)
 			.map(plain);
-		expect(line).toEndWith("> draw the strip  1 later");
+		expect(line).toEndWith("> draw the strip  1 queued");
 	});
 
-	test("the strip's width does not move the goal between lines", () => {
-		const goal = applyGoalOps(emptyGoal(), [{ op: "start", text: "draw the strip" }], {
-			at: 1,
-			source: "you",
-		});
-		const idle = snapshot({ goal });
-		const busy = snapshot({ goal, run: { running: true, elapsedMs: 3_600_000, requests: 40 } });
+	test("the strip's width does not move the tasks between lines", () => {
+		const tasks = tasksOf("draw the strip");
+		const idle = snapshot({ tasks });
+		const busy = snapshot({ tasks, run: { running: true, elapsedMs: 3_600_000, requests: 40 } });
 		expect(stripLines(idle)).toBe(stripLines(busy));
 	});
 

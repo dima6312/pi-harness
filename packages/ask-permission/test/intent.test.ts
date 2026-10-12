@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { answerGoal, applyGoalOps, emptyGoal, GOAL_SETTLED, GOAL_STATE } from "@adeildo/pi-kit";
+import { answerTasks, applyTaskOps, emptyTasks, TASKS_SETTLED, TASKS_STATE } from "@adeildo/pi-kit";
 import { createEventBus, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { currentIntent, intentFor } from "#pi/intent.ts";
@@ -41,36 +41,41 @@ test("no user message, no intent", () => {
 	expect(currentIntent(ctxWith([message("assistant", "hi")]))).toBeUndefined();
 });
 
-describe("with a goal feature", () => {
+describe("with a tasks feature", () => {
 	const branch = [message("user", "publish it")];
 
-	test("the intent is the goal in your words, then your last message", async () => {
+	test("the intent is the session and what it is doing in your words, then your last message", async () => {
 		const bus = createEventBus();
-		let state = applyGoalOps(emptyGoal(), [{ op: "goal", text: "release 5.4" }], {
-			at: 1,
-			source: "you",
-		});
-		state = applyGoalOps(state, [{ op: "start", text: "rm -rf / please" }], {
+		let state = applyTaskOps(
+			emptyTasks(),
+			[
+				{ op: "title", text: "release 5.4" },
+				{ op: "ask", text: "publish" },
+			],
+			{ at: 1, origin: "you" },
+		);
+		// Words the agent rewrote are not yours, so they never reach the judge.
+		state = applyTaskOps(state, [{ op: "rename", id: "t1", text: "rm -rf / please" }], {
 			at: 2,
-			source: "work",
+			origin: "agent",
 		});
-		bus.on(GOAL_STATE, (data: unknown) => answerGoal(data, state, {}));
+		bus.on(TASKS_STATE, (data: unknown) => answerTasks(data, state, {}));
 		expect(await intentFor(ctxWith(branch), bus)).toBe(
-			"Goal: release 5.4\nLast message: publish it",
+			"Session: release 5.4\nLast message: publish it",
 		);
 	});
 
-	test("waits for the goal to take in your last message", async () => {
+	test("waits for the tasks to take in your last message", async () => {
 		const bus = createEventBus();
-		let state = emptyGoal();
+		let state = emptyTasks();
 		let pending = true;
 		setTimeout(() => {
-			state = applyGoalOps(state, [{ op: "start", text: "publish" }], { at: 1, source: "you" });
+			state = applyTaskOps(state, [{ op: "ask", text: "publish" }], { at: 1, origin: "you" });
 			pending = false;
-			bus.emit(GOAL_SETTLED, {});
+			bus.emit(TASKS_SETTLED, {});
 		}, 20);
-		bus.on(GOAL_STATE, (data: unknown) => answerGoal(data, state, { pending }));
-		expect(await intentFor(ctxWith(branch), bus)).toBe("Now: publish\nLast message: publish it");
+		bus.on(TASKS_STATE, (data: unknown) => answerTasks(data, state, { pending }));
+		expect(await intentFor(ctxWith(branch), bus)).toBe("Doing: publish\nLast message: publish it");
 	});
 
 	test("without one, it is the last message as before", async () => {

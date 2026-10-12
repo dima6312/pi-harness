@@ -2,13 +2,6 @@ MIT License
 
 Copyright (c) 2026 adeildo
 
-Parts of this package are ported from rpiv-ask-user-question
-(https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-ask-user-question):
-the tool's schema, the validation and line-ending cleanup, the preview layout and box,
-and the RPC dialog walker. Those parts are also:
-
-Copyright (c) 2026 juicesharp
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

@@ -1,6 +1,6 @@
 import { hostname } from "node:os";
 
-import type { AccountState, SessionGoal } from "@adeildo/pi-kit";
+import type { AccountState, SessionTasks } from "@adeildo/pi-kit";
 import { VERSION, type ExtensionContext, type SessionEntry } from "@earendil-works/pi-coding-agent";
 
 import type { GitState } from "./git.ts";
@@ -49,8 +49,8 @@ export interface Snapshot {
 	run: RunView | undefined;
 	averages: Averages;
 	statuses: ReadonlyMap<string, string>;
-	/** What the session is after, when a goal feature keeps it. */
-	goal: SessionGoal | undefined;
+	/** What the session is doing, when a tasks feature keeps it. */
+	tasks: SessionTasks | undefined;
 }
 
 export function emptySnapshot(): Snapshot {
@@ -76,7 +76,7 @@ export function emptySnapshot(): Snapshot {
 		run: undefined,
 		averages: { decode: undefined, prefill: undefined },
 		statuses: new Map(),
-		goal: undefined,
+		tasks: undefined,
 	};
 }
 
@@ -88,7 +88,7 @@ export interface LiveInputs {
 	last: RequestView | undefined;
 	run: RunView | undefined;
 	statuses: ReadonlyMap<string, string>;
-	goal?: SessionGoal | undefined;
+	tasks?: SessionTasks | undefined;
 }
 
 interface Derived {
@@ -138,7 +138,7 @@ export class SnapshotReader {
 					.map(([key, text]): [string, string] => [key, sanitize(text)])
 					.filter(([, text]) => text !== ""),
 			),
-			goal: live.goal,
+			tasks: live.tasks,
 		};
 	}
 

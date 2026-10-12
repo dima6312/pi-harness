@@ -21,9 +21,9 @@ import {
 } from "../../packages/kit/src/index.ts";
 import { drawCalls, type CallSpec } from "./calls.ts";
 import { KEYS, openDialog, press, type, WIDTH } from "./drive.ts";
-import { goalTimeline } from "./goal.ts";
 import { drawLook, lookParts } from "./look.ts";
 import { assistantText, userMessage } from "./messages.ts";
+import { tasksPanel } from "./tasks.ts";
 
 export interface Scene {
 	name: string;
@@ -307,19 +307,20 @@ export const SCENES: readonly Scene[] = [
 	{
 		name: "look/preview",
 		caption: "The start card, then a prompt halfway through its answer.",
-		alt: "Pi with the look: the start card, then the strip with the stopwatch and the last call, the step under way with how many are done and wait, the framed editor with the branch, the model and the context, and below it the cost, the tokens, the cache and the average speeds.",
+		alt: "Pi with the look: the start card, then the strip with the stopwatch and the last call, the task under way with how many wait, are queued and are done, the framed editor with the branch, the model and the context, and below it the cost, the tokens, the cache and the average speeds.",
 		draw: drawLook,
 	},
 	{
-		name: "goal/timeline",
-		caption: "Alt+G: what is under way, what waits and why, and what was done.",
-		alt: "The goal's timeline over the chat: the goal as its title, the step under way, two items that wait with the cursor on one, four done items with the time each finished, and a pane with the selected item's note.",
-		draw: goalTimeline,
+		name: "tasks/panel",
+		caption:
+			"Alt+T: what the agent is doing, what waits on you, what is queued, what got done and what was decided.",
+		alt: "The session's tasks over the chat: the session as the title, one task under way, one waiting on you with the cursor on it, two queued, four done with the time each finished, one decision, and a pane with the selected task's reason.",
+		draw: tasksPanel,
 	},
 	{
 		name: "harness/conversation",
 		caption: "A session: the start card, what you asked, what the model ran, and what it cost.",
-		alt: "A session with the look: the start card, a request, the model running the tests, committing and pushing, then the stopwatch, the step under way, the editor and the cost.",
+		alt: "A session with the look: the start card, a request, the model running the tests, committing and pushing, then the stopwatch, the task under way, the editor and the cost.",
 		draw: conversation,
 	},
 ];

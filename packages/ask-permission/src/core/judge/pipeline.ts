@@ -70,7 +70,7 @@ export async function judgeToolCall(options: JudgeCallOptions): Promise<JudgeOut
 		reason,
 		dryRun: dryRun || undefined,
 		withIntent: input.intent?.trim() ? true : undefined,
-		withGoal: /^(Goal|Now): /m.test(input.intent ?? "") ? true : undefined,
+		withTasks: /^(Session|Doing): /m.test(input.intent ?? "") ? true : undefined,
 	};
 
 	return { action, reason, record };

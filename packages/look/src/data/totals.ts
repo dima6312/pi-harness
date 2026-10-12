@@ -1,4 +1,4 @@
-import { goalUsageOf } from "@adeildo/pi-kit";
+import { tasksUsageOf } from "@adeildo/pi-kit";
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 
 export interface Totals {
@@ -62,7 +62,7 @@ export function totalsOf(entries: readonly SessionEntry[]): Totals {
 			add(totals, entry.message.usage);
 		else if ((entry.type === "branch_summary" || entry.type === "compaction") && entry.usage)
 			add(totals, entry.usage);
-		else if (entry.type === "custom") addGoal(totals, goalUsageOf(entry));
+		else if (entry.type === "custom") addTasks(totals, tasksUsageOf(entry));
 	}
 
 	return totals;
@@ -128,8 +128,8 @@ function isRecord(
 	);
 }
 
-// The goal package's model calls are not pi's, so pi does not count them. They count here.
-function addGoal(totals: Totals, usage: ReturnType<typeof goalUsageOf>): void {
+// The tasks package's model calls are not pi's, so pi does not count them. They count here.
+function addTasks(totals: Totals, usage: ReturnType<typeof tasksUsageOf>): void {
 	if (usage === undefined) return;
 	totals.input += usage.input;
 	totals.output += usage.output;

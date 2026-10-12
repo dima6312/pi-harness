@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { applyGoalOps, emptyGoal } from "@adeildo/pi-kit";
+import { applyTaskOps, emptyTasks } from "@adeildo/pi-kit";
 import { stripTerminalSequences as plainText } from "@earendil-works/pi-tui";
 
 import { emptyTotals } from "../src/data/totals.ts";
@@ -35,60 +35,69 @@ function text(ids: SegmentId[], data = snapshot(), extra: Partial<typeof options
 	return render(ids, data, extra).map((piece) => piece.text);
 }
 
-describe("segments", () => {
-	test("the goal shows the step under way, with how many are done and how many wait", () => {
-		const goal = applyGoalOps(
-			emptyGoal(),
-			[
-				{ op: "goal", text: "ship goals" },
-				{ op: "start", text: "write the contract" },
-				{ op: "done" },
-				{ op: "start", text: "draw the segment" },
-				{ op: "later", text: "compaction" },
-			],
-			{ at: 1, source: "you" },
-		);
-		const [piece] = render(["goal"], snapshot({ goal }));
-		expect(piece?.text).toBe("> draw the segment  1 done  1 later");
-		expect(plainText(piece?.shrink?.(24) ?? "")).toBe("> dr...  1 done  1 later");
-		expect(claimedStatuses([["goal"]])).toContain("pi-goal");
+const YOU = { at: 1, origin: "you" } as const;
+const AGENT = { at: 2, origin: "agent" } as const;
 
-		const [icons] = renderSegments(["goal"], {
-			snapshot: snapshot({ goal }),
+describe("segments", () => {
+	test("the tasks show what the agent is doing, with what waits, what is queued and what is done", () => {
+		let tasks = applyTaskOps(
+			emptyTasks(),
+			[
+				{ op: "title", text: "ship tasks" },
+				{ op: "ask", text: "write the contract" },
+			],
+			YOU,
+		);
+		tasks = applyTaskOps(tasks, [{ op: "done", id: "t1" }], AGENT);
+		tasks = applyTaskOps(
+			tasks,
+			[
+				{ op: "ask", text: "draw the segment" },
+				{ op: "ask", text: "compaction" },
+				{ op: "ask", text: "push" },
+			],
+			YOU,
+		);
+		tasks = applyTaskOps(tasks, [{ op: "wait", id: "t4", on: "you", why: "asks first" }], AGENT);
+		const [piece] = render(["tasks"], snapshot({ tasks }));
+		expect(piece?.text).toBe("> draw the segment  1 waiting  1 queued  1 done");
+		expect(plainText(piece?.shrink?.(38) ?? "")).toBe("> draw...  1 waiting  1 queued  1 done");
+		expect(claimedStatuses([["tasks"]])).toContain("pi-tasks");
+
+		const [icons] = renderSegments(["tasks"], {
+			snapshot: snapshot({ tasks }),
 			glyphs: NERD,
 			paint: PLAIN,
 			options,
 		});
-		expect(icons?.text).toBe("\u{f04fe} draw the segment  \u{f00c} 1  \u{f051f} 1");
+		expect(icons?.text).toBe("\u{f04fe} draw the segment  \u{f024} 1  \u{f051f} 1  \u{f00c} 1");
 	});
 
-	test("the goal keeps one wording while the agent works, so the strip does not change width", () => {
-		const goal = applyGoalOps(
-			emptyGoal(),
-			[{ op: "start", text: "Rodar os testes", active: "Rodando os testes" }],
-			{ at: 1, source: "you" },
-		);
-		const running = { running: true, elapsedMs: 1_000, requests: 1 };
-		expect(text(["goal"], snapshot({ goal, run: running }))).toEqual(["> Rodar os testes"]);
+	test("with several tasks under way, the first shows and the rest count", () => {
+		let tasks = applyTaskOps(emptyTasks(), [{ op: "ask", text: "a" }], YOU);
+		tasks = applyTaskOps(tasks, [{ op: "ask", text: "b" }], { ...YOU, busy: true });
+		tasks = applyTaskOps(tasks, [{ op: "progress", id: "t2" }], AGENT);
+		expect(text(["tasks"], snapshot({ tasks }))).toEqual(["> a +1"]);
 	});
 
-	test("with no step, the goal shows the session's goal, and nothing without one", () => {
-		const goal = applyGoalOps(emptyGoal(), [{ op: "goal", text: "ship goals" }], {
-			at: 1,
-			source: "you",
-		});
-		expect(text(["goal"], snapshot({ goal }))).toEqual(["> ship goals"]);
-		expect(text(["goal"], snapshot({ goal: emptyGoal() }))).toEqual([]);
+	test("with nothing under way, the tasks show the session, and nothing without one", () => {
+		const titled = applyTaskOps(emptyTasks(), [{ op: "title", text: "ship tasks" }], YOU);
+		expect(text(["tasks"], snapshot({ tasks: titled }))).toEqual(["> ship tasks"]);
+		expect(text(["tasks"], snapshot({ tasks: emptyTasks() }))).toEqual([]);
 
-		const between = applyGoalOps(
-			emptyGoal(),
-			[{ op: "start", text: "a" }, { op: "done" }, { op: "later", text: "b" }],
-			{ at: 1, source: "you" },
+		let between = applyTaskOps(emptyTasks(), [{ op: "ask", text: "a" }], YOU);
+		between = applyTaskOps(
+			between,
+			[
+				{ op: "done", id: "t1" },
+				{ op: "follow_up", text: "b" },
+			],
+			AGENT,
 		);
-		expect(text(["goal"], snapshot({ goal: between }), { labels: true })).toEqual([
-			"> idle  1 done  1 later",
+		expect(text(["tasks"], snapshot({ tasks: between }), { labels: true })).toEqual([
+			"> idle  1 queued  1 done",
 		]);
-		expect(text(["goal"])).toEqual([]);
+		expect(text(["tasks"])).toEqual([]);
 	});
 
 	test("the model comes after its provider, and the short form keeps only the name", () => {

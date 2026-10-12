@@ -653,9 +653,9 @@ describe("judge report", () => {
 		expect(judgeSignalText(record)).toBe("saw your last message");
 	});
 
-	test("says when the judge saw the session's goal too", () => {
-		const record: JudgeRecord = { ...base, answers: {}, withIntent: true, withGoal: true };
-		expect(judgeSignalText(record)).toBe("saw the session's goal and your last message");
+	test("says when the judge saw what the session is doing too", () => {
+		const record: JudgeRecord = { ...base, answers: {}, withIntent: true, withTasks: true };
+		expect(judgeSignalText(record)).toBe("saw what the session is doing and your last message");
 	});
 });
 

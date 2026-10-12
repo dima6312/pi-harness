@@ -35,7 +35,7 @@ import { LookEditor } from "../../packages/look/src/ui/editor.ts";
 import { FooterComponent, StripComponent } from "../../packages/look/src/ui/footer.ts";
 import { HeaderComponent } from "../../packages/look/src/ui/header.ts";
 import type { Screen, SlotName } from "../../packages/look/src/ui/screen.ts";
-import { shippingGoal } from "./goal.ts";
+import { shippingTasks } from "./tasks.ts";
 
 const WIDTH = 100;
 
@@ -91,7 +91,7 @@ function snapshot(theme: Theme): Snapshot {
 			estimated: false,
 		},
 		averages: { decode: 183, prefill: 49_000 },
-		goal: shippingGoal(),
+		tasks: shippingTasks(),
 		statuses: new Map([["pi-ask-permission:mode", theme.fg("warning", "\u23f5 judge")]]),
 	};
 }

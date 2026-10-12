@@ -15,7 +15,7 @@
 <!-- docs:harness/conversation -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/harness/assets/conversation.png" alt="A session with the look: the start card, a request, the model running the tests, committing and pushing, then the stopwatch, the step under way, the editor and the cost." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/harness/assets/conversation.png" alt="A session with the look: the start card, a request, the model running the tests, committing and pushing, then the stopwatch, the task under way, the editor and the cost." width="860">
   <br>
   <em>A session: the start card, what you asked, what the model ran, and what it cost.</em>
 </p>
@@ -24,14 +24,14 @@
 
 ## What comes in it
 
-| Piece                           | What it does                                                                                             |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [Permission](../ask-permission) | Asks before a command runs, with a note the model reads. A model answers the easy ones for you           |
-| [Questions](../ask-questions)   | The model asks instead of guessing, with options, a preview of each, a note on any and your own answer   |
-| [Goal](../goal)                 | Keeps the session's goal, the step under way, what was done and what was left, for you and the judge     |
-| [Skill calls](../skills)        | Call the skills you already have from anywhere in a message, several at once, shown as chips             |
-| [Look](../look)                 | The start screen, the editor with the branch and the model on its borders, and a box around each command |
-| [Providers](../providers)       | Bills Anthropic OAuth requests to your Claude plan, and keeps several accounts per provider              |
+| Piece                           | What it does                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [Permission](../ask-permission) | Asks before a command runs, with a note the model reads. A model answers the easy ones for you             |
+| [Questions](../ask-questions)   | The model asks instead of guessing, with options, a preview of each, a note on any and your own answer     |
+| [Tasks](../tasks)               | Keeps what the session is doing, what it did and with what result, what waits on you, and what was decided |
+| [Skill calls](../skills)        | Call the skills you already have from anywhere in a message, several at once, shown as chips               |
+| [Look](../look)                 | The start screen, the editor with the branch and the model on its borders, and a box around each command   |
+| [Providers](../providers)       | Bills Anthropic OAuth requests to your Claude plan, and keeps several accounts per provider                |
 
 All of them are on once the package is installed.
 
@@ -40,7 +40,7 @@ All of them are on once the package is installed.
 
 ## Turning a piece off
 
-Each piece is its own extension in this package, so `pi config` switches off the one you do not want, globally or for one project. The settings file has a switch per feature too, read on the next `/reload`, and the feature ids are `permission`, `look`, `subscription`, `accounts`, `questions`, `skills` and `goal`.
+Each piece is its own extension in this package, so `pi config` switches off the one you do not want, globally or for one project. The settings file has a switch per feature too, read on the next `/reload`, and the feature ids are `permission`, `look`, `subscription`, `accounts`, `questions`, `skills` and `tasks`.
 
 ```json
 { "features": { "subscription": { "enabled": false } } }

@@ -1,12 +1,12 @@
 import {
 	accountStateOf,
 	createApp,
-	currentGoal,
+	currentTasks,
 	defineFeature,
 	drawSkillRefs,
 	type FeatureScope,
 	SKILL_REF,
-	type SessionGoal,
+	type SessionTasks,
 	skillNames,
 } from "@adeildo/pi-kit";
 import type {
@@ -292,7 +292,7 @@ function createScreen(
 				last: telemetry.last(),
 				run: telemetry.run(),
 				statuses: live.footerData?.getExtensionStatuses() ?? new Map(),
-				...goalOf(scope),
+				...tasksOf(scope),
 			});
 			live.frame = snapshot;
 			queueMicrotask(() => {
@@ -323,8 +323,8 @@ function createScreen(
 	};
 }
 
-function goalOf(scope: FeatureScope): { goal?: SessionGoal } {
-	return { goal: currentGoal(scope.events)?.state };
+function tasksOf(scope: FeatureScope): { tasks?: SessionTasks } {
+	return { tasks: currentTasks(scope.events)?.state };
 }
 
 function installEditor(

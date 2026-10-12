@@ -53,7 +53,7 @@
 				},
 				{
 					"type": "json",
-					"path": "packages/goal/package.json",
+					"path": "packages/tasks/package.json",
 					"jsonpath": "$.version"
 				},
 				{

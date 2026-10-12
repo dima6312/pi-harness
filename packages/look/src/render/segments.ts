@@ -1,4 +1,4 @@
-import { type AccountWindow, itemsWith, nowOf } from "@adeildo/pi-kit";
+import { type AccountWindow, tasksWith } from "@adeildo/pi-kit";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
 import type { Snapshot } from "../data/snapshot.ts";
@@ -27,7 +27,7 @@ export const SEGMENT_IDS = [
 	"branch",
 	"host",
 	"session",
-	"goal",
+	"tasks",
 	"version",
 	"clock",
 	"provider",
@@ -66,7 +66,7 @@ export function isSegmentId(value: string): value is SegmentId {
 /** Status keys a builtin segment already draws, so the statuses segment skips them. */
 const CLAIMED_BY_SEGMENT: Partial<Record<BuiltinSegment, string>> = {
 	model: "pi-providers:account",
-	goal: "pi-goal",
+	tasks: "pi-tasks",
 };
 
 export function claimedStatuses(slots: readonly (readonly SegmentId[])[]): Set<string> {
@@ -155,25 +155,28 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 				? undefined
 				: { text: `${mark(glyphs.host, paint, "host")}${paint.role("host", snapshot.host)}` },
 	},
-	goal: {
+	tasks: {
 		priority: 30,
 		describe:
-			"the step the session is on, then ✓ how many are done and ⧗ how many wait for later, from the goal package",
-		// The counts outlive the step's words: a short line cuts the words.
+			"what the agent is doing, then ⚑ how many tasks wait on you or on something outside, ⧗ how many are queued and ✓ how many are done, from the tasks package",
+		// The counts outlive the task's words: a short line cuts the words.
 		render: ({ snapshot, glyphs, paint }) => {
-			const goal = snapshot.goal;
-			if (goal === undefined) return undefined;
-			const step = nowOf(goal)?.text ?? goal.goal;
+			const state = snapshot.tasks;
+			if (state === undefined) return undefined;
+			const doing = tasksWith(state, "doing");
+			const step = doing[0]?.text ?? state.title;
+			const more = doing.length > 1 ? paint.dim(` +${doing.length - 1}`) : "";
 			const counts = [
-				tally(itemsWith(goal, "done").length, glyphs.done, "done", paint),
-				tally(itemsWith(goal, "later").length, glyphs.later, "later", paint),
+				tally(tasksWith(state, "waiting").length, glyphs.waiting, "waiting", paint),
+				tally(tasksWith(state, "queued").length, glyphs.queued, "queued", paint),
+				tally(tasksWith(state, "done").length, glyphs.done, "done", paint),
 			].filter((part) => part !== "");
 			if (step === undefined && counts.length === 0) return undefined;
-			// Between steps the line stays, so what was done and what waits do not vanish with them.
-			const icon = mark(glyphs.goal, paint, "goal");
+			// Between tasks the line stays, so what was done and what waits do not vanish with them.
+			const icon = mark(glyphs.tasks, paint, "tasks");
 			const words = (room: number) =>
 				step === undefined ? paint.dim("idle") : paint.text(fitWidth(step, room, glyphs.ellipsis));
-			const tail = counts.length === 0 ? "" : `  ${counts.join("  ")}`;
+			const tail = `${more}${counts.length === 0 ? "" : `  ${counts.join("  ")}`}`;
 			const fixed = visibleWidth(icon) + visibleWidth(tail);
 			return {
 				text: `${icon}${words(Number.MAX_SAFE_INTEGER)}${tail}`,
@@ -518,7 +521,12 @@ function mark(glyph: string, paint: Paint, role: Role): string {
 }
 
 /** `✓2` in the color of what it counts, like the branch's marks. ASCII icons have no glyph, so the word goes. */
-function tally(size: number, glyph: string, role: "done" | "later", paint: Paint): string {
+function tally(
+	size: number,
+	glyph: string,
+	role: "done" | "queued" | "waiting",
+	paint: Paint,
+): string {
 	if (size === 0) return "";
 	return paint.role(role, glyph === "" ? `${size} ${role}` : `${glyph} ${size}`);
 }

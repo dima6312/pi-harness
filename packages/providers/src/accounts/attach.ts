@@ -57,7 +57,7 @@ export function sessionFor(
 	ctx: ExtensionContext,
 	providerId: string,
 ): AccountSession {
-	// The turn and the goal's call hit a limit together; they share one dialog and its answer.
+	// The turn and the tasks' call hit a limit together; they share one dialog and its answer.
 	const deciding = new Map<string, Promise<AccountCredential | undefined>>();
 	function once(
 		key: string,

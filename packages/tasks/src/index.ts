@@ -1,12 +1,12 @@
 import {
-	answerGoal,
+	answerTasks,
 	createApp,
 	defineFeature,
-	GOAL_CHANGED,
-	GOAL_SETTLED,
-	GOAL_STATE,
-	goalSpent,
-	nowOf,
+	TASKS_CHANGED,
+	TASKS_SETTLED,
+	TASKS_STATE,
+	tasksSpent,
+	tasksWith,
 } from "@adeildo/pi-kit";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
@@ -14,20 +14,20 @@ import { Key } from "@earendil-works/pi-tui";
 import { Keeper } from "./keeper.ts";
 import { modelsFor } from "./models.ts";
 import { registerScreen, sessionSection } from "./screen.ts";
-import { GOAL_SETTINGS, interval, MODEL_SECTION, model } from "./settings.ts";
+import { MODEL_SECTION, model, TASKS_SETTINGS } from "./settings.ts";
 import { operatorText, type SkillNote, withSkills } from "./transcript.ts";
 import { Updates } from "./updates.ts";
-import { TimelineView } from "./view.ts";
+import { TasksView } from "./view.ts";
 
-/** The look draws this status as its goal segment. */
-export const GOAL_STATUS = "pi-goal";
+/** The look draws this status as its tasks segment. */
+export const TASKS_STATUS = "pi-tasks";
 
-export const goal = defineFeature({
-	id: "goal",
-	tab: "Goal",
-	description: "Keeps the session's goal, the current step, what was done and what was left",
+export const tasks = defineFeature({
+	id: "tasks",
+	tab: "Tasks",
+	description: "Keeps what the session is doing, what it did, what waits and what was decided",
 	sections: (ctx) => [sessionSection(ctx), MODEL_SECTION],
-	settings: GOAL_SETTINGS,
+	settings: TASKS_SETTINGS,
 	setup(scope) {
 		let session: ExtensionContext | undefined;
 		const keeper = new Keeper(
@@ -39,16 +39,20 @@ export const goal = defineFeature({
 		);
 		const updates = new Updates(keeper, {
 			models: (ctx) => modelsFor(model.get(scope), ctx.modelRegistry, ctx.model),
-			interval: () => interval.get(scope),
-			settled: () => scope.events.emit(GOAL_SETTLED, {}),
+			settled: () => scope.events.emit(TASKS_SETTLED, {}),
 			explain: (text) => withSkills(text, skillsOf(scope)),
 		});
 
 		function show(): void {
 			const state = keeper.state();
-			const words = nowOf(state)?.text ?? state.goal;
-			session?.ui.setStatus(GOAL_STATUS, words === undefined ? undefined : `\u25b8 ${words}`);
-			scope.events.emit(GOAL_CHANGED, state);
+			const doing = tasksWith(state, "doing");
+			const first = doing[0]?.text ?? state.title;
+			const more = doing.length > 1 ? ` +${doing.length - 1}` : "";
+			session?.ui.setStatus(
+				TASKS_STATUS,
+				first === undefined ? undefined : `\u25b8 ${first}${more}`,
+			);
+			scope.events.emit(TASKS_CHANGED, state);
 		}
 
 		function restore(ctx: ExtensionContext): void {
@@ -68,51 +72,42 @@ export const goal = defineFeature({
 			session = undefined;
 		});
 
-		scope.events.on(GOAL_STATE, (data: unknown) =>
-			answerGoal(data, keeper.state(), { pending: updates.pending, working: updates.working }),
+		scope.events.on(TASKS_STATE, (data: unknown) =>
+			answerTasks(data, keeper.state(), { pending: updates.pending, working: updates.working }),
 		);
 
-		// A queued steer counts once the agent reads it, not when you type it.
+		scope.on("agent_start", (_event, ctx) => {
+			if (ctx.hasUI) updates.runStarted(ctx);
+		});
+
+		// A steer counts once the agent reads it, not when you type it.
 		scope.on("message_end", (event, ctx) => {
 			if (!ctx.hasUI) return;
 			const text = operatorText(event.message);
-			if (text === undefined) return;
-			updates.message(ctx, text);
-		});
-
-		scope.on("agent_start", (_event, ctx) => {
-			if (!ctx.hasUI) return;
-			updates.runStarted();
-			show();
-		});
-
-		scope.on("turn_end", (_event, ctx) => {
-			if (ctx.hasUI) updates.turnEnded(ctx);
+			if (text !== undefined) updates.message(ctx, text);
 		});
 
 		scope.on("agent_settled", (_event, ctx) => {
-			if (!ctx.hasUI) return;
-			updates.runEnded(ctx);
-			show();
+			if (ctx.hasUI) updates.runEnded(ctx);
 		});
 
 		registerScreen(scope, keeper);
 
-		scope.registerShortcut(Key.alt("g"), {
-			description: "The session's timeline: now, later and done",
-			handler: (ctx) => openTimeline(ctx),
+		scope.registerShortcut(Key.alt("t"), {
+			description: "The session's tasks: doing, waiting, queued, done and decided",
+			handler: (ctx) => openTasks(ctx),
 		});
 
-		async function openTimeline(ctx: ExtensionContext): Promise<void> {
+		async function openTasks(ctx: ExtensionContext): Promise<void> {
 			if (ctx.mode !== "tui") return;
 			let stopWatching: (() => void) | undefined;
 			await ctx.ui.custom<void>(
 				(tui, theme, _keybindings, done) => {
-					stopWatching = scope.events.on(GOAL_CHANGED, () => tui.requestRender());
-					return new TimelineView({
+					stopWatching = scope.events.on(TASKS_CHANGED, () => tui.requestRender());
+					return new TasksView({
 						theme,
 						state: () => keeper.state(),
-						spent: () => goalSpent(ctx.sessionManager.getBranch()),
+						spent: () => tasksSpent(ctx.sessionManager.getBranch()),
 						rows: () => Math.floor(tui.terminal.rows * 0.8) - 1,
 						close: () => done(),
 						requestRender: () => tui.requestRender(),
@@ -128,8 +123,8 @@ export const goal = defineFeature({
 	},
 });
 
-export default function piGoal(pi: ExtensionAPI): void {
-	createApp(pi, { name: "pi-goal" }).use(goal).build();
+export default function piTasks(pi: ExtensionAPI): void {
+	createApp(pi, { name: "pi-tasks" }).use(tasks).build();
 }
 
 function skillsOf(pi: Pick<ExtensionAPI, "getCommands">): SkillNote[] {

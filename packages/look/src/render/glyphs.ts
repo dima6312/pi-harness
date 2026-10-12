@@ -7,8 +7,9 @@ export interface Glyphs {
 	branch: string;
 	host: string;
 	session: string;
-	goal: string;
-	later: string;
+	tasks: string;
+	waiting: string;
+	queued: string;
 	version: string;
 	model: string;
 	effort: string;
@@ -55,8 +56,9 @@ export const NERD: Glyphs = {
 	branch: "\u{e0a0}", // nf-pl-branch
 	host: "\u{f108}", // nf-fa-desktop
 	session: "\u{f02b}", // nf-fa-tag
-	goal: "\u{f04fe}", // nf-md-target
-	later: "\u{f051f}", // nf-md-timer_sand
+	tasks: "\u{f04fe}", // nf-md-target
+	waiting: "\u{f024}", // nf-fa-flag
+	queued: "\u{f051f}", // nf-md-timer_sand
 	version: "π",
 	model: "\u{f06a9}", // nf-md-robot
 	effort: "\u{f09d1}", // nf-md-brain
@@ -84,8 +86,9 @@ export const UNICODE: Glyphs = {
 	branch: "⎇",
 	host: "⌂",
 	session: "#",
-	goal: "▸",
-	later: "⧗",
+	tasks: "▸",
+	waiting: "⚑",
+	queued: "⧗",
 	version: "π",
 	model: "◆",
 	effort: "✦",
@@ -112,8 +115,9 @@ export const ASCII: Glyphs = {
 	branch: "",
 	host: "@",
 	session: "#",
-	goal: ">",
-	later: "",
+	tasks: ">",
+	waiting: "",
+	queued: "",
 	version: "v",
 	model: "",
 	effort: "",
