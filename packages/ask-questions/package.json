@@ -1,6 +1,6 @@
 {
 	"name": "@adeildo/pi-ask-questions",
-	"version": "5.5.0",
+	"version": "5.6.0",
 	"description": "Lets the model ask you instead of guessing: options with a preview of each, a note on any of them, and your own answer, in a dialog that scrolls with the chat.",
 	"keywords": [
 		"ask-user-question",

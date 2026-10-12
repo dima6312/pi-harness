@@ -1,6 +1,6 @@
 {
 	"name": "@adeildo/pi-look",
-	"version": "5.5.0",
+	"version": "5.6.0",
 	"description": "Pi's start screen, a framed editor and the footer, redrawn around the data that matters and painted only with the theme's colours.",
 	"keywords": [
 		"pi",

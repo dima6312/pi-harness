@@ -1,6 +1,6 @@
 {
 	"name": "@adeildo/pi-skills",
-	"version": "5.5.0",
+	"version": "5.6.0",
 	"description": "Call the skills you already have from anywhere in a message, several at once. The model reads each one in full, and the chat shows a small chip where you typed it.",
 	"keywords": [
 		"pi",

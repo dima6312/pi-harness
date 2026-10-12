@@ -2,6 +2,34 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.6.0](https://github.com/felipeadeildo/pi-harness/compare/v5.5.0...v5.6.0) (2026-10-12)
+
+
+### Features
+
+* **goal:** check every close against the session's words and measure the timeline against real cases ([4e89852](https://github.com/felipeadeildo/pi-harness/commit/4e89852d2b0ce46d604a13bbc4972ebe789eee34))
+* **goal:** move a cursor through the Alt+G timeline on a solid panel, with the note of the item under it ([4cbf29c](https://github.com/felipeadeildo/pi-harness/commit/4cbf29cda702b65be33fb33a980e4053f2420ec0))
+* **goal:** open the session's timeline as a tree on Alt+G, and keep the goal's counts beside a busy strip ([c6a2519](https://github.com/felipeadeildo/pi-harness/commit/c6a251997d031201b0b8058c23e602a1c4c50e88))
+* **kit:** keep a session's tasks, with results, waits, decisions and the goal timeline read as tasks ([564f581](https://github.com/felipeadeildo/pi-harness/commit/564f58183c654d6349a6787309b5b377118defd2))
+* **tasks:** replace the goal with tasks that keep what was done, what waits on you and what was decided ([fd52c94](https://github.com/felipeadeildo/pi-harness/commit/fd52c944457a151586fe12b24aec329d6ea1dc6c))
+
+
+### Bug Fixes
+
+* **goal:** close a step only when its run ends, never over a failed call or words that do not name it ([c32ba71](https://github.com/felipeadeildo/pi-harness/commit/c32ba71902dfe85d1f375141b617e110e201458a))
+* **goal:** close nothing on a call alone, and mark the calls that failed or were refused ([206b29d](https://github.com/felipeadeildo/pi-harness/commit/206b29d7473e4a62413db48fe36bbaf277e6e78d))
+* **goal:** close what repeats done work, read more of the conversation when tidying, and round the Alt+G panel's corners ([1566bf6](https://github.com/felipeadeildo/pi-harness/commit/1566bf690caf0e0778d0433d3f6e2715f4bd17e2))
+* **goal:** give up a call that does not come back, so one stuck request cannot stop the timeline ([561e6ea](https://github.com/felipeadeildo/pi-harness/commit/561e6ea43ca0aede69e90c091849f4b6fa0d153e))
+* **goal:** keep agent-rewritten words out of the intent, keep the counts on a short line, and wait for the goal through a plain event ([52c83b9](https://github.com/felipeadeildo/pi-harness/commit/52c83b974ce442c789d2d5659b0b81cbde91826c))
+* **goal:** keep the Alt+G panel still, with one line per item and the selected one in full in a fixed pane ([4c0b191](https://github.com/felipeadeildo/pi-harness/commit/4c0b191ee7df6e94556e3eb456f92cb2d4a892ca))
+* **goal:** keep what a finished step left in its note, not as a new item for later ([a56535d](https://github.com/felipeadeildo/pi-harness/commit/a56535d1e41ba022bd81d97a0b74fb1f9e24535b))
+* **goal:** open one step per message, never close on words older than the item, and let you undo a done step that did not happen ([632cbcc](https://github.com/felipeadeildo/pi-harness/commit/632cbcc1c85a4d011722decc6db5b854ae11bd1b))
+* **goal:** read your message when it enters the conversation, keep the goal on the current topic, and clear the lint warnings ([5609dae](https://github.com/felipeadeildo/pi-harness/commit/5609dae282835b7493c1a0d8162f760441f21f6a))
+* **goal:** start a step at the message that asked for it, and read a named skill as the ask it is ([c6e993e](https://github.com/felipeadeildo/pi-harness/commit/c6e993e519c35a63eeb7afa9e11dc2fdc5acd308))
+* **providers:** let requests that hit a limit together share one dialog, and open dialogs one at a time ([5f81cc1](https://github.com/felipeadeildo/pi-harness/commit/5f81cc1a8bd144366cc50a3881f3096a49398cda))
+* **tasks:** open tasks only from your words, back every wait and decision with its line, and keep the end of a long message ([040496d](https://github.com/felipeadeildo/pi-harness/commit/040496d2c493f94d8ae97d5d4b068c91be1da82c))
+* **tasks:** read your answers in the questions dialog as your words, in the same lines the agent reads ([26d7a2b](https://github.com/felipeadeildo/pi-harness/commit/26d7a2bbc64668b8cae2b10cb6d6b1492373de48))
+
 ## [5.5.0](https://github.com/felipeadeildo/pi-harness/compare/v5.4.0...v5.5.0) (2026-10-06)
 
 
