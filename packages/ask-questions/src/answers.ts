@@ -1,8 +1,4 @@
-import type { AskAnswer, AskQuestion, AskResult } from "@adeildo/pi-kit";
-
-export function isAnswered(answer: AskAnswer): boolean {
-	return answer.picked.length > 0 || (answer.typed ?? "").trim() !== "";
-}
+import { type AskQuestion, type AskResult, describeAnswers, isAnswered } from "@adeildo/pi-kit";
 
 const NOT_SEEN =
 	"The user never saw the questions, so this is not a decline. Ask them in the chat instead.";
@@ -14,12 +10,12 @@ export function answerText(result: AskResult, questions: readonly AskQuestion[])
 	if (result.cancelled) {
 		const lines = ["The user closed the questions without submitting. Do not assume an answer."];
 		if (answered.length > 0)
-			lines.push("Before closing they had answered:", ...answerLines(answered));
+			lines.push("Before closing they had answered:", ...describeAnswers(answered));
 		return lines.join("\n");
 	}
 	if (answered.length === 0) return "The user submitted without answering any question.";
 
-	const lines = ["The user answered:", ...answerLines(answered)];
+	const lines = ["The user answered:", ...describeAnswers(answered)];
 	const skipped = questions.filter(
 		(question) => !answered.some((answer) => answer.question === question.question),
 	);
@@ -29,23 +25,4 @@ export function answerText(result: AskResult, questions: readonly AskQuestion[])
 		);
 	lines.push("Continue with these answers in mind.");
 	return lines.join("\n");
-}
-
-function answerLines(answers: readonly AskAnswer[]): string[] {
-	const lines: string[] = [];
-	for (const answer of answers) {
-		lines.push(`- ${answer.header}: "${answer.question}" \u2192 ${answerSummary(answer)}`);
-		for (const { option, note } of answer.notes) {
-			const tag = answer.picked.includes(option) ? "" : " (not picked)";
-			lines.push(`  note on "${option}"${tag}: ${note}`);
-		}
-	}
-	return lines;
-}
-
-export function answerSummary(answer: AskAnswer): string {
-	const parts = answer.picked.map((label) => `"${label}"`);
-	const typed = answer.typed?.trim();
-	if (typed) parts.push(`in their words: "${typed}"`);
-	return parts.length === 0 ? "(nothing)" : parts.join(", ");
 }

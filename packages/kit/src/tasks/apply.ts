@@ -55,7 +55,7 @@ class Draft {
 					this.#next.language = op.text.trim();
 				return;
 			case "ask":
-				return this.#ask(op.text.trim());
+				return this.#ask(op.text.trim(), op.beside === true);
 			case "continue": {
 				const task = this.#find(op.id);
 				if (task === undefined) return;
@@ -134,11 +134,11 @@ class Draft {
 		this.#next.titleOrigin = this.#options.origin;
 	}
 
-	#ask(text: string): void {
+	#ask(text: string, beside: boolean): void {
 		if (text === "") return;
 		const listed = this.#listed(text);
 		if (listed !== undefined) return this.apply({ op: "continue", id: listed.id });
-		const task = this.#add(text, this.#busy ? "queued" : "doing", "you");
+		const task = this.#add(text, this.#busy && !beside ? "queued" : "doing", "you");
 		this.#heard(task);
 		this.#focus(task);
 	}

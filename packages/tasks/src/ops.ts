@@ -94,7 +94,6 @@ export const SCHEMAS: Record<Moment, TSchema> = {
 
 export interface Checked {
 	ops: TaskOp[];
-	/** What the checks refused, kept in the entry so a bad call can be studied. */
 	rejected: TaskOp[];
 }
 
@@ -139,7 +138,7 @@ function fromMessage(
 		case "drop_task":
 			return task ? [{ op: "drop", id: task.id, ...why }, proven !== undefined] : undefined;
 		case "you_did": {
-			// Your line has to name the task: "it showed up" could be about anything.
+			// Your line has to name the task, since "it showed up" could be about anything.
 			const named =
 				proven !== undefined &&
 				task !== undefined &&
@@ -171,7 +170,7 @@ export function runOps(answer: unknown, lines: readonly Line[], state: SessionTa
 	for (const raw of objects(reply.follow_ups)) {
 		const words = clean(raw.text);
 		if (words === undefined) continue;
-		// What a task left is already on it, and a follow-up that repeats a task adds nothing.
+		// A follow-up that repeats a task, or what a task left, adds nothing.
 		const repeats =
 			state.tasks.some((task) => task.status !== "dropped" && sameWords(task.text, words)) ||
 			lefts.some((left) => sameWords(left, words));
@@ -187,7 +186,6 @@ export function runOps(answer: unknown, lines: readonly Line[], state: SessionTa
 		if (words !== undefined)
 			keep(checked, { op: "decide", text: words }, reports(raw.evidence, lines));
 	}
-	// A queued task the run passed over counts one more idle run.
 	for (const task of state.tasks)
 		if (task.status === "queued" && !touched.has(task.id))
 			keep(checked, { op: "idle", id: task.id });
@@ -213,7 +211,7 @@ function verdict(
 			};
 			const proven = reports(raw.evidence, lines, task);
 			keep(checked, done, proven);
-			// Worked on without a line that says it finished: still under way.
+			// Without a line that says it finished, the task is still under way.
 			if (!proven) keep(checked, progress);
 			return;
 		}

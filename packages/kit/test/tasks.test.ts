@@ -333,3 +333,12 @@ test("other packages read the live tasks over the bus", () => {
 	expect(currentTasks(events)).toEqual({ state, pending: true });
 	expect(tasksWith(state, "doing")).toHaveLength(1);
 });
+
+test("a task you add beside the ones under way starts, and pushes none aside", () => {
+	let state = apply(emptyTasks(), [{ op: "ask", text: "a" }]);
+	state = apply(state, [{ op: "ask", text: "b", beside: true }], { busy: true });
+	expect(statuses(state)).toEqual([
+		["a", "doing"],
+		["b", "doing"],
+	]);
+});

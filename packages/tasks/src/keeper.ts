@@ -81,7 +81,7 @@ export class Keeper {
 	}
 }
 
-/** The time of a change alone is no change. */
+/** Leaves `updatedAt` out, since every apply moves it. */
 function same(left: SessionTasks, right: SessionTasks): boolean {
 	return JSON.stringify({ ...left, updatedAt: 0 }) === JSON.stringify({ ...right, updatedAt: 0 });
 }

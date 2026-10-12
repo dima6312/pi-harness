@@ -1,5 +1,7 @@
 // What the tasks' model reads of the branch. Tool output stays out, since it could carry
-// instructions; a call shows only its name, its target and whether it failed.
+// instructions; a call shows only its name, its target and whether it failed. The one exception is
+// your answers in the questions dialog, which are your words.
+import { describeAnswers, isAnswered, isAskResult } from "@adeildo/pi-kit";
 
 const MAX_RUN = 9000;
 const MAX_SAID = 500;
@@ -13,7 +15,14 @@ interface Entry {
 	id?: string;
 	type?: string;
 	timestamp?: string;
-	message?: { role?: string; content?: unknown; toolCallId?: unknown; isError?: unknown };
+	message?: {
+		role?: string;
+		content?: unknown;
+		toolCallId?: unknown;
+		toolName?: unknown;
+		isError?: unknown;
+		details?: unknown;
+	};
 }
 
 interface Part {
@@ -56,7 +65,7 @@ export function runSince(branch: readonly unknown[], after: string | undefined):
 	read.forEach((entry, index) => {
 		const parsed = Date.parse(entry.timestamp ?? "");
 		const at = Number.isNaN(parsed) ? {} : { at: parsed };
-		const yours = entry.type === "message" ? operatorText(entry.message) : undefined;
+		const yours = entry.type === "message" ? yourWords(entry.message) : undefined;
 		if (yours !== undefined)
 			lines.push({ kind: "you", text: clip(oneLine(yours), MAX_SAID), ...at });
 		const report = index === reportAt;
@@ -124,12 +133,29 @@ function newest<T extends { text: string }>(lines: readonly T[], max: number): T
 
 /** What you wrote in a message, without the skill blocks pi expands into it. */
 export function operatorText(message: unknown): string | undefined {
-	const { role, content } = (message ?? {}) as { role?: unknown; content?: unknown };
+	const { role, content } = asMessage(message);
 	if (role !== "user") return undefined;
 	const text = textOf(content)
 		.replace(/<skill name="[^"]*"[^>]*>[\s\S]*?<\/skill>/g, "")
 		.trim();
 	return text === "" ? undefined : text;
+}
+
+export const QUESTIONS_TOOL = "ask_questions";
+
+/** What you wrote: a message, or your answers to the agent's questions. */
+export function yourWords(message: unknown): string | undefined {
+	return operatorText(message) ?? answerWords(message);
+}
+
+function answerWords(message: unknown): string | undefined {
+	const { role, toolName, details } = asMessage(message);
+	if (role !== "toolResult" || toolName !== QUESTIONS_TOOL || !isAskResult(details))
+		return undefined;
+	// A closed dialog answers nothing, even where you had picked before closing it.
+	const answered = details.cancelled ? [] : details.answers.filter(isAnswered);
+	if (answered.length === 0) return undefined;
+	return ["Answering the agent's questions:", ...describeAnswers(answered)].join("\n");
 }
 
 export interface Heard {
@@ -143,7 +169,7 @@ export interface Heard {
 export function heard(branch: readonly unknown[], text: string): Heard {
 	const entries = branch as readonly Entry[];
 	const at = entries.findLastIndex(
-		(entry) => entry.type === "message" && operatorText(entry.message) === text,
+		(entry) => entry.type === "message" && yourWords(entry.message) === text,
 	);
 	const before = at === -1 ? entries : entries.slice(0, at);
 	const reply = before.findLast((entry) => assistantText(entry) !== "");
@@ -170,6 +196,10 @@ export function withSkills(text: string, skills: readonly SkillNote[]): string {
 		if (description === undefined) return reference;
 		return `run the skill "${name}" (${clip(oneLine(description), 200)})`;
 	});
+}
+
+function asMessage(message: unknown): NonNullable<Entry["message"]> {
+	return typeof message === "object" && message !== null ? message : {};
 }
 
 function assistantText(entry: Entry): string {

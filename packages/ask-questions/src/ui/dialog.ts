@@ -1,4 +1,4 @@
-import type { AskAnswer, AskResult } from "@adeildo/pi-kit";
+import { type AskAnswer, type AskResult, answerSummary, isAnswered } from "@adeildo/pi-kit";
 // Drawn inline instead of as an overlay, so a tall dialog scrolls with the terminal.
 import { getSelectListTheme, type Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -16,7 +16,6 @@ import {
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
 
-import { answerSummary, isAnswered } from "../answers.ts";
 import { hasTypedRow, type Option, type Question, TYPED_LABEL } from "../schema.ts";
 import {
 	bodyRows,

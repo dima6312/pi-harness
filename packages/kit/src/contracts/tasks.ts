@@ -14,7 +14,6 @@ export interface TasksProbe {
 	state?: SessionTasks;
 	/** Your last message is not in the tasks yet. */
 	pending?: boolean;
-	/** The agent is running. */
 	working?: boolean;
 }
 

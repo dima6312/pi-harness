@@ -67,10 +67,8 @@ function rows(keeper: Keeper, section: string): ScreenEntry[] {
 			text: () => count(texts("doing").length),
 			set: (value) => {
 				if (typeof value !== "string") return "expected text";
-				const lines = linesOf(value);
-				keeper.apply(doingOps(keeper.state(), lines), "you", { busy: true });
-				// A new line was queued like any ask; picking it up puts it beside the others.
-				keeper.apply(doingOps(keeper.state(), lines), "you", { busy: true });
+				// Busy, so what you add joins the tasks under way instead of pushing them aside.
+				keeper.apply(doingOps(keeper.state(), linesOf(value)), "you", { busy: true });
 				return undefined;
 			},
 		},
@@ -149,7 +147,7 @@ function listed(
 	};
 }
 
-/** Done for a line you removed; doing for one you added, which takes two passes when it is new. */
+/** Done for a line you removed, and doing for one you added. */
 export function doingOps(state: SessionTasks, lines: readonly string[]): TaskOp[] {
 	const doing = tasksWith(state, "doing");
 	const finished: TaskOp[] = doing
@@ -159,7 +157,9 @@ export function doingOps(state: SessionTasks, lines: readonly string[]): TaskOp[
 		.filter((line) => !doing.some((task) => task.text === line))
 		.map((line) => {
 			const known = state.tasks.find((task) => task.text === line);
-			return known === undefined ? { op: "ask", text: line } : { op: "continue", id: known.id };
+			return known === undefined
+				? { op: "ask", text: line, beside: true }
+				: { op: "continue", id: known.id };
 		});
 	return [...finished, ...started];
 }

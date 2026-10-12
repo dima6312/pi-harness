@@ -15,7 +15,7 @@ import { Keeper } from "./keeper.ts";
 import { modelsFor } from "./models.ts";
 import { registerScreen, sessionSection } from "./screen.ts";
 import { MODEL_SECTION, model, TASKS_SETTINGS } from "./settings.ts";
-import { operatorText, type SkillNote, withSkills } from "./transcript.ts";
+import { type SkillNote, withSkills, yourWords } from "./transcript.ts";
 import { Updates } from "./updates.ts";
 import { TasksView } from "./view.ts";
 
@@ -80,10 +80,11 @@ export const tasks = defineFeature({
 			if (ctx.hasUI) updates.runStarted(ctx);
 		});
 
-		// A steer counts once the agent reads it, not when you type it.
+		// A steer counts once the agent reads it, not when you type it. Your answers to the agent's
+		// questions end as a tool's result, and count the same.
 		scope.on("message_end", (event, ctx) => {
 			if (!ctx.hasUI) return;
-			const text = operatorText(event.message);
+			const text = yourWords(event.message);
 			if (text !== undefined) updates.message(ctx, text);
 		});
 

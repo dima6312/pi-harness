@@ -14,7 +14,6 @@ import {
 import type { Line, LineKind } from "../src/transcript.ts";
 
 export interface Expect {
-	/** Each task ends in this status. */
 	status?: Record<string, TaskStatus>;
 	/** Each task ends open: not done, not dropped. */
 	open?: string[];
@@ -28,7 +27,6 @@ export interface Expect {
 	/** How many decisions are added, at least. */
 	decided?: number;
 	title?: "set" | "kept";
-	/** A run's result for this task says this. */
 	result?: Record<string, RegExp>;
 	/** Words that show the title or a task was written in a language you did not write in. */
 	wrongLanguage?: RegExp;
@@ -89,7 +87,6 @@ export function linesOf(run: string): Line[] {
 const OAUTH = "Usar OAuth no MCP do WhatsApp";
 
 export const CASES: Case[] = [
-	// Your messages.
 	{
 		name: "message: the first one titles the session and starts its task",
 		why: "the session needs a title from the start, broader than its first task",
@@ -99,7 +96,7 @@ export const CASES: Case[] = [
 			message:
 				"ok, pesquisa como podemos expor um oauth ao inves de api key... beleza? vamos pesquisar a respeito, vai dar bom!\n\npq isso? pq isso eh mais seguro, podemos deixar um login com senha ou algo assim\n\nvamos fazer isso, vamos pensar em como implementar oauth com isso dai... ok? no mcp;",
 		},
-		// Finding out how and then building it may read as one task or two; English never.
+		// Finding out how and then building it may read as one task or two, never as English.
 		expect: {
 			title: "set",
 			added: [1, 2],
@@ -231,7 +228,6 @@ export const CASES: Case[] = [
 		expect: { status: { t2: "deferred", t1: "doing" }, added: [0, 0] },
 	},
 
-	// The end of a run.
 	{
 		name: "run: a run that took asks while it worked closes each one it reports",
 		why: "six messages arrived during one run; only the last step could close, and the rest stayed in later forever",
@@ -321,7 +317,6 @@ export const CASES: Case[] = [
 		expect: { status: { t2: "done" }, result: { t2: /10172|no issue|nenhuma/i } },
 	},
 
-	// The tidy pass.
 	{
 		name: "tidy: two tasks for the same work become one",
 		why: "repeats piled up in later",

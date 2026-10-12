@@ -67,7 +67,7 @@ Pi's footer shows what the agent is doing. With [`@adeildo/pi-look`](../look), t
 
 Nobody writes it. A small model reads the list and only what changed, and answers with operations, never a whole new list, so it cannot rewrite what happened. It runs at three moments.
 
-**Your message.** The model reads it beside what the agent said just before it, which is what a short "yes, do it" answers. It can start a task, continue one, defer it, drop it, mark it done when you say you did it yourself, record a decision, and set the session's title once. A correction like "it came out misaligned" continues the task it is about, and reopens it when it was done. A question or a pasted status changes nothing.
+**Your message.** The model reads it beside what the agent said just before it, which is what a short "yes, do it" answers. It can start a task, continue one, defer it, drop it, mark it done when you say you did it yourself, record a decision, and set the session's title once. A correction like "it came out misaligned" continues the task it is about, and reopens it when it was done. A question or a pasted status changes nothing. Your answers in the questions dialog of [`@adeildo/pi-ask-questions`](../ask-questions) count as a message of yours, so the option you pick or the note you leave can settle a decision or approve a task.
 
 What you ask between runs is what the agent does now, and what it was doing waits its turn. What you ask while the agent works waits in `queued`, and nothing is pushed aside, since the agent usually takes it on in the same run.
 
@@ -88,7 +88,7 @@ A done that fails these checks stays in progress. When you say you did something
 
 ## Only your words become the intent
 
-The permission judge of [`@adeildo/pi-ask-permission`](../ask-permission) reads the session's title and what the agent is doing as your intent, beside your last message, and only where they came from your messages or from `Alt+S`. A follow-up the agent left, or a task the model renamed after the agent's work, never reaches it. The model never sees what a tool returned, so instructions inside a file or a page cannot become the intent the judge reads.
+The permission judge of [`@adeildo/pi-ask-permission`](../ask-permission) reads the session's title and what the agent is doing as your intent, beside your last message, and only where they came from your messages or from `Alt+S`. A follow-up the agent left, or a task the model renamed after the agent's work, never reaches it. The model never sees what a tool returned, so instructions inside a file or a page cannot become the intent the judge reads. The one result it reads is your answers in the questions dialog, because you wrote or picked them.
 
 ## Who else reads it
 

@@ -61,6 +61,30 @@ export function isAskResult(value: unknown): value is AskResult {
 	return Array.isArray(value.answers) && typeof value.cancelled === "boolean";
 }
 
+export function isAnswered(answer: AskAnswer): boolean {
+	return answer.picked.length > 0 || (answer.typed ?? "").trim() !== "";
+}
+
+/** One line per answer, with its notes under it, as the agent and anything after it read them. */
+export function describeAnswers(answers: readonly AskAnswer[]): string[] {
+	const lines: string[] = [];
+	for (const answer of answers) {
+		lines.push(`- ${answer.header}: "${answer.question}" \u2192 ${answerSummary(answer)}`);
+		for (const { option, note } of answer.notes) {
+			const tag = answer.picked.includes(option) ? "" : " (not picked)";
+			lines.push(`  note on "${option}"${tag}: ${note}`);
+		}
+	}
+	return lines;
+}
+
+export function answerSummary(answer: AskAnswer): string {
+	const parts = answer.picked.map((label) => `"${label}"`);
+	const typed = answer.typed?.trim();
+	if (typed) parts.push(`in their words: "${typed}"`);
+	return parts.length === 0 ? "(nothing)" : parts.join(", ");
+}
+
 /** Why a request cannot be used, for a provider reading one from another version. */
 export function decodeAskRequest(value: unknown): string | undefined {
 	if (!isObject(value)) return "not an object";

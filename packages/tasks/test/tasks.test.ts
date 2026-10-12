@@ -26,7 +26,7 @@ import { Keeper } from "../src/keeper.ts";
 import { modelsFor } from "../src/models.ts";
 import { isPlan, messageOps, runOps } from "../src/ops.ts";
 import { doingOps, queuedOps } from "../src/screen.ts";
-import { heard, operatorText, runSince, withSkills } from "../src/transcript.ts";
+import { heard, operatorText, runSince, withSkills, yourWords } from "../src/transcript.ts";
 import { Updates } from "../src/updates.ts";
 
 let dir: string;
@@ -91,6 +91,46 @@ function registry(answers: Record<string, Answer>[]) {
 function usage() {
 	return { input: 10, output: 5, cost: { total: 0.001 } };
 }
+
+/** What the questions dialog returns once you answered it. */
+function answered(id: string, details: unknown) {
+	return {
+		type: "message",
+		id,
+		message: {
+			role: "toolResult",
+			toolName: "ask_questions",
+			toolCallId: "q1",
+			details,
+			content: "x",
+		},
+	};
+}
+
+const ANSWERS = {
+	cancelled: false,
+	answers: [
+		{
+			header: "Name",
+			question: "What should the package be called?",
+			picked: ["pi-tasks (Recommended)"],
+			notes: [],
+		},
+		{
+			header: "Old sessions",
+			question: "What about old sessions?",
+			picked: [],
+			notes: [],
+			typed: "break them, nothing was released",
+		},
+		{
+			header: "Release",
+			question: "Push too?",
+			picked: ["Push now"],
+			notes: [{ option: "Fix the license", note: "it can be a chore" }],
+		},
+	],
+};
 
 function said(id: string, text: string, timestamp?: string) {
 	return {
@@ -224,6 +264,29 @@ describe("your messages", () => {
 				model: "anthropic/haiku",
 				usage: { input: 10, output: 5, cost: 0.001 },
 			},
+		]);
+	});
+
+	test("your answers in the questions dialog reach the model like a message", async () => {
+		const branch: unknown[] = [];
+		const { fake, ctx, models, state } = await mounted(
+			[
+				{
+					haiku: {
+						language: "English",
+						ops: [{ op: "decide", text: "Call it pi-tasks", proof: "pi-tasks (Recommended)" }],
+					},
+				},
+			],
+			branch,
+		);
+		const entry = answered("r1", ANSWERS);
+		branch.push(entry);
+		await fake.fire("message_end", { type: "message_end", message: entry.message }, ctx);
+		await tasksSettled(fake.pi.events, 1000);
+		expect(models.asked[0]?.prompt).toContain("Answering the agent's questions:");
+		expect(state().decisions).toMatchObject([
+			{ text: "Call it pi-tasks", origin: "you", made: { entry: "r1" } },
 		]);
 	});
 
@@ -610,6 +673,26 @@ describe("reading the session", () => {
 		).toBe('run the skill "simplify" (Simplify code) now');
 	});
 
+	test("your answers to the agent's questions are your words, picked, typed or noted", () => {
+		const words = [
+			"Answering the agent's questions:",
+			'- Name: "What should the package be called?" \u2192 "pi-tasks (Recommended)"',
+			'- Old sessions: "What about old sessions?" \u2192 in their words: "break them, nothing was released"',
+			'- Release: "Push too?" \u2192 "Push now"',
+			'  note on "Fix the license" (not picked): it can be a chore',
+		].join("\n");
+		expect(yourWords(answered("r1", ANSWERS).message)).toBe(words);
+		expect(yourWords(answered("r1", { ...ANSWERS, cancelled: true }).message)).toBeUndefined();
+		// Any other tool's result stays out, whatever it says.
+		const other = { role: "toolResult", toolName: "bash", details: ANSWERS, content: "x" };
+		expect(yourWords(other)).toBeUndefined();
+		expect(
+			runSince([said("a1", "Two questions first."), answered("r1", ANSWERS)], undefined).text,
+		).toContain(
+			'L2 you: Answering the agent\'s questions: - Name: "What should the package be called?" \u2192 "pi-tasks (Recommended)"',
+		);
+	});
+
 	test("your message is found on the branch, with what the agent said before it", () => {
 		const branch = [said("a1", "Push?"), yours("u1", "sim")];
 		expect(heard(branch, "sim")).toEqual({ entry: "u1", reply: "Push?" });
@@ -625,7 +708,7 @@ test("on Alt+S, a line removed from doing is done, and one removed from queued i
 	]);
 	expect(doingOps(state, [])).toEqual([{ op: "done", id: "t1" }]);
 	expect(doingOps(state, ["a", "b"])).toEqual([{ op: "continue", id: "t2" }]);
-	expect(doingOps(state, ["a", "new"])).toEqual([{ op: "ask", text: "new" }]);
+	expect(doingOps(state, ["a", "new"])).toEqual([{ op: "ask", text: "new", beside: true }]);
 	expect(queuedOps(state, ["b", "d"])).toEqual([
 		{ op: "drop", id: "t3" },
 		{ op: "ask", text: "d" },

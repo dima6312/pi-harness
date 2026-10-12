@@ -1,4 +1,4 @@
-import type { AskResult } from "@adeildo/pi-kit";
+import { answerSummary, type AskResult, isAnswered } from "@adeildo/pi-kit";
 import type {
 	AgentToolResult,
 	Theme,
@@ -6,7 +6,6 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 
-import { answerSummary, isAnswered } from "../answers.ts";
 import type { QuestionParams } from "../schema.ts";
 
 export function renderCall(params: Partial<QuestionParams>, theme: Theme): Text {

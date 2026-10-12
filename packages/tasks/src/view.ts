@@ -375,7 +375,6 @@ function localClock(at: number): string {
 	return new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-/** `left` and `right` at the two ends of `width`. */
 function spread(left: string, right: string, width: number): string {
 	return `${left}${" ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)))}${right}`;
 }

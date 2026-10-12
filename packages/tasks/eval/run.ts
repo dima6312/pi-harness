@@ -1,9 +1,6 @@
 // Runs the cases against a real model and says which ones the tasks got right.
 // bun packages/tasks/eval/run.ts [--runs 3] [--parallel 6] [--model anthropic/claude-haiku-4-5] [--case text] [--show]
 // It signs in with an Anthropic account from the harness's accounts file, billed to its plan.
-import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { parseArgs } from "node:util";
 
 import {
@@ -14,14 +11,10 @@ import {
 	type TaskOp,
 } from "@adeildo/pi-kit";
 import type { Api, Model } from "@earendil-works/pi-ai";
-import { ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
 
-import { userAgent } from "../../providers/src/subscription/billing.ts";
-import { billToPlan } from "../../providers/src/subscription/payload.ts";
 import { type Asker, onMessage, onRun, onTidy, type Proposal } from "../src/ask.ts";
 import { type Case, CASES, type Expect, linesOf } from "./cases.ts";
-
-const CLAUDE_CODE = "2.1.280";
+import { signedIn } from "./signin.ts";
 
 const { values } = parseArgs({
 	options: {
@@ -217,45 +210,4 @@ function indent(text: string, prefix: string): string {
 		.split("\n")
 		.map((line) => prefix + line)
 		.join("\n");
-}
-
-/** Pi's models, with every Anthropic request signed by a harness account and billed to its plan. */
-async function signedIn(): Promise<ModelRegistry> {
-	const runtime = await ModelRuntime.create({ authPath: join(homedir(), ".pi/agent/auth.json") });
-	const signed = new ModelRegistry(runtime);
-	const token = accountToken();
-	const stream = signed.streamSimple.bind(signed);
-	signed.streamSimple = (target, context, options) =>
-		stream(target, context, {
-			...options,
-			apiKey: token,
-			headers: { ...options?.headers, "user-agent": userAgent(CLAUDE_CODE) },
-			onPayload: (payload) =>
-				typeof payload === "object" && payload !== null
-					? billToPlan(payload as Record<string, unknown>, CLAUDE_CODE)
-					: undefined,
-		});
-	return signed;
-}
-
-interface Account {
-	credential: { access?: string; expires?: number };
-	health?: { limitedUntil?: number };
-}
-
-function accountToken(): string {
-	const file = join(homedir(), ".pi/agent/extensions/pi-harness/accounts.json");
-	const accounts = (
-		JSON.parse(readFileSync(file, "utf8")) as { providers: { anthropic?: { accounts: Account[] } } }
-	).providers.anthropic?.accounts;
-	const now = Date.now();
-	const usable = accounts?.find(
-		(account) =>
-			(account.health?.limitedUntil ?? 0) * 1000 < now &&
-			(account.credential.expires ?? 0) > now + 60_000 &&
-			account.credential.access !== undefined,
-	);
-	if (usable?.credential.access === undefined)
-		throw new Error("no Anthropic account with a live token; open pi once to refresh them");
-	return usable.credential.access;
 }

@@ -74,8 +74,11 @@ export interface SessionTasks {
 export type TaskOp =
 	| { op: "title"; text: string }
 	| { op: "language"; text: string }
-	/** Starts doing it, or queues it when the agent is already on something you asked. */
-	| { op: "ask"; text: string; queue?: boolean }
+	/**
+	 * Starts doing it, or queues it when the agent is already on something you asked. `beside`
+	 * starts it next to what is under way, like a line you add to Doing on Alt+S.
+	 */
+	| { op: "ask"; text: string; beside?: boolean }
 	/** Your message is about this task: a correction, an approval, or asking it again. */
 	| { op: "continue"; id: string; text?: string }
 	| { op: "defer"; id: string; why?: string }

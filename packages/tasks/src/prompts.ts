@@ -14,7 +14,7 @@ A task is a short imperative in the language the operator writes in, even before
 
 const MESSAGE = `${TASKS}
 
-The operator just wrote the message below. Call ${TOOL} once. Read it with what the agent said just before it, which is what a short answer like "yes, do it" or "beleza" refers to.
+The operator just wrote the message below. Call ${TOOL} once. Read it with what the agent said just before it, which is what a short answer like "yes, do it" or "beleza" refers to. A message can also be the operator's answers to questions the agent asked: each picked option, typed answer or note is the operator's own choice, so it often settles a decision or approves a task.
 
 ops, for what the message itself says:
 - continue_task {id}: the message is about a listed task: a correction, feedback on how it came out ("it is misaligned", "the old one was better"), an approval of what the agent proposed for it, or asking for it again. Reopens it when it was done. Add text only when the ask changed. This is the usual answer to feedback.
