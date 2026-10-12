@@ -2,6 +2,24 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.8.0](https://github.com/felipeadeildo/pi-harness/compare/v5.7.2...v5.8.0) (2026-10-12)
+
+
+### Features
+
+* **ask-questions:** show each answer under its question ([91a25d9](https://github.com/felipeadeildo/pi-harness/commit/91a25d994ff2ef3034e8cfa03ee4a39ac01d1370))
+* **compact:** clear on Anthropic's side, keeping thinking ([84b9fde](https://github.com/felipeadeildo/pi-harness/commit/84b9fdef56e8ec6d08b79ecae46622a68c9669c2))
+* **tasks:** keep the session title short and in English ([46dba76](https://github.com/felipeadeildo/pi-harness/commit/46dba762ef4b7a6984e09e017efac3f6bfcf0396))
+* **tasks:** name the session after its title ([6d5b528](https://github.com/felipeadeildo/pi-harness/commit/6d5b5282f1cb19c2815162794b9d223d6aee9c90))
+
+
+### Bug Fixes
+
+* **ask-questions:** scroll previews in fullscreen pi ([ec52e52](https://github.com/felipeadeildo/pi-harness/commit/ec52e52110729cfafaacb571fa1b497c4c0ca7aa))
+* **compact:** see the first clear after a reload ([c88c2a5](https://github.com/felipeadeildo/pi-harness/commit/c88c2a5b7f997df0462a2ffb4c9ad7904aa2b074))
+* **tasks:** name a session titled before it opened ([b43f946](https://github.com/felipeadeildo/pi-harness/commit/b43f9466b45ef2e57cc2318f9bb6269528588a1c))
+* **ui:** cut text with ... instead of an ellipsis ([a7c474b](https://github.com/felipeadeildo/pi-harness/commit/a7c474bee5e28cb59be3acbffe6f07997ad8d922))
+
 ## [5.7.2](https://github.com/felipeadeildo/pi-harness/compare/v5.7.1...v5.7.2) (2026-10-12)
 
 
