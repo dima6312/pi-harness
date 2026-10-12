@@ -7,6 +7,8 @@ import {
 	applyTaskOps,
 	createApp,
 	currentTasks,
+	eventsDir,
+	FolderFeed,
 	emptyTasks,
 	intentOf,
 	LEGACY_ENTRY,
@@ -41,8 +43,12 @@ import { isPlan } from "../src/words.ts";
 let dir: string;
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), "pi-tasks-"));
+	process.env.PI_HARNESS_EVENTS = join(dir, "events");
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+	delete process.env.PI_HARNESS_EVENTS;
+	rmSync(dir, { recursive: true, force: true });
+});
 
 function model(id: string, price: number, provider = "anthropic"): Model<Api> {
 	return {
@@ -165,7 +171,7 @@ async function mounted(answers: Record<string, Answer>[], branch: unknown[] = []
 	const ctx = fakeContext([], true, {
 		model: OPUS,
 		modelRegistry: models,
-		sessionManager: { getBranch: () => branch },
+		sessionManager: { getBranch: () => branch, getCwd: () => "/repo", getSessionId: () => "s1" },
 		ui: { setStatus: (key: string, text: string | undefined) => statuses.set(key, text) },
 	});
 	await fake.fire("session_start", {}, ctx);
@@ -235,6 +241,10 @@ describe("your messages", () => {
 		const named = await mounted([answer]);
 		await named.say("m1", "pesquisa como expor oauth no mcp");
 		expect(named.fake.sessionName).toBe("OAuth no MCP");
+
+		const logged = new FolderFeed(eventsDir("/repo")).read();
+		expect(logged.filter((event) => event.type === "session.named")).toEqual([]);
+		expect(logged.at(-1)).toMatchObject({ type: "tasks.changed", session: "s1" });
 
 		const renamed = await mounted([answer]);
 		renamed.fake.sessionName = "meu nome";
@@ -447,6 +457,26 @@ describe("a session that comes back", () => {
 		expect(statuses.get(TASKS_STATUS)).toBe("\u25b8 resume me");
 	});
 
+	test("the title brings the short name others mention the session by, set once", async () => {
+		const answers = [
+			{ haiku: { language: "English", ...titled("OAuth for the MCP", "oauth") } },
+			{ haiku: { language: "English", ...titled("x", "x") } },
+		];
+		const { say, state } = await mounted(answers);
+		await say("m1", "research how to expose oauth in the mcp");
+		expect(state().handle).toBe("oauth");
+		const named = new FolderFeed(eventsDir("/repo"))
+			.read()
+			.filter((event) => event.type === "session.named");
+		expect(named.map((event) => event.data)).toEqual([
+			{ handle: "oauth", title: "OAuth for the MCP" },
+		]);
+		const untitled = { message: "x", state: emptyTasks() };
+		expect(messageOps(titled("A", "Not A Handle"), untitled).ops).toEqual([
+			{ op: "title", text: "A" },
+		]);
+	});
+
 	test("one titled before it could be named gets its name when it opens", async () => {
 		const saved = { ...emptyTasks(), title: "OAuth for the MCP" };
 		const entry = { type: "custom", customType: TASKS_ENTRY, data: { version: 1, state: saved } };
@@ -641,8 +671,8 @@ function verdict(id: string, evidence: string, outcome = "done") {
 	return { id, evidence, outcome, result: "", left: "", waiting_on: "you", why: "" };
 }
 
-function titled(text: string) {
-	return { ops: [{ op: "title", text }] };
+function titled(text: string, handle?: string) {
+	return { ops: [{ op: "title", text, ...(handle === undefined ? {} : { handle }) }] };
 }
 
 describe("what a run proves", () => {

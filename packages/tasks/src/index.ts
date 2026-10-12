@@ -8,6 +8,7 @@ import {
 	TASKS_STATE,
 	tasksSpent,
 	tasksWith,
+	logFrom,
 } from "@adeildo/pi-kit";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
@@ -31,6 +32,9 @@ export const tasks = defineFeature({
 	setup(scope) {
 		let session: ExtensionContext | undefined;
 		let titled: string | undefined;
+		// What the log last got, so it only gets what changed.
+		let loggedAt: number | undefined;
+		let loggedName: string | undefined;
 		const keeper = new Keeper(
 			(customType, data) => scope.appendEntry(customType, data),
 			(trigger) => {
@@ -55,6 +59,10 @@ export const tasks = defineFeature({
 				first === undefined ? undefined : `\u25b8 ${first}${more}`,
 			);
 			scope.events.emit(TASKS_CHANGED, state);
+			if (session !== undefined && state.updatedAt !== loggedAt) {
+				loggedAt = state.updatedAt;
+				logFrom(session, scope.events, "tasks.changed", { state });
+			}
 		}
 
 		function name(): void {
@@ -62,12 +70,19 @@ export const tasks = defineFeature({
 			const next = nameFor(title, titled, scope.getSessionName());
 			if (next !== undefined && nameSession.get(scope)) scope.setSessionName(next);
 			titled = title;
+			const { handle } = keeper.state();
+			if (session === undefined || handle === undefined || title === undefined) return;
+			if (`${handle} ${title}` === loggedName) return;
+			loggedName = `${handle} ${title}`;
+			logFrom(session, scope.events, "session.named", { handle, title });
 		}
 
 		function restore(ctx: ExtensionContext): void {
 			keeper.restore(ctx.sessionManager.getBranch());
 			// A session titled before it could be named gets its name now.
 			titled = undefined;
+			loggedAt = undefined;
+			loggedName = undefined;
 			name();
 			updates.reset();
 			show();

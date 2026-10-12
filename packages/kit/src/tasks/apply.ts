@@ -47,7 +47,7 @@ class Draft {
 	apply(op: TaskOp): void {
 		switch (op.op) {
 			case "title":
-				return this.#title(op.text.trim());
+				return this.#title(op.text.trim(), op.handle);
 			case "language":
 				if (this.#options.origin === "you" && op.text.trim() !== "")
 					this.#next.language = op.text.trim();
@@ -119,10 +119,12 @@ class Draft {
 		return this.#next;
 	}
 
-	#title(text: string): void {
+	#title(text: string, handle: string | undefined): void {
 		if (text === "") return;
 		this.#next.title = text;
 		this.#next.titleOrigin = this.#options.origin;
+		if (this.#next.handle === undefined && handle !== undefined && isHandle(handle))
+			this.#next.handle = handle;
 	}
 
 	#ask(text: string, beside: boolean): void {
@@ -238,4 +240,9 @@ function wordsOf(text: string): string {
 		.toLowerCase()
 		.replace(/[^\p{L}\p{N}]+/gu, " ")
 		.trim();
+}
+
+/** Lowercase words joined by a dash, short enough to type after an @. */
+export function isHandle(text: string): boolean {
+	return text.length <= 20 && /^[a-z][a-z0-9]*(-[a-z0-9]+)?$/.test(text);
 }

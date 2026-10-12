@@ -45,6 +45,8 @@ export interface SessionTasks {
 	version: typeof TASKS_VERSION;
 	title?: string;
 	titleOrigin?: Origin;
+	/** One or two words other sessions mention it by. Set once, so a mention keeps working. */
+	handle?: string;
 	language?: string;
 	tasks: Task[];
 	decisions: Decision[];
@@ -54,7 +56,7 @@ export interface SessionTasks {
 }
 
 export type TaskOp =
-	| { op: "title"; text: string }
+	| { op: "title"; text: string; handle?: string }
 	| { op: "language"; text: string }
 	/**
 	 * Starts doing it, or queues it when the agent is already on something you asked. `beside`
