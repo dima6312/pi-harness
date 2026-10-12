@@ -170,6 +170,10 @@ export function fakeContext(
 		...extra,
 		ui: {
 			notify: (message: string) => notes.push(message),
+			statuses: new Map<string, string | undefined>(),
+			setStatus(key: string, text: string | undefined) {
+				this.statuses.set(key, text);
+			},
 			onTerminalInput: () => () => {},
 			...(extra.ui as Record<string, unknown> | undefined),
 		},

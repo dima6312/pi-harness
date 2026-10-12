@@ -1,9 +1,12 @@
 import {
+	cardTones,
 	type Decision,
 	isOpen,
 	isStale,
+	keepBackground,
 	newestFirst,
 	type SessionTasks,
+	spread,
 	type Task,
 	type TaskOp,
 	type TaskStatus,
@@ -12,11 +15,9 @@ import {
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
 	backgroundAnsi,
-	colorToOkhsl,
 	type Component,
 	type KeyId,
 	matchesKey,
-	okhslColor,
 	truncateToWidth,
 	visibleWidth,
 	wrapTextWithAnsi,
@@ -394,22 +395,6 @@ function idOf(pick: Pick): string {
 	return pick.kind === "task" ? pick.task.id : pick.decision.id;
 }
 
-/** A cut line ends in a full reset, which would drop the background it sits on. */
-function keepBackground(text: string, background: string): string {
-	return text.replaceAll("\x1b[0m", `\x1b[0m${background}`);
-}
-
-function cardTones(theme: Theme) {
-	const { h, s } = colorToOkhsl(theme.colors.border);
-	return theme.appearance === "dark"
-		? { card: okhslColor(h, s * 0.35, 0.14), band: okhslColor(h, s * 0.45, 0.19) }
-		: { card: okhslColor(h, s * 0.3, 0.96), band: okhslColor(h, s * 0.35, 0.91) };
-}
-
 function localClock(at: number): string {
 	return new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function spread(left: string, right: string, width: number): string {
-	return `${left}${" ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)))}${right}`;
 }
