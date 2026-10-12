@@ -18,7 +18,7 @@
     },
     "packages/ask-permission": {
       "name": "@adeildo/pi-ask-permission",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "dependencies": {
         "@adeildo/pi-ask-questions": "workspace:*",
         "@adeildo/pi-kit": "workspace:*",
@@ -32,7 +32,7 @@
     },
     "packages/ask-questions": {
       "name": "@adeildo/pi-ask-questions",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "dependencies": {
         "@adeildo/pi-kit": "workspace:*",
       },
@@ -44,7 +44,7 @@
     },
     "packages/compact": {
       "name": "@adeildo/pi-compact",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "dependencies": {
         "@adeildo/pi-kit": "workspace:*",
       },
@@ -56,7 +56,7 @@
     },
     "packages/harness": {
       "name": "@adeildo/pi-harness",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "dependencies": {
         "@adeildo/pi-ask-permission": "workspace:*",
         "@adeildo/pi-ask-questions": "workspace:*",
@@ -75,7 +75,7 @@
     },
     "packages/kit": {
       "name": "@adeildo/pi-kit",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
         "@earendil-works/pi-tui": "*",
@@ -83,7 +83,7 @@
     },
     "packages/look": {
       "name": "@adeildo/pi-look",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "dependencies": {
         "@adeildo/pi-kit": "workspace:*",
       },
@@ -95,7 +95,7 @@
     },
     "packages/providers": {
       "name": "@adeildo/pi-providers",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "dependencies": {
         "@adeildo/pi-kit": "workspace:*",
       },
@@ -107,7 +107,7 @@
     },
     "packages/skills": {
       "name": "@adeildo/pi-skills",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "dependencies": {
         "@adeildo/pi-kit": "workspace:*",
       },
@@ -119,7 +119,7 @@
     },
     "packages/tasks": {
       "name": "@adeildo/pi-tasks",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "dependencies": {
         "@adeildo/pi-kit": "workspace:*",
       },

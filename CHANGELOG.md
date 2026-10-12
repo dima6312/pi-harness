@@ -2,6 +2,25 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.7.0](https://github.com/felipeadeildo/pi-harness/compare/v5.6.0...v5.7.0) (2026-10-12)
+
+
+### Features
+
+* **compact:** hide old tool output in long sessions ([002079e](https://github.com/felipeadeildo/pi-harness/commit/002079efc3788de5c4066a808d80d54368933d39))
+* **tasks:** change tasks with keys on Alt+T ([3a197d3](https://github.com/felipeadeildo/pi-harness/commit/3a197d3634db91728227968225b5280edd0b9182))
+
+
+### Bug Fixes
+
+* **compact:** align the prune line and show its cost ([ce401de](https://github.com/felipeadeildo/pi-harness/commit/ce401de5e6f71ca9c81343169372f69a3329a3eb))
+* **tasks:** close what waited on you when you say you did what the agent just asked, and keep every field in your language ([29d7e46](https://github.com/felipeadeildo/pi-harness/commit/29d7e463fc52b5f0b74e0ef48345fb36300ca4f7))
+
+
+### Dependencies
+
+* bump the pi SDK to 1.1.0 ([25752cd](https://github.com/felipeadeildo/pi-harness/commit/25752cd13c6790ff9880f6a804e1212280151a53))
+
 ## [5.6.0](https://github.com/felipeadeildo/pi-harness/compare/v5.5.0...v5.6.0) (2026-10-12)
 
 
