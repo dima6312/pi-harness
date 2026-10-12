@@ -36,7 +36,7 @@ export const summary = setting({
 		section: SUMMARY_SECTION,
 		label: "Write it from the tasks",
 		description:
-			"When pi compacts, the summary is the tasks, your words and the files touched, plus the facts a small model finds missing. Off, or without tasks, pi writes its own.",
+			"When pi compacts, the side model writes pi's summary, with the tasks and your last words on top as they are. Off, or without tasks, pi writes it on the session's model.",
 	},
 });
 
@@ -48,7 +48,7 @@ export const model = setting({
 		section: SUMMARY_SECTION,
 		label: "Model",
 		description:
-			"The model that finds the facts the tasks do not hold. When it fails, the session's model answers.",
+			"The model that writes pi's compaction summary. When it fails, the session's model writes it.",
 		control: modelChoice,
 	},
 });

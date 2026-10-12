@@ -25,7 +25,7 @@ import {
 	REREAD_ENTRY,
 	spentOn,
 } from "../src/record.ts";
-import { summaryText } from "../src/summary.ts";
+import { standing, summarize } from "../src/summary.ts";
 
 const BIG = "x".repeat(8000);
 const SCRIPT = `python3 - <<'EOF'\n${BIG}\nEOF`;
@@ -348,6 +348,32 @@ describe("the line a prune leaves", () => {
 	});
 });
 
+function answering(text: string | undefined) {
+	return {
+		asked: [] as string[],
+		streamSimple(_model: unknown, context: { messages: { content: unknown }[] }) {
+			this.asked.push(JSON.stringify(context.messages));
+			return {
+				result: async () =>
+					text === undefined
+						? {
+								role: "assistant",
+								stopReason: "error",
+								errorMessage: "down",
+								content: [],
+								usage: {},
+							}
+						: {
+								role: "assistant",
+								stopReason: "stop",
+								content: [{ type: "text", text }],
+								usage: { input: 10, output: 5, cost: { total: 0.001 } },
+							},
+			};
+		},
+	};
+}
+
 describe("the compaction summary", () => {
 	const tasks = applyTaskOps(
 		emptyTasks(),
@@ -379,9 +405,26 @@ describe("the compaction summary", () => {
 		settings: { enabled: true, reserveTokens: 16384, keepRecentTokens: 20000 },
 	} as never;
 
-	test("is the tasks and your words as they are, the missing facts, and the files", () => {
-		const files = { readFiles: ["README.md"], modifiedFiles: ["src/a.ts"] };
-		expect(summaryText({ tasks, preparation }, "- wrangler dev runs on :8799", files)).toBe(
+	const side = {
+		provider: "anthropic",
+		id: "haiku",
+		api: "anthropic-messages",
+		maxTokens: 8000,
+		contextWindow: 200_000,
+		reasoning: false,
+		cost: { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 },
+	} as never;
+
+	test("puts the tasks and your words, as they are, on top of pi's summary", async () => {
+		const registry = answering("## Goal\nOAuth on the MCP");
+		const written = await summarize(
+			{ tasks, preparation },
+			[side],
+			registry as never,
+			AbortSignal.timeout(1000),
+		);
+		expect(written?.firstKeptEntryId).toBe("k1");
+		expect(written?.summary.split("\n## Goal")[0]).toBe(
 			[
 				"## Where the session stands",
 				"Session: OAuth on the MCP",
@@ -393,16 +436,26 @@ describe("the compaction summary", () => {
 				"## What the operator asked, newest last",
 				'- "use one secret"',
 				"",
-				"## Critical context",
-				"- wrangler dev runs on :8799",
-				"",
-				"<read-files>\nREADME.md\n</read-files>",
-				"",
-				"<modified-files>\nsrc/a.ts\n</modified-files>",
 			].join("\n"),
 		);
-		const none = summaryText({ tasks, preparation }, "None.", { readFiles: [], modifiedFiles: [] });
-		expect(none).not.toContain("Critical context");
+		expect(written?.summary).toContain("<modified-files>\nsrc/a.ts\n</modified-files>");
+		expect(registry.asked.join("")).toContain("use one secret");
+	});
+
+	test("without a model that answers, pi writes the summary itself", async () => {
+		const written = await summarize(
+			{ tasks, preparation },
+			[side],
+			answering(undefined) as never,
+			AbortSignal.timeout(1000),
+		);
+		expect(written).toBeUndefined();
+		expect(
+			standing({
+				tasks: emptyTasks(),
+				preparation: { messagesToSummarize: [], turnPrefixMessages: [] } as never,
+			}),
+		).toBe("");
 	});
 
 	test("pi writes its own when the session has no tasks, or the setting is off", async () => {

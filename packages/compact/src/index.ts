@@ -124,16 +124,8 @@ export const compact = defineFeature({
 				preparation,
 				...(event.customInstructions ? { instructions: event.customInstructions } : {}),
 			};
-			const written = await summarize(request, models, ctx.modelRegistry, event.signal);
-			return {
-				compaction: {
-					summary: written.summary,
-					firstKeptEntryId: preparation.firstKeptEntryId,
-					tokensBefore: preparation.tokensBefore,
-					details: written.details,
-					...(written.usage === undefined ? {} : { usage: written.usage }),
-				},
-			};
+			const compaction = await summarize(request, models, ctx.modelRegistry, event.signal);
+			return compaction === undefined ? undefined : { compaction };
 		});
 
 		scope.registerCommand("prune", {

@@ -34,7 +34,9 @@ Each prune leaves a line in the chat, with what the next request pays to rewrite
 
 <!-- /docs -->
 
-When pi compacts anyway, the summary is the tasks, your words and the files touched, plus the facts a small model finds missing. The decisions go in as they are, so no model rephrases them. Without tasks, pi writes its own summary.
+When pi compacts anyway, pi's own prompt writes the summary on a small model, and the tasks and your last words go on top as they are, so no model rephrases a decision. Without tasks, pi writes the summary on the session's model.
+
+On six recorded sessions, an agent that only had the summary answered 48 questions about what was dropped. A judge graded the answers against the truth: pi's summary on Haiku scored as well as on Opus, within the judge's noise, for 1/40 of the price. A first version that wrote its own short summary from the tasks scored 2.6 of 5 against pi's 3.9, and was dropped. The method is [Factory's probes](https://factory.ai/news/evaluating-compression), and `bun packages/compact/eval/summary.ts` runs it.
 
 ## Why this way
 
@@ -55,12 +57,12 @@ Nothing of pi's is turned off. The prune runs at the end of each turn, right bef
 
 On the Compact tab of `Alt+S`, stored under `compact` in `~/.pi/agent/extensions/pi-harness/settings.json`:
 
-| Setting                 | Default  | Does                                                                      |
-| ----------------------- | -------- | ------------------------------------------------------------------------- |
-| Hide old tool output    | on       | The prune                                                                 |
-| Above                   | `150000` | Context tokens that start a prune                                         |
-| Write it from the tasks | on       | pi's compaction summary from the tasks. Off, pi writes its own            |
-| Model                   | `auto`   | Finds the missing facts. `auto` is the cheapest of the session's provider |
+| Setting                 | Default  | Does                                                                                                   |
+| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| Hide old tool output    | on       | The prune                                                                                              |
+| Above                   | `150000` | Context tokens that start a prune                                                                      |
+| Write it from the tasks | on       | The tasks on top of pi's summary, written on the model below. Off, pi writes it on the session's model |
+| Model                   | `auto`   | Writes the summary. `auto` is the cheapest of the session's provider                                   |
 
 The tab also shows what this session's prunes freed and how many hidden outputs the agent ran again. A high share means the prune hides what the agent still needs.
 
