@@ -2,6 +2,13 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.7.1](https://github.com/felipeadeildo/pi-harness/compare/v5.7.0...v5.7.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **compact:** let pi write the summary on the side model ([b290de0](https://github.com/felipeadeildo/pi-harness/commit/b290de0da6716b40a3d5a4650dcd11e48ae2442f))
+
 ## [5.7.0](https://github.com/felipeadeildo/pi-harness/compare/v5.6.0...v5.7.0) (2026-10-12)
 
 

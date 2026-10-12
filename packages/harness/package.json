@@ -1,6 +1,6 @@
 {
 	"name": "@adeildo/pi-harness",
-	"version": "5.7.0",
+	"version": "5.7.1",
 	"description": "Every adeildo Pi extension in one install: the permission dialog, the look, the providers, the questions, the skill calls the session tasks and the context pruning. Each is its own extension, so pi config turns one off.",
 	"keywords": [
 		"anthropic",
