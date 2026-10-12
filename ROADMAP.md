@@ -159,7 +159,7 @@ Open:
 
 | Item           | Status  | Needs         | Note                                                                                                                                                        |
 | -------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session naming | planned |               | A name from the first turns. The look already shows it                                                                                                      |
+| Session naming | done    | Session state | `pi-tasks` names the session after its title, while you have not named it with `/name`                                                                      |
 | Session state  | planned |               | `pi-tasks` keeps what is doing, done, waiting and decided, and `currentTasks()` hands it to other features. The files touched and the last summary are left |
 | Memory         | planned | Session state | Replaces `pi-memory`. Markdown is the source of truth, and a command reviews and deletes what was stored                                                    |
 | Mentions       | later   |               | `#entry`, `@file` and session references expanded before the turn                                                                                           |
