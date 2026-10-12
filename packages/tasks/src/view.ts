@@ -104,7 +104,6 @@ export class TasksView implements Component {
 	readonly #options: TasksViewOptions;
 	readonly #clock: Clock;
 	#selected: string | undefined;
-	/** Where the cursor was, so it stays in place when its task leaves the list. */
 	#index = 0;
 	#offset = 0;
 	#dropped = false;
@@ -130,7 +129,6 @@ export class TasksView implements Component {
 		requestRender();
 	}
 
-	/** The change goes through the tasks, whose update redraws the panel. */
 	#act(data: string): boolean {
 		const { act, state } = this.#options;
 		const task = state().tasks.find((entry) => entry.id === this.#selected);
@@ -147,15 +145,9 @@ export class TasksView implements Component {
 		const { theme } = this.#options;
 		const state = this.#options.state();
 		const picks = this.#picks(state);
-		if (!picks.some((pick) => idOf(pick) === this.#selected)) {
-			const near = picks[Math.min(this.#index, picks.length - 1)];
-			this.#selected = near === undefined ? undefined : idOf(near);
-		}
-		const selected = picks.find((pick) => idOf(pick) === this.#selected);
-		this.#index = Math.max(
-			0,
-			picks.findIndex((pick) => idOf(pick) === this.#selected),
-		);
+		// A task that left the list, like one you dropped, leaves the cursor where it was.
+		const at = picks.findIndex((pick) => idOf(pick) === this.#selected);
+		const selected = this.#select(picks, at === -1 ? this.#index : at);
 
 		const inner = Math.max(10, width - PAD * 2);
 		const body = this.#body(state, picks, inner);
@@ -349,9 +341,15 @@ export class TasksView implements Component {
 		const picks = this.#picks(this.#options.state());
 		if (picks.length === 0) return;
 		const at = picks.findIndex((pick) => idOf(pick) === this.#selected);
-		this.#index = Math.min(picks.length - 1, Math.max(0, (at === -1 ? 0 : at) + by));
-		const next = picks[this.#index];
-		this.#selected = next === undefined ? undefined : idOf(next);
+		this.#select(picks, Math.max(0, at) + by);
+	}
+
+	/** Puts the cursor on the pick at `index`, kept inside the list. */
+	#select(picks: readonly Pick[], index: number): Pick | undefined {
+		this.#index = Math.min(picks.length - 1, Math.max(0, index));
+		const pick = picks[this.#index];
+		this.#selected = pick === undefined ? undefined : idOf(pick);
+		return pick;
 	}
 
 	/** Scrolls just enough to keep the cursor's row in view. */
