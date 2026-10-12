@@ -94,7 +94,7 @@ Hiding old tool output works as well as summarizing it and costs less ([JetBrain
 | ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Hide old tool output   | done    | past 150k tokens and outside the last 10 turns, in batches that free a fifth or more. 34% less on a week of sessions, cache rewrites included |
 | The prune's line       | done    | in the chat, with what the cache rewrite costs and in how many requests it pays back                                                          |
-| Summary from the tasks | done    | pi's compaction summary is the tasks, my words and the files, plus the facts a small model finds missing. Not seen live yet                   |
+| Summary from the tasks | done    | pi's prompt on the side model, with the tasks and my words on top. As good as pi on Opus on 48 probes, at 1/40 of the price                   |
 | Re-read share          | done    | each hidden call the agent runs again is counted on the Compact tab. 1 of 181 in the first live prune                                         |
 | Prune after a pause    | planned | once the cache has expired the rewrite is free, so a prune right after a pause should not wait for a fifth                                    |
 | Jev keeps exceptions   | later   | only if the re-read share passes ~10%. A model picking what stays cost 94% more in [OpenHands' study](https://arxiv.org/abs/2605.18854)       |
