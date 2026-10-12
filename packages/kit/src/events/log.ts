@@ -79,8 +79,8 @@ export function logEvent<K extends EventType>(
 	type: K,
 	data: LogEventMap[K],
 	entry?: string,
+	at = Date.now(),
 ): LoggedEvent<K> {
-	const at = Date.now();
 	counter = (counter + 1) % 1_296;
 	const event: LoggedEvent<K> = {
 		v: EVENTS_VERSION,

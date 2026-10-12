@@ -7,6 +7,7 @@ import {
 	createEventBus,
 	createSyntheticSourceInfo,
 	type EntryRenderer,
+	type MessageRenderer,
 	type EventBus,
 	type ExtensionAPI,
 	type ExtensionContext,
@@ -44,6 +45,7 @@ export interface FakePi {
 	allTools: ToolInfo[];
 	providers: { name: string; config: unknown }[];
 	renderers: Map<string, EntryRenderer>;
+	messageRenderers: Map<string, MessageRenderer>;
 	toolRenderers: ToolRendererResolver[];
 	entries: { customType: string; data: unknown }[];
 	messages: unknown[];
@@ -65,6 +67,7 @@ export function fakePi(bus: EventBus = createEventBus()): FakePi {
 		allTools: [],
 		providers: [],
 		renderers: new Map(),
+		messageRenderers: new Map(),
 		toolRenderers: [],
 		entries: [],
 		messages: [],
@@ -95,6 +98,8 @@ export function fakePi(bus: EventBus = createEventBus()): FakePi {
 			void fake.providers.push({ name: String(name), config }),
 		registerEntryRenderer: (customType: string, renderer: EntryRenderer) =>
 			void fake.renderers.set(customType, renderer),
+		registerMessageRenderer: (customType: string, renderer: MessageRenderer) =>
+			void fake.messageRenderers.set(customType, renderer),
 		registerToolRenderer: (resolver: ToolRendererResolver) =>
 			void fake.toolRenderers.push(resolver),
 		appendEntry: (customType: string, data?: unknown) =>

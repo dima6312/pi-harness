@@ -20,6 +20,8 @@ export interface LogEventMap {
 	/** The short name others mention it by, and the title it took it from. */
 	"session.named": { handle: string; title: string };
 	"session.state": { state: SessionState };
+	/** You sent a prompt in this session. What you said stays in pi's own session file. */
+	"session.prompted": Record<string, never>;
 	"tasks.changed": { state: SessionTasks };
 	activity: Activity;
 	/**
