@@ -1,0 +1,51 @@
+{
+	"name": "@adeildo/pi-peers",
+	"version": "5.8.0",
+	"description": "Agents working in the same folder see each other's tasks and what they edited and ran, talk in a shared room, and decide among themselves who takes what you ask the group.",
+	"keywords": [
+		"collaboration",
+		"multi-agent",
+		"pi",
+		"pi-coding-agent",
+		"pi-extension",
+		"pi-package"
+	],
+	"homepage": "https://github.com/felipeadeildo/pi-harness/tree/main/packages/peers#readme",
+	"bugs": "https://github.com/felipeadeildo/pi-harness/issues",
+	"license": "MIT",
+	"author": {
+		"name": "adeildo",
+		"email": "contato@felipeadeildo.com",
+		"url": "https://github.com/felipeadeildo"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/felipeadeildo/pi-harness.git",
+		"directory": "packages/peers"
+	},
+	"files": [
+		"src",
+		"README.md",
+		"LICENSE"
+	],
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@adeildo/pi-kit": "workspace:*"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-ai": "*",
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	},
+	"pi": {
+		"extensions": [
+			"./src/index.ts"
+		]
+	}
+}

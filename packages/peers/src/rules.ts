@@ -1,0 +1,87 @@
+// Who takes a request to everyone, and when a message reaches an agent. Both are plain functions of
+// the folder, so every session reaches the same answer without asking the others.
+import { type Delivery, tasksWith } from "@adeildo/pi-kit";
+
+import type { Peer, Posted } from "./folder.ts";
+
+/** How long open sessions have to bid before the request goes to the best idle one. */
+export const BID_WINDOW_MS = 6_000;
+/** How long the winner has to take it before the next one in line does. */
+export const TAKE_MS = 8_000;
+/** Agent messages in a row, without you speaking, after which a mention stops waking anyone. */
+export const QUIET_AFTER = 4;
+
+export type Award =
+	| { kind: "bidding"; until: number }
+	| { kind: "waiting" }
+	| { kind: "ranked"; order: string[]; closedAt: number }
+	| { kind: "taken"; by: string };
+
+/**
+ * Idle before busy, the best fit, the fewest open tasks, the oldest session. A request nobody idle
+ * bid on waits, and the first session to finish its run and bid takes it.
+ */
+export function award(request: Posted, live: readonly Peer[], now: number): Award {
+	if (request.takenBy !== undefined) return { kind: "taken", by: request.takenBy };
+	const open = new Map(live.map((peer) => [peer.session, peer]));
+	const bids = [...request.bids].filter(([session]) => open.has(session));
+	const everyone = live.every((peer) => request.bids.has(peer.session));
+	const closes = request.at + BID_WINDOW_MS;
+	if (!everyone && now < closes) return { kind: "bidding", until: closes };
+
+	const idle = bids.filter(([, bid]) => bid.idle);
+	if (idle.length === 0) return { kind: "waiting" };
+	const order = idle
+		.toSorted(([a, bidA], [b, bidB]) => {
+			const peerA = open.get(a);
+			const peerB = open.get(b);
+			return (
+				bidB.fit - bidA.fit ||
+				openTasks(peerA) - openTasks(peerB) ||
+				(peerA?.startedAt ?? 0) - (peerB?.startedAt ?? 0) ||
+				a.localeCompare(b)
+			);
+		})
+		.map(([session]) => session);
+	// A request that waited closes when its first idle bid came in.
+	const closedAt = Math.max(Math.min(now, closes), ...idle.map(([, bid]) => bid.at));
+	return { kind: "ranked", order, closedAt };
+}
+
+/** When the given session should take the request, or undefined when it is not in line. */
+export function turnToTake(ranking: Award, session: string): number | undefined {
+	if (ranking.kind !== "ranked") return undefined;
+	const place = ranking.order.indexOf(session);
+	return place === -1 ? undefined : ranking.closedAt + place * TAKE_MS;
+}
+
+function openTasks(peer: Peer | undefined): number {
+	const tasks = peer?.tasks;
+	if (tasks === undefined) return 0;
+	const { length: doing } = tasksWith(tasks, "doing");
+	return doing + tasksWith(tasks, "queued").length + tasksWith(tasks, "waiting").length;
+}
+
+/**
+ * Idle agents wake, busy ones get it when their run ends, and `urgent` cuts in at the next safe
+ * point. Your words always count. A long exchange between agents stops waking anyone until you
+ * speak again.
+ */
+export function deliveryFor(options: {
+	busy: boolean;
+	urgent: boolean;
+	fromYou: boolean;
+	quiet: boolean;
+}): Delivery {
+	if (options.quiet && !options.fromYou && !options.urgent) return "next-turn";
+	if (!options.busy) return "woke";
+	return options.urgent ? "steered" : "after-run";
+}
+
+/** Messages agents sent since you last spoke, in the folder. */
+export function agentStreak(messages: Iterable<Posted>, lastYou: number): number {
+	let streak = 0;
+	for (const message of messages)
+		if (message.from === "agent" && message.at > lastYou && !message.unsent) streak++;
+	return streak;
+}

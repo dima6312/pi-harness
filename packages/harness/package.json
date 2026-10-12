@@ -41,6 +41,7 @@
 		"@adeildo/pi-compact": "workspace:*",
 		"@adeildo/pi-kit": "workspace:*",
 		"@adeildo/pi-look": "workspace:*",
+		"@adeildo/pi-peers": "workspace:*",
 		"@adeildo/pi-providers": "workspace:*",
 		"@adeildo/pi-skills": "workspace:*",
 		"@adeildo/pi-tasks": "workspace:*"
@@ -58,7 +59,8 @@
 			"./src/questions.ts",
 			"./src/skills.ts",
 			"./src/tasks.ts",
-			"./src/compact.ts"
+			"./src/compact.ts",
+			"./src/peers.ts"
 		]
 	}
 }

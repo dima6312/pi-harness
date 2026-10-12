@@ -63,6 +63,7 @@
         "@adeildo/pi-compact": "workspace:*",
         "@adeildo/pi-kit": "workspace:*",
         "@adeildo/pi-look": "workspace:*",
+        "@adeildo/pi-peers": "workspace:*",
         "@adeildo/pi-providers": "workspace:*",
         "@adeildo/pi-skills": "workspace:*",
         "@adeildo/pi-tasks": "workspace:*",
@@ -83,6 +84,18 @@
     },
     "packages/look": {
       "name": "@adeildo/pi-look",
+      "version": "5.8.0",
+      "dependencies": {
+        "@adeildo/pi-kit": "workspace:*",
+      },
+      "peerDependencies": {
+        "@earendil-works/pi-ai": "*",
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
+      },
+    },
+    "packages/peers": {
+      "name": "@adeildo/pi-peers",
       "version": "5.8.0",
       "dependencies": {
         "@adeildo/pi-kit": "workspace:*",
@@ -145,6 +158,8 @@
     "@adeildo/pi-kit": ["@adeildo/pi-kit@workspace:packages/kit"],
 
     "@adeildo/pi-look": ["@adeildo/pi-look@workspace:packages/look"],
+
+    "@adeildo/pi-peers": ["@adeildo/pi-peers@workspace:packages/peers"],
 
     "@adeildo/pi-providers": ["@adeildo/pi-providers@workspace:packages/providers"],
 

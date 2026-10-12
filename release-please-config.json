@@ -63,6 +63,11 @@
 				},
 				{
 					"type": "json",
+					"path": "packages/peers/package.json",
+					"jsonpath": "$.version"
+				},
+				{
+					"type": "json",
 					"path": "packages/harness/package.json",
 					"jsonpath": "$.version"
 				}
