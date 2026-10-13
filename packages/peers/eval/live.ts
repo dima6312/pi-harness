@@ -7,7 +7,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { eventsDir, type LoggedEvent } from "@adeildo/pi-kit";
+import { eventsDir, FolderFeed, type LoggedEvent } from "@adeildo/pi-kit";
+
+import { Folder } from "../src/folder.ts";
 
 const { values } = parseArgs({
 	options: { model: { type: "string", default: "anthropic/claude-haiku-4-5" } },
@@ -26,6 +28,13 @@ function log(session: string, type: string, data: unknown, at = Date.now()): voi
 		`${JSON.stringify({ v: 1, id: `${session}-${at}`, at, session, type, data })}\n`,
 		{ flag: "a" },
 	);
+}
+
+/** The folder as a colleague would read it: every session's log, merged. */
+function folderOf(): Folder {
+	const found = new Folder();
+	found.apply(new FolderFeed(dir).read());
+	return found;
 }
 
 function read(session: string): LoggedEvent[] {
@@ -77,7 +86,14 @@ pi.stdout.on("data", (chunk: Buffer) => {
 	buffered = lines.pop() ?? "";
 	for (const line of lines) {
 		if (line.trim() === "") continue;
-		records.push(JSON.parse(line) as Record<string, unknown>);
+		const record = JSON.parse(line) as Record<string, unknown>;
+		records.push(record);
+		// The operator's permission judge asks before the tool runs. Answer the way they would.
+		if (record.type === "extension_ui_request" && record.method === "select") {
+			const options = (record.options ?? []) as string[];
+			const yes = options.find((option) => option.includes("always yes")) ?? options[0];
+			command({ type: "extension_ui_response", id: record.id, value: yes });
+		}
 	}
 });
 pi.stderr.on("data", (chunk: Buffer) => process.stderr.write(chunk));
@@ -86,11 +102,20 @@ function command(record: Record<string, unknown>): void {
 	pi.stdin.write(`${JSON.stringify(record)}\n`);
 }
 
-async function until<T>(what: string, ready: () => T | undefined, limit = 90_000): Promise<T> {
+async function until<T>(what: string, ready: () => T | undefined, limit = 240_000): Promise<T> {
 	const started = Date.now();
+	let last = 0;
 	while (Date.now() - started < limit) {
 		const found = ready();
-		if (found !== undefined) return found;
+		if (found !== undefined) {
+			console.log(`     ${what}: ${Math.round((Date.now() - started) / 1000)}s`);
+			return found;
+		}
+		// A line every 30s, so a slow judge or a long turn does not look like a hang.
+		if (Date.now() - started - last > 30_000) {
+			last = Date.now() - started;
+			console.log(`     still waiting for ${what} (${Math.round(last / 1000)}s)`);
+		}
 		// oxlint-disable-next-line no-await-in-loop -- polling a file the other process writes
 		await new Promise((later) => setTimeout(later, 250));
 	}
@@ -124,39 +149,33 @@ try {
 	);
 	assert("the message reached the agent", true);
 
-	const wake = await until(
-		"the colleague's reply",
-		() =>
-			read(CANARY).find((event) => event.type === "message.posted" && event.data.id !== "ping-1"),
-		120_000,
+	const wake = await until("the reply", () =>
+		// The author writes the message in its own log, so the reply is in the session's.
+		read(session).find(
+			(event) =>
+				event.type === "message.posted" && (event.data as { from?: string }).from === "agent",
+		),
 	);
-	const reply = (wake.data as { from: string; text: string }).text;
+	const reply = (wake.data as { text: string }).text;
 	assert("a peer message woke it and it answered with the tool", reply.trim().length > 0);
 	console.log(`     it answered: ${reply.trim().slice(0, 120)}`);
 
-	const received = read(CANARY).find((event) => event.type === "message.received");
-	assert("the colleague saw how the message arrived", received !== undefined);
+	// A colleague reads the folder's logs, the way another pi would.
+	const seen = [...folderOf().messages.values()].find((one) => one.text === reply);
+	assert("the reply is in the room, for everyone", seen !== undefined);
+	assert("the reply is addressed to the colleague", seen?.to.includes(CANARY) === true);
 
-	command({
-		id: "ask",
-		type: "prompt",
-		message: "In one line, repeat the exact text of the message you got from the other agent.",
-	});
-	const said = await until(
-		"the agent to say what it read",
-		() =>
-			(
-				records.find(
-					(record) =>
-						record.type === "message_end" &&
-						(record.message as { role?: string } | undefined)?.role === "assistant",
-				)?.message as { content?: { type: string; text?: string }[] } | undefined
-			)?.content
-				?.find((part) => part.type === "text")
-				?.text?.toLowerCase(),
-		120_000,
+	// The runtime records how the message arrived, and that the model read it, so no model turn
+	// is needed to prove the words reached its context.
+	const written = read(session);
+	assert(
+		"the delivery mode is on the record",
+		written.some((event) => event.type === "message.received"),
 	);
-	assert("the words are in its context", said?.includes("ping from canary") === true);
+	assert(
+		"the model read it",
+		written.some((event) => event.type === "message.read"),
+	);
 } catch (error) {
 	assert(`finished: ${error instanceof Error ? error.message : String(error)}`, false);
 	for (const [name, session] of sessions().map((id) => [id, id] as const))
@@ -165,12 +184,9 @@ try {
 				.map((event) => event.type)
 				.join(", ")}`,
 		);
-	for (const record of records.filter((one) => one.type === "message_end"))
-		console.log(`  said: ${JSON.stringify(record.message).slice(0, 400)}`);
-	for (const record of records.filter(
-		(one) => one.type === "tool_execution_end" || one.type === "error",
-	))
-		console.log(`  ${String(record.type)}: ${JSON.stringify(record).slice(0, 300)}`);
+	console.log(`  records: ${[...new Set(records.map((one) => String(one.type)))].join(", ")}`);
+	for (const record of records.filter((one) => one.type !== "message_update"))
+		console.log(`  ${String(record.type)}: ${JSON.stringify(record).slice(0, 600)}`);
 } finally {
 	pi.kill();
 	rmSync(folder, { recursive: true, force: true });

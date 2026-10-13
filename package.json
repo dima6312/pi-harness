@@ -33,7 +33,8 @@
 		"smoke": "bun scripts/smoke.ts",
 		"publish:dry": "bun scripts/publish.ts --dry-run",
 		"publish": "bun scripts/publish.ts",
-		"trust": "bun scripts/setup-npm-trust.ts"
+		"trust": "bun scripts/setup-npm-trust.ts",
+		"peers:live": "bun packages/peers/eval/live.ts"
 	},
 	"devDependencies": {
 		"@earendil-works/pi-ai": "1.1.0",
