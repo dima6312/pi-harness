@@ -176,3 +176,8 @@ Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings 
 ## License
 
 MIT
+
+<p align="center">
+  <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
+  Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
+</p>
