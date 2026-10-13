@@ -559,7 +559,9 @@ test("the picker says when an account needs a sign-in", async () => {
 	const watch: Watch = {
 		limited: new Map(),
 		usage: new Map(),
-		quota: new Quota({ anthropic: anthropicQuota(() => "2.1.280") }),
+		// No reader here: this test reads the labels, and a background plan read from it
+		// would still be in the air when the next test counts fetches.
+		quota: new Quota({}),
 	};
 	let shown: string[] = [];
 	const ctx = fakeContext([], true, {
@@ -589,7 +591,8 @@ test("the picker lists the accounts and never pi's own login", async () => {
 	const watch: Watch = {
 		limited: new Map(),
 		usage: new Map(),
-		quota: new Quota({ anthropic: anthropicQuota(() => "2.1.280") }),
+		// No reader here, for the same reason.
+		quota: new Quota({}),
 	};
 	let shown: string[] = [];
 	const ctx = fakeContext([], true, {
@@ -632,6 +635,9 @@ test("a model of another provider reads that provider's plans right away", async
 	const mock = spyOn(globalThis, "fetch");
 	mock.mockResolvedValue(new Response(JSON.stringify({ five_hour: { utilization: 40 } })));
 	try {
+		// A plan read an earlier test left in flight lands now, so it is not counted here.
+		await settle();
+		mock.mockClear();
 		const ctx = fakeContext([], true, {
 			model: { provider: "deepseek" },
 			modelRegistry: { getProvider: () => native() },
