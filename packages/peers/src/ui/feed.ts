@@ -4,9 +4,10 @@ import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works
 
 import type { Happening, Peer, Posted, RoomItem } from "../folder.ts";
 import type { Typing } from "../here.ts";
-import { byHandle, type Named } from "../names.ts";
+import type { Named } from "../names.ts";
 import { award, TAKE_MS, turnToTake } from "../rules.ts";
 import { blink, dots, isFresh, spin } from "./motion.ts";
+import { typingRecipients } from "./typing.ts";
 
 /** The words sit two columns under the header, the only indent the room uses. */
 const INDENT = 2;
@@ -34,14 +35,6 @@ export interface FeedOptions {
 	live: readonly Peer[];
 	clock: (at: number) => string;
 	only?: string;
-}
-
-export function feedLines(
-	room: readonly RoomItem[],
-	typing: readonly Typing[],
-	options: FeedOptions,
-): string[] {
-	return feedView(room, typing, options).lines;
 }
 
 /** The room's lines, and for each line the index of its message's header. */
@@ -244,17 +237,7 @@ function typingLines(typing: Typing, options: FeedOptions): string[] {
 	const { theme, now, width } = options;
 	const named = options.names.get(typing.session);
 	const color = (named?.color ?? "muted") as ThemeColor;
-	const to =
-		typing.to === "everyone"
-			? theme.fg("muted", "everyone")
-			: typing.to
-					.split(",")
-					.map((part) => {
-						const written = part.trim().replace(/^@/, "");
-						const one = byHandle(options.names, written);
-						return theme.fg((one?.color ?? "muted") as ThemeColor, written);
-					})
-					.join(theme.fg("dim", ", "));
+	const to = typingRecipients(typing.to, options.names, theme);
 	const head = `${theme.fg(color, theme.bold(named?.handle ?? "an agent"))}${theme.fg("dim", " \u2192 ")}${to}  ${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`;
 	const lines = [truncateToWidth(head, width, "...")];
 	const room = Math.max(8, width - INDENT - 1);

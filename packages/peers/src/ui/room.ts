@@ -2,9 +2,7 @@ import {
 	FRAME_X,
 	FRAME_Y,
 	type FrameLine,
-	frameBottom,
-	frameRow,
-	frameTop,
+	frame,
 	type KeyHint,
 	pointer,
 	rule,
@@ -78,14 +76,6 @@ export class RoomView implements Component, Focusable {
 
 	invalidate(): void {
 		this.#composer.invalidate();
-	}
-
-	get following(): boolean {
-		return this.#follow;
-	}
-
-	get pane(): Pane {
-		return this.#pane;
 	}
 
 	moving(): boolean {
@@ -203,16 +193,12 @@ export class RoomView implements Component, Focusable {
 			body.push(this.#label("room", "Room"));
 			body.push(...right);
 		}
-		const split = beside ? agentsWidth + 1 : undefined;
-		return [
-			this.#top(live, width, split),
-			...body.map((line) =>
-				typeof line === "string"
-					? frameRow(theme, width, line)
-					: frameRow(theme, width, line.text, line.selected === true),
-			),
-			frameBottom(theme, width, this.#keys(live, names), split),
-		];
+		return frame(theme, width, body, {
+			title: this.#options.folder,
+			status: this.#counts(live),
+			keys: this.#keys(live, names),
+			split: beside ? agentsWidth + 1 : undefined,
+		});
 	}
 
 	/** The room column: what was said, then the line you write in under it. */
@@ -250,7 +236,8 @@ export class RoomView implements Component, Focusable {
 		return this.#pane === pane ? theme.fg("accent", theme.bold(text)) : theme.fg("dim", text);
 	}
 
-	#top(live: readonly Peer[], width: number, split: number | undefined): string {
+	/** How many agents work, wait and idle, for the top edge. */
+	#counts(live: readonly Peer[]): string {
 		const { theme } = this.#options;
 		const counts: string[] = [];
 		const count = (state: ReturnType<typeof stateOf>) =>
@@ -267,7 +254,7 @@ export class RoomView implements Component, Focusable {
 				`${theme.fg("warning", MARKS.waiting)} ${theme.fg("warning", `${waiting} waiting`)}`,
 			);
 		if (idle > 0) counts.push(`${theme.fg("dim", MARKS.idle)} ${theme.fg("dim", `${idle} idle`)}`);
-		return frameTop(theme, width, this.#options.folder, counts.join("   "), split);
+		return counts.join("   ");
 	}
 
 	/** The rule over the line you write in, saying how far back you scrolled and what is filtered. */

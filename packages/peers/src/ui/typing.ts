@@ -3,7 +3,7 @@ import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 import type { Typing } from "../here.ts";
-import type { Named } from "../names.ts";
+import { byHandle, type Named } from "../names.ts";
 import { dots, FRAME_MS, spin } from "./motion.ts";
 
 export const PEERS_TYPING = "pi-peers-typing";
@@ -27,7 +27,7 @@ export function typingLines(
 	return typing.map((one) => {
 		const named = names.get(one.session);
 		const color = (named?.color ?? "muted") as ThemeColor;
-		const head = `${theme.fg(color, spin(now))} ${theme.fg(color, theme.bold(named?.handle ?? "an agent"))} ${theme.fg("dim", "is writing to")} ${recipients(one.to, me, names, theme)}${theme.fg("dim", dots(now))}`;
+		const head = `${theme.fg(color, spin(now))} ${theme.fg(color, theme.bold(named?.handle ?? "an agent"))} ${theme.fg("dim", "is writing to")} ${typingRecipients(one.to, names, theme, me)}${theme.fg("dim", dots(now))}`;
 		const words = one.text.replaceAll(/\s+/g, " ").trim();
 		if (words === "") return truncateToWidth(head, width, "...");
 		const room = width - visibleWidth(head) - 3;
@@ -61,11 +61,12 @@ export class TypingWidget implements Component {
 	}
 }
 
-function recipients(
+/** Who a draft goes to, each in its color; `me` reads "you". */
+export function typingRecipients(
 	to: string,
-	me: string | undefined,
 	names: ReadonlyMap<string, Named>,
 	theme: Theme,
+	me?: string,
 ): string {
 	if (to === "everyone") return theme.fg("muted", "everyone");
 	return to
@@ -74,7 +75,7 @@ function recipients(
 		.filter((handle) => handle !== "")
 		.map((handle) => {
 			if (handle === me) return theme.fg("accent", "you");
-			const named = [...names.values()].find((one) => one.handle === handle);
+			const named = byHandle(names, handle);
 			return theme.fg((named?.color ?? "muted") as ThemeColor, handle);
 		})
 		.join(theme.fg("dim", ", "));

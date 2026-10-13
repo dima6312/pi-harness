@@ -4,7 +4,7 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 
 import type { Peer, Posted, RoomItem } from "../src/folder.ts";
 import type { Named } from "../src/names.ts";
-import { feedLines, feedMoving } from "../src/ui/feed.ts";
+import { feedMoving, feedView } from "../src/ui/feed.ts";
 import { FRESH_MS } from "../src/ui/motion.ts";
 
 const plain = {
@@ -59,7 +59,7 @@ function joined(session: string, at: number): RoomItem {
 }
 
 function draw(room: RoomItem[], only?: string): string[] {
-	return feedLines(room, [], {
+	return feedView(room, [], {
 		theme: plain,
 		now: 1_000_000,
 		width: 70,
@@ -68,7 +68,7 @@ function draw(room: RoomItem[], only?: string): string[] {
 		live,
 		clock: () => "12:00",
 		only,
-	});
+	}).lines;
 }
 
 describe("the room", () => {

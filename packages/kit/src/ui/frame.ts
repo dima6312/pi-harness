@@ -20,10 +20,13 @@ export type KeyHint = readonly [key: string, action: string];
 /** A line inside the frame. A selected one gets the bar on the left edge. */
 export type FrameLine = string | { text: string; selected?: boolean };
 
-export interface FrameOptions {
+export interface FrameOptions extends BottomOptions {
 	title: string;
 	/** On the right of the top edge: counts, a step, how far along. */
 	status?: string;
+}
+
+export interface BottomOptions {
 	/** In the bottom edge, only the ones that do something right now. */
 	keys?: readonly KeyHint[];
 	/** On the right of the bottom edge: what it cost, where you are. */
@@ -43,40 +46,31 @@ export function frame(
 	body: readonly FrameLine[],
 	options: FrameOptions,
 ): string[] {
-	return [
-		frameTop(theme, width, options.title, options.status, options.split),
-		...body.map((line) =>
-			typeof line === "string"
-				? frameRow(theme, width, line)
-				: frameRow(theme, width, line.text, line.selected === true),
-		),
-		frameBottom(theme, width, options.keys ?? [], options.split, options.footnote),
-	];
+	const title = options.title === "" ? "" : theme.bold(theme.fg("accent", options.title));
+	const top = edge(
+		theme,
+		width,
+		"\u256d",
+		"\u256e",
+		title,
+		options.status ?? "",
+		junction(options.split, "\u252c"),
+	);
+	const rows = body.map((line) =>
+		typeof line === "string"
+			? row(theme, width, line, false)
+			: row(theme, width, line.text, line.selected === true),
+	);
+	return [top, ...rows, frameBottom(theme, width, options)];
 }
 
-export function frameTop(
-	theme: Theme,
-	width: number,
-	title: string,
-	status = "",
-	split?: number,
-): string {
-	const label = title === "" ? "" : theme.bold(theme.fg("accent", title));
-	return edge(theme, width, "\u256d", "\u256e", label, status, junction(split, "\u252c"));
-}
-
-export function frameBottom(
-	theme: Theme,
-	width: number,
-	keys: readonly KeyHint[],
-	split?: number,
-	footnote = "",
-): string {
-	const cross = junction(split, "\u2534");
+/** The bottom edge on its own, for a screen that draws the rest itself. */
+export function frameBottom(theme: Theme, width: number, options: BottomOptions = {}): string {
+	const cross = junction(options.split, "\u2534");
 	// Past the column line when there is one, as the edge places a label that does not fit before it.
 	const room = width - 6 - (cross === undefined ? 0 : cross.at + 1);
-	const kept = fitKeys(keys, room, (hints) => visibleWidth(keyHints(theme, hints)));
-	const hints = keyHints(theme, kept);
+	const hints = keyHints(theme, fitKeys(theme, options.keys ?? [], room));
+	const footnote = options.footnote ?? "";
 	const note = visibleWidth(hints) + visibleWidth(footnote) + 3 <= room ? footnote : "";
 	return edge(theme, width, "\u2570", "\u256f", hints, note, cross);
 }
@@ -85,18 +79,15 @@ export function frameBottom(
  * Whole keys only: when they do not fit, the ones before the last go first, so the way out (the last,
  * by convention `esc`) always shows.
  */
-function fitKeys(
-	keys: readonly KeyHint[],
-	room: number,
-	measure: (keys: readonly KeyHint[]) => number,
-): KeyHint[] {
+function fitKeys(theme: Theme, keys: readonly KeyHint[], room: number): KeyHint[] {
 	const kept = [...keys];
-	while (kept.length > 1 && measure(kept) > room) kept.splice(kept.length - 2, 1);
+	while (kept.length > 1 && visibleWidth(keyHints(theme, kept)) > room)
+		kept.splice(kept.length - 2, 1);
 	return kept;
 }
 
 /** A row of text, padded to the frame. A selected row gets the accent bar against the left side. */
-export function frameRow(theme: Theme, width: number, text: string, selected = false): string {
+function row(theme: Theme, width: number, text: string, selected: boolean): string {
 	const inner = frameInner(width);
 	const clipped = truncateToWidth(text, inner, "...");
 	const fill = " ".repeat(Math.max(0, inner - visibleWidth(clipped)));
@@ -107,11 +98,6 @@ export function frameRow(theme: Theme, width: number, text: string, selected = f
 	return `${side}${lead}${clipped}${fill}${" ".repeat(FRAME_PAD)}${side}`;
 }
 
-/** A line across the frame, side to side, with an optional note on its right. */
-export function frameDivider(theme: Theme, width: number, note = "", split?: number): string {
-	return edge(theme, width, "\u251c", "\u2524", "", note, junction(split, "\u2534"));
-}
-
 /** A quiet line across the text, for a break inside one part of the frame. */
 export function rule(theme: Theme, width: number, note = ""): string {
 	const line = (count: number) => theme.fg("borderMuted", "\u2500".repeat(Math.max(0, count)));
@@ -119,7 +105,7 @@ export function rule(theme: Theme, width: number, note = ""): string {
 	return `${line(width - visibleWidth(note) - 1)} ${note}`;
 }
 
-export function keyHints(theme: Theme, keys: readonly KeyHint[]): string {
+function keyHints(theme: Theme, keys: readonly KeyHint[]): string {
 	return keys
 		.map(([key, action]) => `${theme.fg("muted", key)} ${theme.fg("dim", action)}`)
 		.join("   ");

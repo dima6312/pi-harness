@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
-import { frame, frameDivider, frameInner, pointer } from "../src/ui/frame.ts";
+import { frame, frameInner, pointer } from "../src/ui/frame.ts";
 
 const plain = {
 	fg: (_color: string, text: string) => text,
@@ -49,9 +49,6 @@ describe("the frame", () => {
 	test("a long title gives way, and the status drops before the frame breaks", () => {
 		const [top] = frame(plain, 20, [], { title: "A very long title indeed", status: "9 of 9" });
 		expect(visibleWidth(top ?? "")).toBe(20);
-		expect(frameDivider(plain, 20, "only oauth")).toBe(
-			"\u251c\u2500\u2500\u2500\u2500\u2500 only oauth \u2500\u2524",
-		);
 	});
 
 	test("on a narrow frame whole keys drop, the way out stays, and the note goes before them", () => {

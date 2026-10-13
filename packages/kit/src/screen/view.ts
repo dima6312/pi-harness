@@ -418,7 +418,7 @@ export class ScreenView implements Component {
 
 		lines.push(border(divider("\u251c", "\u2524", inner, left, "\u2534")));
 		for (const line of this.#panel(inner - 2)) lines.push(frame(` ${line}`));
-		lines.push(frameBottom(theme, inner + 2, this.#hints()));
+		lines.push(frameBottom(theme, inner + 2, { keys: this.#hints() }));
 		return lines;
 	}
 
