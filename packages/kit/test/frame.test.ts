@@ -53,4 +53,20 @@ describe("the frame", () => {
 			"\u251c\u2500\u2500\u2500\u2500\u2500 only oauth \u2500\u2524",
 		);
 	});
+
+	test("on a narrow frame whole keys drop, the way out stays, and the note goes before them", () => {
+		const keys = [
+			["\u2191\u2193", "move"],
+			["enter", "switch"],
+			["r", "rename"],
+			["esc", "close"],
+		] as const;
+		const bottom = (width: number) =>
+			frame(plain, width, [], { title: "Accounts", keys, footnote: "3/9" }).at(-1) ?? "";
+		expect(bottom(36)).toBe(
+			"\u2570\u2500 \u2191\u2193 move   esc close \u2500\u2500\u2500\u2500\u2500\u2500 3/9 \u2500\u256f",
+		);
+		expect(bottom(20)).toBe("\u2570\u2500 esc close \u2500\u2500\u2500\u2500\u2500\u2500\u256f");
+		for (const width of [20, 36, 60]) expect(visibleWidth(bottom(width))).toBe(width);
+	});
 });

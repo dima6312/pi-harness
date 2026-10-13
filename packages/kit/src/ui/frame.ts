@@ -72,8 +72,27 @@ export function frameBottom(
 	split?: number,
 	footnote = "",
 ): string {
-	const hints = keyHints(theme, keys);
-	return edge(theme, width, "\u2570", "\u256f", hints, footnote, junction(split, "\u2534"));
+	const cross = junction(split, "\u2534");
+	// Past the column line when there is one, as the edge places a label that does not fit before it.
+	const room = width - 6 - (cross === undefined ? 0 : cross.at + 1);
+	const kept = fitKeys(keys, room, (hints) => visibleWidth(keyHints(theme, hints)));
+	const hints = keyHints(theme, kept);
+	const note = visibleWidth(hints) + visibleWidth(footnote) + 3 <= room ? footnote : "";
+	return edge(theme, width, "\u2570", "\u256f", hints, note, cross);
+}
+
+/**
+ * Whole keys only: when they do not fit, the ones before the last go first, so the way out (the last,
+ * by convention `esc`) always shows.
+ */
+function fitKeys(
+	keys: readonly KeyHint[],
+	room: number,
+	measure: (keys: readonly KeyHint[]) => number,
+): KeyHint[] {
+	const kept = [...keys];
+	while (kept.length > 1 && measure(kept) > room) kept.splice(kept.length - 2, 1);
+	return kept;
 }
 
 /** A row of text, padded to the frame. A selected row gets the accent bar against the left side. */

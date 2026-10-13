@@ -33,7 +33,7 @@ test("no options is no dialog", async () => {
 });
 
 test("the frame holds the title and the options, and the keys sit in its bottom edge", () => {
-	const width = 40;
+	const width = 44;
 	const component = new FramedSelect(TUI, THEME, "Pick one", ["alpha", "beta"], () => {});
 	const lines = component.render(width);
 	const body = lines.join("\n");
