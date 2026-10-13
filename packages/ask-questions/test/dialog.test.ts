@@ -489,4 +489,15 @@ describe("in the transcript", () => {
 			"  \u25cb not answered",
 		]);
 	});
+
+	test("a call that threw shows pi's error, not a crash", () => {
+		const result = {
+			content: [{ type: "text" as const, text: "two options share a label" }],
+			details: {},
+		};
+		const threw = result as unknown as Parameters<typeof renderResult>[0];
+		expect(draw(renderResult(threw, false, plain, [AUTH])).trimEnd()).toBe(
+			"two options share a label",
+		);
+	});
 });

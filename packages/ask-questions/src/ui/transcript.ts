@@ -1,4 +1,4 @@
-import type { AskResult } from "@adeildo/pi-kit";
+import { type AskResult, isAskResult } from "@adeildo/pi-kit";
 import type {
 	AgentToolResult,
 	Theme,
@@ -59,6 +59,10 @@ function writingLines(questions: Streamed, title: string, theme: Theme, width: n
 	return lines;
 }
 
+function contentText(result: AgentToolResult<unknown>): string {
+	return result.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
+}
+
 function counted(count: number, word: string): string {
 	return count === 1 ? `1 ${word}` : `${count} ${word}s`;
 }
@@ -71,7 +75,8 @@ export function renderResult(
 	asked: readonly Asked[] | undefined,
 ): Component {
 	const details = result.details;
-	if (details === undefined) return new Text("", 0, 0);
+	// A tool that throws reaches here with pi's `details: {}` and the error in the content.
+	if (!isAskResult(details)) return new Text(theme.fg("warning", contentText(result)), 0, 0);
 	if (details.error !== undefined) return new Text(theme.fg("warning", details.error), 0, 0);
 	// An answer keeps its question, so the result draws alone when the call's arguments are gone.
 	const questions = asked ?? details.answers;
