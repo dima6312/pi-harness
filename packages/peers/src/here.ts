@@ -26,6 +26,8 @@ import { award, deliveryFor, QUIET_AFTER, turnToTake } from "./rules.ts";
 export const PEER_MESSAGE = "pi-peers:message";
 /** A quiet note for the agent: who else is in the folder. It is not shown in the chat. */
 export const PEER_NOTE = "pi-peers:note";
+/** A request to everyone another session took, kept in this transcript only. */
+export const PEER_BROADCAST = "pi-peers:broadcast";
 /** Your words wait this long before they reach another agent, so /unsend can still stop them. */
 export const GRACE_MS = 3_000;
 /** Older messages and requests are history, never delivered or bid on. */
@@ -50,6 +52,8 @@ export interface PeerMessageDetails {
 	text: string;
 	at: number;
 	withdrawn?: boolean;
+	/** A request to everyone that another agent took: shown here, never sent to this agent. */
+	takenBy?: string;
 }
 
 export interface Hooks {
@@ -59,6 +63,8 @@ export interface Hooks {
 	idle(): boolean;
 	fit(request: string, me: Peer, signal: AbortSignal): Promise<Fit>;
 	changed(): void;
+	/** Puts a request to everyone that another session took in the transcript, outside the model's context. */
+	show?(details: PeerMessageDetails): void;
 	now?(): number;
 	alive?(pid: number): boolean;
 }
@@ -81,6 +87,7 @@ export class Here {
 	/** The depth of what this session's agent writes now: how many agent replies led to its run. */
 	#depth = 0;
 	readonly #delivered = new Set<string>();
+	readonly #shown = new Set<string>();
 	readonly #bidding = new Set<string>();
 	readonly #fits = new Map<string, Fit>();
 	readonly #withdrawn = new Set<string>();
@@ -186,11 +193,13 @@ export class Here {
 		// After applying, so a colleague that just logged shows up in the note.
 		this.#announce();
 		for (const event of fresh) {
-			const id = (event.data as { id?: string }).id;
+			const data = event.data as { id?: string; request?: string };
+			const id = data.id ?? data.request;
 			const message = id === undefined ? undefined : this.#folder.messages.get(id);
 			if (message === undefined) continue;
 			if (event.type === "message.posted") this.#consider(message);
 			if (event.type === "message.unsent") this.#withdraw(message);
+			if (event.type === "request.taken") this.#showTaken(message);
 		}
 		this.#evaluate();
 		this.#hooks.changed();
@@ -356,6 +365,18 @@ export class Here {
 		void this.#bid(message);
 	}
 
+	/** A request to everyone, once someone else took it, goes in this transcript for you to read. */
+	#showTaken(message: Posted): void {
+		const taker = message.takenBy;
+		if (message.to !== "all" || message.unsent || taker === undefined) return;
+		if (taker === this.session || message.session === this.session) return;
+		if (message.at < this.#openedAt || this.#shown.has(message.id)) return;
+		this.#shown.add(message.id);
+		const handle =
+			this.names().get(taker)?.handle ?? this.#folder.peers.get(taker)?.handle ?? "an agent";
+		this.#hooks.show?.({ ...this.#details(message), takenBy: handle });
+	}
+
 	async #bid(message: Posted): Promise<void> {
 		const me = this.session === undefined ? undefined : this.#folder.peers.get(this.session);
 		if (me === undefined || message.bids.has(me.session) || this.#bidding.has(message.id)) return;
@@ -449,7 +470,7 @@ export class Here {
 			);
 		}
 		this.log("message.received", { id: message.id, mode });
-		if (mode !== "next-turn") this.#depth = fromYou ? 0 : message.depth + 1;
+		if (mode !== "next-turn") this.#depth = runDepth(message);
 	}
 
 	/** This session won the request: say so first, so nobody else takes it, then start on it. */
@@ -457,7 +478,7 @@ export class Here {
 		const me = this.session;
 		this.log("request.taken", { request: message.id });
 		if (me === undefined || message.takenBy !== me) return;
-		this.#depth = message.from === "you" ? 0 : message.depth + 1;
+		this.#depth = runDepth(message);
 		if (message.from === "you") {
 			this.#unread.set(message.text, message.id);
 			this.#hooks.sendUserMessage(message.text, { deliverAs: "followUp" });
@@ -504,6 +525,14 @@ export class Here {
 	#now(): number {
 		return this.#hooks.now?.() ?? Date.now();
 	}
+}
+
+/**
+ * How deep a run this message starts is. Your own words start a chain; a colleague's message adds
+ * one, and `QUIET_AFTER` of those is where agents that only answer each other stop waking.
+ */
+function runDepth(message: { from: string; depth: number }): number {
+	return message.from === "you" ? 0 : message.depth + 1;
 }
 
 function sendOptions(mode: Delivery): {

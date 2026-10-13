@@ -23,8 +23,7 @@ export function messageBlock(details: PeerMessageDetails, theme: Theme): Compone
 export function messageLines(details: PeerMessageDetails, theme: Theme, width: number): string[] {
 	const color = details.fromYou ? "accent" : (details.color as ThemeColor);
 	const who = details.fromYou ? "you, from another session" : details.from;
-	const to = details.withdrawn ? "withdrawn" : details.toYou ? "to you" : "to everyone, taken here";
-	const head = `${theme.fg(color, PEER_MARK)} ${theme.fg(color, theme.bold(who))}  ${theme.fg("muted", to)}`;
+	const head = `${theme.fg(color, PEER_MARK)} ${theme.fg(color, theme.bold(who))}  ${theme.fg("muted", addressed(details))}`;
 	const time = theme.fg("dim", clock(details.at));
 	const gap = width - visibleWidth(head) - visibleWidth(time);
 	const lines = [
@@ -34,6 +33,14 @@ export function messageLines(details: PeerMessageDetails, theme: Theme, width: n
 	for (const line of wrapTextWithAnsi(body, Math.max(1, width - INDENT.length)))
 		lines.push(INDENT + (details.withdrawn ? theme.fg("dim", line) : theme.fg("text", line)));
 	return lines;
+}
+
+/** Who the message went to, as this session sees it. */
+function addressed(details: PeerMessageDetails): string {
+	if (details.withdrawn) return "withdrawn";
+	if (details.toYou) return "to you";
+	if (details.takenBy === undefined) return "to everyone, taken here";
+	return `to everyone, ${details.takenBy} took it`;
 }
 
 /** Local time, hours and minutes, the same width at every hour. */

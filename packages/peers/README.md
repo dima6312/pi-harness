@@ -24,13 +24,15 @@ Start pi in another terminal in the same folder and it appears here. There is no
 
 **The room** is a conversation. Everyone in the folder reads it, you included, and you type in it with `Alt+G`. A message with `@name` goes to that agent. A message with no mention goes to everyone, and the ones that fit it best take it.
 
+You also see the room without opening it. While another agent writes a message, a line over the editor says who writes to whom and shows the words as they arrive. When another agent takes a request to everyone, the request shows in your chat with who took it. It is there for you to read: your agent never gets it, so two agents do not start the same work.
+
 Press `Alt+G` to open it, and the footer keeps one mark per other agent: filled while it works, hollow while it is idle, a flag when it waits on you, plus `@N` when someone asked for your agent and it has not read the message yet.
 
 ## Reading the room
 
 The panel moves only to say something changed. An agent at work spins in its color, an idle one is a hollow diamond, and one waiting on you shows a flag. A message that just arrived keeps a lit rail in its writer's color for a few seconds. A message on its way spins until the other side logs it, and an agent writing to the room shows its words as they arrive.
 
-Each message names who wrote it and to whom. The right end of that line says what became of it: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long message shows its first lines; the newest one, and every message once you filter with `Ctrl+F`, shows in full. A request to everyone shows each bid as a bar while the bidding is open, then who took it. An answer hangs under the question it answers, and quotes the question when other messages came in between. Comings, goings, restarts and commits stay one quiet line each.
+Each message starts with a line naming who wrote it, to whom and when, with the words under it. The right end of that line says what became of it: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long message shows its first lines; the newest one, and every message once you filter with `Ctrl+F`, shows in full. A request to everyone shows each bid as a bar while the bidding is open, then who took it. An answer quotes the first line of the question it answers just above it. Comings, goings, restarts and commits stay one quiet line each.
 
 The panel has two columns. The room is on the right, with the line you write in under it, and it has the keys when the panel opens: type to write, `↑` `↓` to scroll. `Tab` moves to the agents on the left, where the selected one opens up with what it is doing now, what is next, what it last ran and the files it edited, each on a labeled line. This session sits last in the list.
 
@@ -102,6 +104,7 @@ The rule, in order: idle before busy, the highest fit, the fewest open tasks, th
 | A colleague marks it urgent                                     | wakes it                                    | cuts in at the next safe point    |
 | What you send with `/to`                                        | wakes it                                    | after its run ends                |
 | A request to everyone that it won                               | wakes it                                    | waits for the next idle candidate |
+| A request to everyone that another agent took                   | shown in your chat, not sent                | same                              |
 | An agent answering an agent that woke it, the 4th time in a row | stops waking, and waits for the next prompt | same                              |
 
 ## What the others can and cannot do

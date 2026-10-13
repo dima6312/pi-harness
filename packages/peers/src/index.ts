@@ -20,7 +20,7 @@ import { Key } from "@earendil-works/pi-tui";
 
 import { fitFor } from "./bid.ts";
 import { boardText } from "./board.ts";
-import { Here, PEER_MESSAGE, type PeerMessageDetails } from "./here.ts";
+import { Here, PEER_BROADCAST, PEER_MESSAGE, type PeerMessageDetails } from "./here.ts";
 import { byHandle, mentionsIn } from "./names.ts";
 import { model, PEERS_SETTINGS } from "./settings.ts";
 import { messageBlock } from "./ui/message.ts";
@@ -28,6 +28,7 @@ import { FRAME_MS } from "./ui/motion.ts";
 import { RoomView } from "./ui/room.ts";
 import { PEERS_STATUS, statusLine } from "./ui/status.ts";
 import { toolRenderers } from "./ui/tool.ts";
+import { PEERS_TYPING, TypingWidget } from "./ui/typing.ts";
 
 export { Here, PEER_MESSAGE } from "./here.ts";
 
@@ -89,8 +90,29 @@ export const peers = defineFeature({
 			changed: () => {
 				for (const redraw of rows) redraw();
 				showStatus();
+				showTyping();
 			},
+			show: (details) => scope.appendEntry(PEER_BROADCAST, details),
 		});
+		let typingShown = false;
+
+		/** Over the editor while another agent writes to the room, gone when it sends. */
+		function showTyping(): void {
+			const ctx = session;
+			if (ctx === undefined || ctx.mode !== "tui") return;
+			const writing = here.othersTyping().length > 0;
+			if (writing === typingShown) return;
+			typingShown = writing;
+			if (!writing) {
+				ctx.ui.setWidget(PEERS_TYPING, undefined);
+				return;
+			}
+			ctx.ui.setWidget(
+				PEERS_TYPING,
+				(tui, theme) => new TypingWidget(here, theme, () => tui.requestRender()),
+				{ placement: "aboveEditor" },
+			);
+		}
 		const pending = new Map<string, { path?: string; command?: string }>();
 
 		/** The look's footer keeps one mark per other session, and how many wait for an answer. */
@@ -183,21 +205,27 @@ export const peers = defineFeature({
 
 		// Only this package writes the folder's logs, so no tool can post words as yours. Reading them
 		// stays allowed: looking at the folder is how an agent learns who else is here.
-		scope.on("tool_call", (event) => {
-			const root = eventsRoot();
+		scope.on("tool_call", (event) =>
+			writesLogs(event)
+				? {
+						block: true,
+						reason:
+							"Only pi-peers writes the folder's logs. Read them, or use the peers tool to talk to the other agents.",
+					}
+				: undefined,
+		);
+
+		/** The write tools name their target, and a command is only a problem when it changes a file. */
+		function writesLogs(event: { toolName: string; input?: unknown }): boolean {
 			const input = (event.input ?? {}) as { path?: unknown; command?: unknown };
-			const path = typeof input.path === "string" ? resolve(session?.cwd ?? ".", input.path) : "";
-			const target = path !== "" && !relative(root, path).startsWith("..");
-			const naming = event.toolName === "write" || event.toolName === "edit";
+			if (
+				(event.toolName === "write" || event.toolName === "edit") &&
+				typeof input.path === "string"
+			)
+				return !relative(eventsRoot(), resolve(session?.cwd ?? ".", input.path)).startsWith("..");
 			const command = typeof input.command === "string" ? input.command : "";
-			if (!((naming && target) || (WRITES.test(command) && command.includes(EVENTS))))
-				return undefined;
-			return {
-				block: true,
-				reason:
-					"Only pi-peers writes the folder's logs. Read them, or use the peers tool to talk to the other agents.",
-			};
-		});
+			return WRITES.test(command) && command.includes(EVENTS);
+		}
 
 		scope.registerTool<typeof PARAMETERS, SentDetails | undefined>({
 			name: TOOL,
@@ -351,6 +379,9 @@ export const peers = defineFeature({
 
 		scope.registerMessageRenderer<PeerMessageDetails>(PEER_MESSAGE, (message, _options, theme) =>
 			message.details === undefined ? undefined : messageBlock(message.details, theme),
+		);
+		scope.registerEntryRenderer<PeerMessageDetails>(PEER_BROADCAST, (entry, _options, theme) =>
+			entry.data === undefined ? undefined : messageBlock(entry.data, theme),
 		);
 	},
 });

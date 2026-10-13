@@ -7,7 +7,14 @@ import { applyTaskOps, emptyTasks } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "../src/bid.ts";
-import { GRACE_MS, Here, type Hooks, PEER_MESSAGE, PEER_NOTE } from "../src/here.ts";
+import {
+	GRACE_MS,
+	Here,
+	type Hooks,
+	PEER_MESSAGE,
+	PEER_NOTE,
+	type PeerMessageDetails,
+} from "../src/here.ts";
 import { BID_WINDOW_MS, QUIET_AFTER } from "../src/rules.ts";
 import { statusLine } from "../src/ui/status.ts";
 
@@ -45,6 +52,7 @@ interface Note {
 function session(id: string, fit: Fit = { fit: 0.5, reason: "" }) {
 	const sent: Sent[] = [];
 	const notes: Note[] = [];
+	const shown: PeerMessageDetails[] = [];
 	const state = { idle: true };
 	const hooks: Hooks = {
 		events: { emit: () => {}, on: () => () => {} } as unknown as Hooks["events"],
@@ -64,13 +72,14 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }) {
 		idle: () => state.idle,
 		fit: async () => fit,
 		changed: () => {},
+		show: (details) => shown.push(details),
 		now: () => now,
 		alive: () => true,
 	};
 	const here = new Here(hooks);
 	opened.push(here);
 	here.open({ getCwd: () => "/repo", getSessionId: () => id }, undefined);
-	return { here, sent, notes, state };
+	return { here, sent, notes, shown, state };
 }
 
 function name(here: Here, handle: string, title = handle): void {
@@ -195,6 +204,21 @@ describe("a request to everyone", () => {
 		]);
 		expect(a.sent).toEqual([]);
 		expect(c.sent).toEqual([]);
+	});
+
+	test("the sessions that did not take it show it in their transcript, saying who took it", async () => {
+		const a = session("a", { fit: 0.2, reason: "" });
+		const b = session("b", { fit: 0.9, reason: "" });
+		const c = session("c", { fit: 0.6, reason: "" });
+		a.here.post("all", "switch the login to OAuth", "agent");
+		await settle(a, b, c);
+		const taker = b.here.names().get("b")?.handle;
+		expect(c.shown.map((one) => [one.text, one.takenBy])).toEqual([
+			["switch the login to OAuth", taker],
+		]);
+		// The one that took it gets the request itself, and the writer has its own tool row.
+		expect(b.shown).toEqual([]);
+		expect(a.shown).toEqual([]);
 	});
 
 	test("with everyone busy it waits, and the first to finish takes it", async () => {
