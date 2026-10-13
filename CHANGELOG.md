@@ -2,6 +2,33 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.9.0](https://github.com/felipeadeildo/pi-harness/compare/v5.8.0...v5.9.0) (2026-10-13)
+
+
+### Features
+
+* **kit:** log events per session ([fc09298](https://github.com/felipeadeildo/pi-harness/commit/fc092987dde5fdb571e82237f4d4e50ea01defad))
+* **kit:** one frame for every dialog, with no backgrounds and the keys in its edge ([e5115ec](https://github.com/felipeadeildo/pi-harness/commit/e5115ec79637967e1726d5d7bab69f586c7e8db3))
+* **kit:** stamp events with a given time ([bd7b6e3](https://github.com/felipeadeildo/pi-harness/commit/bd7b6e3d010a8324822bb8c90f7bf11dea29d132))
+* **peers:** agents in one folder that talk and split work ([39f3802](https://github.com/felipeadeildo/pi-harness/commit/39f38029b7f34dff5f379b8cad8f7f3c281e847d))
+* **peers:** show who is writing over the editor, and requests other agents took in the chat ([d9fae31](https://github.com/felipeadeildo/pi-harness/commit/d9fae31496b4456030bf4c9c800af13973512e18))
+* **peers:** the Alt+G room and the footer marks ([a597e1b](https://github.com/felipeadeildo/pi-harness/commit/a597e1bbc4a2702c72daad9f697cfe676c97d182))
+* **peers:** write in the room's own column, scroll it with the arrows, and label what each agent does ([96169b8](https://github.com/felipeadeildo/pi-harness/commit/96169b84ca040afa7d6bba5088bca5ea6b4185d2))
+* **tasks:** give sessions a short name and log changes ([cda208b](https://github.com/felipeadeildo/pi-harness/commit/cda208bd06ae5fdf2005ece4083f8343c4cf1bba))
+
+
+### Bug Fixes
+
+* **kit:** drop whole keys from a narrow frame, keeping the way out ([6baddfe](https://github.com/felipeadeildo/pi-harness/commit/6baddfe21acc8c5330f6ed5d28389938c3ed482d))
+* **peers:** always say how a user message queues ([a424736](https://github.com/felipeadeildo/pi-harness/commit/a424736bb48ff63cdb40d901d020aec01908d2cd))
+* **peers:** attach a burst between calls, and let the setting decide how ([0b735fa](https://github.com/felipeadeildo/pi-harness/commit/0b735fa0b292d633946d70726bfbfbe6de1ab0c8))
+* **peers:** draw each column to its own width ([de1554f](https://github.com/felipeadeildo/pi-harness/commit/de1554f782bbe0ac5bb201e9538b87d580d82134))
+* **peers:** draw the room's clock in every timezone ([e95bc46](https://github.com/felipeadeildo/pi-harness/commit/e95bc4641d6ec78a4a2bf7b0ffa5150b9290bc53))
+* **peers:** drop the rails and repeated quotes from the room, keeping a rail only on what just arrived ([5f54cee](https://github.com/felipeadeildo/pi-harness/commit/5f54cee0529ce09d33f4f3961a65be34ebaffc89))
+* **peers:** let a read of the folder through, and keep peers off the footer's own colours ([f69e73b](https://github.com/felipeadeildo/pi-harness/commit/f69e73b6c15514de279e52e08c6331eceb748f94))
+* **peers:** show only state, current task and edited files for each agent, wrapping the task ([bc6e22f](https://github.com/felipeadeildo/pi-harness/commit/bc6e22f2a8208781fe8b24c8667b6e28e24fa1b6))
+* **peers:** wake an idle agent for any message, and stop only a chain of agents answering each other ([40b546c](https://github.com/felipeadeildo/pi-harness/commit/40b546c0c478926a9eb9f71d47776f15586556bc))
+
 ## [5.8.0](https://github.com/felipeadeildo/pi-harness/compare/v5.7.2...v5.8.0) (2026-10-12)
 
 
