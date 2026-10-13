@@ -373,8 +373,8 @@ export const SCENES: readonly Scene[] = [
 	{
 		name: "peers/room",
 		caption:
-			"Alt+G: the agents in this folder and what each is doing, beside the room you all talk in.",
-		alt: "The room panel in a rounded frame. On the left oauth, selected and opened up, waiting on you to push, with its callback task, its last test run and the files it edited; migration idle with two queued; and this session rewriting the README. On the right your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit, oauth asking migration about src/auth.ts, migration's answer hanging under the question with its rail still lit, and oauth writing back live.",
+			"Alt+G: the agents in this folder and what each is doing, beside the room you all talk in and write to.",
+		alt: "The room panel in a rounded frame, in two columns. On the left the agents: oauth selected and opened up, waiting on you to push, on the OAuth callback, with its last test run and the files it edited; migration idle with the sessions table next; this session last, rewriting the README. On the right the room: your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit, oauth asking migration about src/auth.ts with woke it at the end of the line, migration's answer hanging under the question with its rail still lit, oauth writing back live, and under it all the line you write in.",
 		draw: (theme) => peersRoom(theme),
 	},
 	{

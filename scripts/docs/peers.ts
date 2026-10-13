@@ -114,7 +114,7 @@ export async function peersRoom(
 			theme,
 			here: me,
 			folder: "pi-harness",
-			rows: () => 34,
+			rows: () => 28,
 			now: () => now,
 			// UTC, so the picture reads the same on every machine.
 			clock: (at) => new Date(at).toISOString().slice(11, 16),

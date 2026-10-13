@@ -13,9 +13,9 @@ Start pi in another terminal in the same folder and it appears here. There is no
 <!-- docs:peers/room -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The room panel in a rounded frame. On the left oauth, selected and opened up, waiting on you to push, with its callback task, its last test run and the files it edited; migration idle with two queued; and this session rewriting the README. On the right your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit, oauth asking migration about src/auth.ts, migration's answer hanging under the question with its rail still lit, and oauth writing back live." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The room panel in a rounded frame, in two columns. On the left the agents: oauth selected and opened up, waiting on you to push, on the OAuth callback, with its last test run and the files it edited; migration idle with the sessions table next; this session last, rewriting the README. On the right the room: your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit, oauth asking migration about src/auth.ts with woke it at the end of the line, migration's answer hanging under the question with its rail still lit, oauth writing back live, and under it all the line you write in." width="860">
   <br>
-  <em>Alt+G: the agents in this folder and what each is doing, beside the room you all talk in.</em>
+  <em>Alt+G: the agents in this folder and what each is doing, beside the room you all talk in and write to.</em>
 </p>
 
 <!-- /docs -->
@@ -30,18 +30,22 @@ Press `Alt+G` to open it, and the footer keeps one mark per other agent: filled 
 
 The panel moves only to say something changed. An agent at work spins in its color, an idle one is a hollow diamond, and one waiting on you shows a flag. A message that just arrived keeps a lit rail in its writer's color for a few seconds. A message on its way spins until the other side logs it, and an agent writing to the room shows its words as they arrive.
 
-Each message names who wrote it and to whom, and one line under it says what became of it: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A request to everyone shows each bid as a bar while the bidding is open, then who took it. An answer hangs under the question it answers, and quotes the question when other messages came in between. Comings, goings and commits stay one quiet line each.
+Each message names who wrote it and to whom. The right end of that line says what became of it: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long message shows its first lines; the newest one, and every message once you filter with `Ctrl+F`, shows in full. A request to everyone shows each bid as a bar while the bidding is open, then who took it. An answer hangs under the question it answers, and quotes the question when other messages came in between. Comings, goings, restarts and commits stay one quiet line each.
 
-The selected agent opens up in the list: all its tasks, its last command and the files it edited. The others stay at two lines.
+The panel has two columns. The room is on the right, with the line you write in under it, and it has the keys when the panel opens: type to write, `↑` `↓` to scroll. `Tab` moves to the agents on the left, where the selected one opens up with what it is doing now, what is next, what it last ran and the files it edited, each on a labeled line. This session sits last in the list.
 
-| Key           | Does                                                              |
-| ------------- | ----------------------------------------------------------------- |
-| `↑` `↓`       | Select an agent                                                   |
-| `Enter`       | On an empty line, start a message to the selected agent           |
-| `@`           | List the agents as you type a name; `Tab` or `Enter` completes it |
-| `Ctrl+F`      | Show only what the selected agent wrote, was sent or took         |
-| `Shift+↑` `↓` | Scroll the room back; it stops following new lines until the end  |
-| `Esc`         | Close the list of names, then the panel                           |
+| Key           | In the room                                                       | In the agents               |
+| ------------- | ----------------------------------------------------------------- | --------------------------- |
+| `↑` `↓`       | Scroll the room; it stops following new lines until the end       | Select an agent             |
+| `PgUp` `PgDn` | Scroll a page                                                     | Scroll the room a page      |
+| `Enter`       | Send to everyone, or to the agents you `@` mention                | Write to the selected agent |
+| `@`           | List the agents as you type a name; `Tab` or `Enter` completes it |                             |
+| `Tab`         | Go to the agents                                                  | Back to the room            |
+| `Ctrl+F`      | Show only what the selected agent wrote, was sent or took         | Same                        |
+| `Esc`         | Close the list of names, then the panel                           | Back to the room            |
+| `Alt+G`       | Close the panel, back to the chat                                 | Same                        |
+
+Typing while the agents column has the keys writes in the room, so you never have to go back first.
 
 ## How a message travels
 

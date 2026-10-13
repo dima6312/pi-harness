@@ -76,8 +76,10 @@ describe("the room", () => {
 			said("1", "a", ["b"], "Are you touching src/auth.ts?", 1_000),
 			said("2", "b", ["a"], "Not anymore.", 2_000),
 		]);
-		expect(lines).toContain("12:00  oauth \u2192 migration");
-		expect(lines).toContain("12:00  \u21b3 migration \u2192 oauth");
+		expect(lines.some((line) => line.startsWith("12:00  oauth \u2192 migration "))).toBe(true);
+		expect(lines.some((line) => line.startsWith("12:00  \u21b3 migration \u2192 oauth "))).toBe(
+			true,
+		);
 		expect(lines.some((line) => line.startsWith("         \u2502 Not anymore."))).toBe(true);
 	});
 
@@ -87,15 +89,40 @@ describe("the room", () => {
 			said("2", "c", ["a"], "Unrelated.", 1_500),
 			said("3", "b", ["a"], "Not anymore.", 2_000),
 		]);
-		expect(lines).toContain(
-			"12:00  \u21b3 migration \u2192 oauth  re: Are you touching src/auth.ts?",
-		);
+		expect(
+			lines.some((line) =>
+				line.startsWith("12:00  \u21b3 migration \u2192 oauth  re: Are you touching src/auth.ts?"),
+			),
+		).toBe(true);
 	});
 
 	test("joins close together read as one line", () => {
 		expect(draw([joined("a", 0), joined("b", 10), joined("c", 20)])).toEqual([
 			"12:00  \u2192 oauth, migration and docs joined",
 		]);
+	});
+
+	test("what became of a message to one agent sits on its header line", () => {
+		const room = [said("1", "a", ["b"], "hi", 1_000)];
+		const message = room[0]?.kind === "message" ? room[0].message : undefined;
+		message?.read.add("b");
+		expect(draw(room)[0]).toMatch(/^12:00  oauth \u2192 migration +\u2713\u2713 read$/);
+	});
+
+	test("a long message shows its first lines, unless it is the newest or the room is narrowed", () => {
+		const long = Array.from({ length: 8 }, (_, line) => `line ${line}`).join("\n");
+		const room = [said("1", "a", ["b"], long, 1_000), said("2", "b", ["a"], "ok", 2_000)];
+		const text = draw(room).join("\n");
+		expect(text).toContain("line 2");
+		expect(text).not.toContain("line 3");
+		expect(text).toContain("5 more lines, ctrl+f to read");
+		expect(draw(room, "a").join("\n")).toContain("line 7");
+		expect(draw([said("1", "a", ["b"], long, 1_000)]).join("\n")).toContain("line 7");
+	});
+
+	test("leaving and coming back within a minute reads as a restart", () => {
+		const left: RoomItem = { kind: "happening", happening: { kind: "left", session: "a", at: 0 } };
+		expect(draw([left, joined("a", 5_000)])).toEqual(["12:00  \u21bb oauth restarted"]);
 	});
 
 	test("narrowed to one agent, the room shows only what it wrote or was sent", () => {

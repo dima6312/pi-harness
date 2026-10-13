@@ -1,4 +1,4 @@
-import type { Delivery } from "@adeildo/pi-kit";
+import { type Delivery, spread } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -15,11 +15,14 @@ const TOGETHER_MS = 60_000;
 /** A message nobody logged after this stops spinning. */
 const ON_ITS_WAY_MS = 60_000;
 
+/** A long message shows this many lines, unless it is the newest or the room is narrowed. */
+const BODY_SHOWN = 4;
+
 const ARRIVED: Record<Delivery, string> = {
 	woke: "woke it",
-	"after-run": "gets it after its run",
-	steered: "cut into its run",
-	"next-turn": "gets it with the next prompt",
+	"after-run": "after its run",
+	steered: "cut in",
+	"next-turn": "next prompt",
 };
 
 export interface FeedOptions {
@@ -38,16 +41,42 @@ export function feedLines(
 	typing: readonly Typing[],
 	options: FeedOptions,
 ): string[] {
+	return feedView(room, typing, options).lines;
+}
+
+/** The room's lines, and for each line the index of its message's header. */
+export function feedView(
+	room: readonly RoomItem[],
+	typing: readonly Typing[],
+	options: FeedOptions,
+): { lines: string[]; heads: (number | undefined)[] } {
 	const { theme } = options;
 	const shown =
 		options.only === undefined ? room : room.filter((item) => involves(item, options.only ?? ""));
 	const lines: string[] = [];
+	const heads: (number | undefined)[] = [];
+	const add = (block: readonly string[], titled: boolean) => {
+		const at = lines.length;
+		for (const line of block) {
+			heads.push(titled ? at : undefined);
+			lines.push(line);
+		}
+	};
+	const gap = () => add([""], false);
 	const replies = answers(shown);
+	const newest = shown.findLast((item) => item.kind === "message");
 	for (let index = 0; index < shown.length; index++) {
 		const item = shown[index];
 		if (item === undefined) continue;
 		if (item.kind === "happening") {
 			if (item.happening.kind === "took") continue;
+			const back = shown[index + 1];
+			if (back?.kind === "happening" && restarted(item.happening, back.happening)) {
+				if (lines.length > 0 && !lastWasHappening(shown, index - 1)) gap();
+				add([restartLine(item.happening, options)], false);
+				index++;
+				continue;
+			}
 			const group: Happening[] = [item.happening];
 			while (true) {
 				const next = shown[index + 1];
@@ -55,34 +84,38 @@ export function feedLines(
 				group.push(next.happening);
 				index++;
 			}
-			if (lines.length > 0 && !lastWasHappening(shown, index - group.length)) lines.push("");
-			lines.push(happeningLine(group, options));
+			if (lines.length > 0 && !lastWasHappening(shown, index - group.length)) gap();
+			add([happeningLine(group, options)], false);
 			continue;
 		}
-		if (lines.length > 0) lines.push("");
+		if (lines.length > 0) gap();
 		const answered = replies.get(item.message.id);
 		const previous = shown[index - 1];
 		const adjacent =
 			answered !== undefined && previous?.kind === "message" && previous.message.id === answered.id;
-		lines.push(...messageLines(item.message, answered, adjacent, options));
+		const full = item === newest || options.only !== undefined;
+		add(messageLines(item.message, answered, adjacent, full, options), true);
 	}
 	const writing =
 		options.only === undefined ? typing : typing.filter((one) => one.session === options.only);
 	for (const one of writing) {
-		if (lines.length > 0) lines.push("");
-		lines.push(...typingLines(one, options));
+		if (lines.length > 0) gap();
+		add(typingLines(one, options), true);
 	}
-	if (lines.length > 0) return lines;
+	if (lines.length > 0) return { lines, heads };
 	const narrowed = options.only === undefined ? undefined : options.names.get(options.only)?.handle;
-	return narrowed === undefined
-		? [theme.fg("dim", "Nothing said yet. Write below, or @ to mention one agent.")]
-		: [theme.fg("dim", `Nothing from or to ${narrowed} yet.`)];
+	const empty =
+		narrowed === undefined
+			? "Nothing said yet. Write below, or @ to mention one agent."
+			: `Nothing from or to ${narrowed} yet.`;
+	return { lines: [theme.fg("dim", empty)], heads: [undefined] };
 }
 
 function messageLines(
 	message: Posted,
 	answered: Posted | undefined,
 	adjacent: boolean,
+	full: boolean,
 	options: FeedOptions,
 ): string[] {
 	const { theme, now, width } = options;
@@ -96,16 +129,32 @@ function messageLines(
 	if (message.urgent) head += theme.fg("warning", "  urgent");
 	if (answered !== undefined && !adjacent)
 		head += theme.fg("dim", `  re: ${answered.text.split("\n")[0] ?? ""}`);
-	const lines = [truncateToWidth(`${time}  ${head}`, width, "...")];
+	// One addressee's receipt fits on the header line; several, or the bids, go under the words.
+	const receipts = receiptLines(message, options);
+	const inline = message.to !== "all" && message.to.length === 1 ? receipts.shift() : undefined;
+	const lines = [header(`${time}  ${head}`, inline ?? "", width)];
 
 	const rail = fresh ? theme.fg(color, "\u2503") : theme.fg("borderMuted", "\u2502");
 	const room = Math.max(8, width - indent.length - 2);
 	const body = message.unsent ? `withdrawn: ${message.text}` : message.text;
-	for (const line of wrapTextWithAnsi(body, room))
+	let wrapped = wrapTextWithAnsi(body, room);
+	if (!full && wrapped.length > BODY_SHOWN) {
+		const hidden = wrapped.length - BODY_SHOWN + 1;
+		wrapped = [
+			...wrapped.slice(0, BODY_SHOWN - 1),
+			theme.fg("dim", `${hidden} more lines, ctrl+f to read`),
+		];
+	}
+	for (const line of wrapped)
 		lines.push(`${indent}${rail} ${theme.fg(message.unsent ? "dim" : "text", line)}`);
-	for (const line of receiptLines(message, options))
-		lines.push(truncateToWidth(`${indent}${line}`, width, "..."));
+	for (const line of receipts) lines.push(truncateToWidth(`${indent}${line}`, width, "..."));
 	return lines;
+}
+
+function header(left: string, right: string, width: number): string {
+	if (right === "") return truncateToWidth(left, width, "...");
+	const room = Math.max(8, width - visibleWidth(right) - 2);
+	return spread(truncateToWidth(left, room, "..."), right, width);
 }
 
 function receiptLines(message: Posted, options: FeedOptions): string[] {
@@ -238,6 +287,22 @@ function happeningLine(group: readonly Happening[], options: FeedOptions): strin
 			return "";
 	}
 	return truncateToWidth(`${time}  ${line}`, width, "...");
+}
+
+/** Left and came back within a minute: the session was reloaded. */
+function restarted(left: Happening, back: Happening): boolean {
+	return (
+		left.kind === "left" &&
+		back.kind === "joined" &&
+		left.session === back.session &&
+		back.at - left.at < TOGETHER_MS
+	);
+}
+
+function restartLine(left: Happening, options: FeedOptions): string {
+	const { theme, width } = options;
+	const line = `${theme.fg("dim", options.clock(left.at))}  ${theme.fg("dim", "\u21bb")} ${name(left.session, options)} ${theme.fg("dim", "restarted")}`;
+	return truncateToWidth(line, width, "...");
 }
 
 function together(first: Happening | undefined, next: Happening): boolean {

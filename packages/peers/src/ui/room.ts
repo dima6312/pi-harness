@@ -13,19 +13,24 @@ import {
 import type { Peer } from "../folder.ts";
 import type { Here } from "../here.ts";
 import { byHandle, type Named } from "../names.ts";
-import { agentLines, MARKS, markOf, stateOf, stateText } from "./agents.ts";
-import { feedLines, feedMoving } from "./feed.ts";
+import { agentLines, inOrder, MARKS, markOf, stateOf, stateText } from "./agents.ts";
+import { feedMoving, feedView } from "./feed.ts";
 import { clock } from "./message.ts";
 import { spin } from "./motion.ts";
 
 const PAD = 2;
 const CHROME_X = 2 + PAD * 2;
-const CHROME_Y = 5;
+/** The top border, the row naming the two columns, and the bottom border. */
+const CHROME_Y = 3;
+/** The rule over the line you write in, and that line. */
+const COMPOSER_ROWS = 2;
 const BESIDE = 90;
 const AGENTS_MIN = 30;
 const AGENTS_MAX = 44;
 const PICKER_ROWS = 4;
 const MENTION_TAIL = /(?:^|\s)@([a-z0-9-]*)$/i;
+
+type Pane = "room" | "agents";
 
 export interface RoomOptions {
 	theme: Theme;
@@ -45,6 +50,7 @@ export class RoomView implements Component, Focusable {
 
 	readonly #options: RoomOptions;
 	readonly #composer: Input;
+	#pane: Pane = "room";
 	#selected = 0;
 	#only: string | undefined;
 	#offset = 0;
@@ -57,7 +63,7 @@ export class RoomView implements Component, Focusable {
 
 	constructor(options: RoomOptions) {
 		this.#options = options;
-		this.#composer = new Input({ prompt: "", placeholder: "message the room, @ to mention" });
+		this.#composer = new Input({ prompt: "", placeholder: "message everyone, @ for one agent" });
 		this.#composer.onSubmit = (value) => this.#send(value);
 	}
 
@@ -69,6 +75,10 @@ export class RoomView implements Component, Focusable {
 		return this.#follow;
 	}
 
+	get pane(): Pane {
+		return this.#pane;
+	}
+
 	moving(): boolean {
 		const { here } = this.#options;
 		const live = here.live();
@@ -78,27 +88,14 @@ export class RoomView implements Component, Focusable {
 	}
 
 	handleInput(data: string): void {
-		const picking = this.#candidates();
-		if (matchesKey(data, Key.escape)) {
-			if (picking.length > 0) return this.#dismiss();
-			return this.#options.close();
-		}
+		if (matchesKey(data, Key.alt("g"))) return this.#options.close();
+		if (matchesKey(data, Key.pageUp)) return this.#scroll(-this.#page());
+		if (matchesKey(data, Key.pageDown)) return this.#scroll(this.#page());
 		if (matchesKey(data, Key.shift("up"))) return this.#scroll(-1);
 		if (matchesKey(data, Key.shift("down"))) return this.#scroll(1);
 		if (matchesKey(data, Key.ctrl("f"))) return this.#narrow();
-		if (picking.length > 0) {
-			if (matchesKey(data, Key.up)) return this.#movePick(-1, picking.length);
-			if (matchesKey(data, Key.down)) return this.#movePick(1, picking.length);
-			if (matchesKey(data, Key.tab) || matchesKey(data, Key.enter))
-				return this.#complete(picking[this.#pick % picking.length]);
-		}
-		if (matchesKey(data, Key.up)) return this.#move(-1);
-		if (matchesKey(data, Key.down)) return this.#move(1);
-		if (matchesKey(data, Key.tab)) return this.#startMention();
-		if (matchesKey(data, Key.enter) && this.#composer.getValue().trim() === "")
-			return this.#writeToSelected();
-		this.#composer.handleInput(data);
-		this.#options.requestRender();
+		if (this.#pane === "agents") return this.#agentsInput(data);
+		this.#roomInput(data);
 	}
 
 	handleMouse(event: { type: string; wheelDelta?: number }): { handled: boolean } | undefined {
@@ -108,21 +105,49 @@ export class RoomView implements Component, Focusable {
 		return { handled: true };
 	}
 
+	#roomInput(data: string): void {
+		const picking = this.#candidates();
+		if (picking.length > 0) {
+			if (matchesKey(data, Key.escape)) return this.#dismiss();
+			if (matchesKey(data, Key.up)) return this.#movePick(-1, picking.length);
+			if (matchesKey(data, Key.down)) return this.#movePick(1, picking.length);
+			if (matchesKey(data, Key.tab) || matchesKey(data, Key.enter))
+				return this.#complete(picking[this.#pick % picking.length]);
+		}
+		if (matchesKey(data, Key.escape)) return this.#options.close();
+		if (matchesKey(data, Key.tab)) return this.#focus("agents");
+		if (matchesKey(data, Key.up)) return this.#scroll(-1);
+		if (matchesKey(data, Key.down)) return this.#scroll(1);
+		this.#composer.handleInput(data);
+		this.#options.requestRender();
+	}
+
+	#agentsInput(data: string): void {
+		if (matchesKey(data, Key.up)) return this.#move(-1);
+		if (matchesKey(data, Key.down)) return this.#move(1);
+		if (matchesKey(data, Key.enter)) return this.#writeToSelected();
+		if (matchesKey(data, Key.tab) || matchesKey(data, Key.escape) || matchesKey(data, Key.right))
+			return this.#focus("room");
+		// Typing in the agents column writes in the room, so the line you write in is never far.
+		if (printable(data)) {
+			this.#pane = "room";
+			return this.#roomInput(data);
+		}
+	}
+
 	render(width: number): string[] {
 		const { theme, here } = this.#options;
-		this.#composer.focused = this.focused;
+		this.#composer.focused = this.focused && this.#pane === "room";
 		const now = this.#now();
 		const inner = Math.max(20, width - CHROME_X);
-		const live = here.live();
+		const live = this.#live();
 		const names = here.names();
 		const me = here.session;
 		this.#selected = Math.max(0, Math.min(this.#selected, live.length - 1));
 		if (this.#only !== undefined && !live.some((peer) => peer.session === this.#only))
 			this.#only = undefined;
 
-		const picking = this.#candidates();
-		const pickerRows = Math.min(PICKER_ROWS, picking.length);
-		const height = Math.max(4, this.#options.rows() - CHROME_Y - pickerRows);
+		const height = Math.max(6, this.#options.rows() - CHROME_Y);
 		const beside = inner >= BESIDE && live.length > 0;
 		const agentsWidth = beside
 			? Math.max(AGENTS_MIN, Math.min(AGENTS_MAX, Math.floor(inner * 0.4)))
@@ -135,23 +160,16 @@ export class RoomView implements Component, Focusable {
 			me,
 			selected: this.#selected,
 			width: agentsWidth,
+			focused: this.#pane === "agents",
 		});
-		const feed = feedLines(here.folder.room, here.othersTyping(), {
-			theme,
-			now,
-			width: roomWidth,
-			me,
-			names,
-			live,
-			clock: this.#options.clock ?? clock,
-			only: this.#only,
-		});
-		const agentsHeight = beside ? height : Math.min(agents.lines.length, Math.floor(height / 2));
-		const roomHeight = beside ? height : Math.max(2, height - agentsHeight - 1);
-		this.#height = roomHeight;
-		this.#followRoom(feed.length);
-		const shownRoom = feed.slice(this.#offset, this.#offset + roomHeight);
+		const agentsHeight = beside
+			? height
+			: Math.min(agents.lines.length, Math.floor((height - COMPOSER_ROWS) / 2));
 		const shownAgents = window(agents.lines, agents.selectedAt, agents.selectedEnd, agentsHeight);
+
+		const picker = this.#picker(this.#candidates(), names, roomWidth);
+		const columnHeight = beside ? height : height - agentsHeight - 1;
+		const right = this.#roomColumn(roomWidth, Math.max(2, columnHeight), picker, names, live);
 
 		const border = (text: string) => theme.fg("border", text);
 		const rule = (text: string) => theme.fg("borderMuted", text);
@@ -160,34 +178,64 @@ export class RoomView implements Component, Focusable {
 			const clipped = truncateToWidth(text, inner, "...");
 			return `${border("\u2502")}${pad}${clipped}${" ".repeat(Math.max(0, inner - visibleWidth(clipped)))}${pad}${border("\u2502")}`;
 		};
+		const pair = (left: string, room: string) => {
+			const clipped = truncateToWidth(left, agentsWidth, "");
+			const gap = " ".repeat(Math.max(0, agentsWidth - visibleWidth(clipped)));
+			return row(`${clipped}${gap} ${rule("\u2502")} ${room}`);
+		};
 
-		const body: string[] = [];
+		const lines = [this.#top(live, width)];
 		if (beside) {
-			for (let line = 0; line < height; line++) {
-				const left = truncateToWidth(shownAgents[line] ?? "", agentsWidth, "");
-				const gap = " ".repeat(Math.max(0, agentsWidth - visibleWidth(left)));
-				body.push(row(`${left}${gap} ${rule("\u2502")} ${shownRoom[line] ?? ""}`));
-			}
+			lines.push(pair(this.#label("agents", "Agents"), this.#label("room", "Room")));
+			for (let line = 0; line < height; line++)
+				lines.push(pair(shownAgents[line] ?? "", right[line] ?? ""));
 		} else {
-			for (const line of shownAgents) body.push(row(line));
-			if (shownAgents.length > 0) body.push(row(rule("\u2500".repeat(inner))));
-			for (let line = 0; line < roomHeight; line++) body.push(row(shownRoom[line] ?? ""));
+			lines.push(row(this.#label("agents", "Agents")));
+			for (const line of shownAgents) lines.push(row(line));
+			lines.push(row(this.#label("room", "Room")));
+			for (const line of right) lines.push(row(line));
 		}
+		lines.push(this.#bottom(width, live, names, beside ? agentsWidth : undefined));
+		return lines;
+	}
 
-		return [
-			this.#top(live, width),
-			row(""),
-			...body,
-			this.#divider(width, beside ? agentsWidth : undefined),
-			...this.#picker(picking, names, inner).map(row),
-			row(this.#composerLine(inner, names)),
-			this.#bottom(width, live, names),
-		];
+	/** The room column: what was said, then the line you write in under it. */
+	#roomColumn(
+		width: number,
+		height: number,
+		picker: readonly string[],
+		names: ReadonlyMap<string, Named>,
+		live: readonly Peer[],
+	): string[] {
+		const { theme, here } = this.#options;
+		const feed = feedView(here.folder.room, here.othersTyping(), {
+			theme,
+			now: this.#now(),
+			width,
+			me: here.session,
+			names,
+			live,
+			clock: this.#options.clock ?? clock,
+			only: this.#only,
+		});
+		this.#height = Math.max(1, height - COMPOSER_ROWS - picker.length);
+		this.#followRoom(feed.lines.length);
+		const shown = feed.lines.slice(this.#offset, this.#offset + this.#height);
+		// A message cut at the top keeps its header, so you still see who wrote it.
+		const head = feed.heads[this.#offset];
+		if (head !== undefined && head < this.#offset) shown[0] = feed.lines[head] ?? "";
+		// Like a chat: the newest line sits right over the line you write in.
+		while (shown.length < this.#height) shown.unshift("");
+		return [...shown, this.#rule(width), ...picker, this.#composerLine(width, names)];
+	}
+
+	#label(pane: Pane, text: string): string {
+		const { theme } = this.#options;
+		return this.#pane === pane ? theme.fg("accent", theme.bold(text)) : theme.fg("dim", text);
 	}
 
 	#top(live: readonly Peer[], width: number): string {
 		const { theme } = this.#options;
-		const border = (text: string) => theme.fg("border", text);
 		const counts: string[] = [];
 		const count = (state: ReturnType<typeof stateOf>) =>
 			live.filter((peer) => stateOf(peer) === state).length;
@@ -203,28 +251,19 @@ export class RoomView implements Component, Focusable {
 				`${theme.fg("warning", MARKS.waiting)} ${theme.fg("warning", `${waiting} waiting`)}`,
 			);
 		if (idle > 0) counts.push(`${theme.fg("dim", MARKS.idle)} ${theme.fg("dim", `${idle} idle`)}`);
-		const right = counts.join("   ");
-		const title = theme.bold(theme.fg("accent", `Agents in ${this.#options.folder}`));
-		return edge(border, "\u256d", "\u256e", title, right, width);
+		const title = theme.bold(theme.fg("accent", this.#options.folder));
+		return edge(theme, "\u256d", "\u256e", title, counts.join("   "), width);
 	}
 
-	#divider(width: number, split: number | undefined): string {
+	/** The rule over the line you write in, saying how far back you scrolled and what is filtered. */
+	#rule(width: number): string {
 		const { theme } = this.#options;
 		const only =
-			this.#only === undefined
-				? ""
-				: `${theme.fg("dim", "only ")}${this.#nameOf(this.#only)}${theme.fg("dim", ", ctrl+f for all")}`;
-		const right = [only, this.#scrollHint()].filter(Boolean).join(theme.fg("dim", "   "));
-		const line = (text: string) => theme.fg("border", text);
-		const fill = Math.max(0, width - 2);
-		let rule = "\u2500".repeat(fill);
-		if (split !== undefined) {
-			const at = PAD + split + 1;
-			rule = `${rule.slice(0, at)}\u2534${rule.slice(at + 1)}`;
-		}
-		if (right === "") return line(`\u251c${rule}\u2524`);
-		const room = fill - visibleWidth(right) - 3;
-		return `${line(`\u251c${rule.slice(0, Math.max(0, room))} `)}${right}${line(` \u2500\u2524`)}`;
+			this.#only === undefined ? "" : `${theme.fg("dim", "only ")}${this.#nameOf(this.#only)}`;
+		const hint = [only, this.#scrollHint()].filter(Boolean).join(theme.fg("dim", "   "));
+		const line = (count: number) => theme.fg("borderMuted", "\u2500".repeat(Math.max(0, count)));
+		if (hint === "") return line(width);
+		return `${line(width - visibleWidth(hint) - 1)} ${hint}`;
 	}
 
 	#scrollHint(): string {
@@ -250,18 +289,22 @@ export class RoomView implements Component, Focusable {
 			const color = (names.get(named.session)?.color ?? "muted") as ThemeColor;
 			const mark = peer === undefined ? " " : markOf(peer, color, theme, now);
 			const state = peer === undefined ? "" : stateText(peer, theme, now);
-			const left = `${chosen ? theme.fg("accent", "\u276f") : " "} ${mark} ${theme.fg(color, theme.bold(named.handle))}`;
-			const line = spread(left, state, Math.min(width, 44));
-			return chosen ? theme.bg("selectedBg", line) : line;
+			const label = chosen ? theme.bold(named.handle) : named.handle;
+			const left = `  ${chosen ? theme.fg("accent", "\u203a") : " "} ${mark} ${theme.fg(color, label)}`;
+			return spread(left, state, Math.min(width, 46));
 		});
 	}
 
+	/** The line you write in. Where it goes shows on the right, only once you write. */
 	#composerLine(width: number, names: ReadonlyMap<string, Named>): string {
 		const { theme } = this.#options;
-		const prompt = `${theme.fg("accent", "\u276f")} ${this.#destination(this.#composer.getValue(), names)}  `;
-		const room = Math.max(1, width - visibleWidth(prompt));
+		const pointer = theme.fg(this.#pane === "room" ? "accent" : "dim", "\u276f ");
+		const value = this.#composer.getValue();
+		const writing = value.trim() === "" || this.#candidates().length > 0;
+		const to = writing ? "" : this.#destination(value, names);
+		const room = Math.max(1, width - 2 - (to === "" ? 0 : visibleWidth(to) + 2));
 		const [drawn = ""] = this.#composer.render(room);
-		return `${prompt}${drawn}`;
+		return to === "" ? `${pointer}${drawn}` : spread(`${pointer}${drawn}`, to, width);
 	}
 
 	#destination(text: string, names: ReadonlyMap<string, Named>): string {
@@ -279,44 +322,42 @@ export class RoomView implements Component, Focusable {
 		// A name still being written is not a mistake yet.
 		const writing = MENTION_TAIL.exec(text)?.[1];
 		const wrong = unknown.filter((name) => name !== writing);
-		if (wrong.length > 0) return theme.fg("warning", `no agent called ${wrong[0]}`);
-		if (found.length === 0) return theme.fg("muted", "to everyone");
-		return `${theme.fg("muted", "to ")}${found
-			.map((named) => theme.fg(named.color as ThemeColor, theme.bold(named.handle)))
-			.join(theme.fg("muted", ", "))}`;
+		if (wrong.length > 0) return theme.fg("warning", `no agent ${wrong[0]}`);
+		if (found.length === 0) return theme.fg("dim", "to everyone");
+		return `${theme.fg("dim", "to ")}${found
+			.map((named) => theme.fg(named.color as ThemeColor, named.handle))
+			.join(theme.fg("dim", ", "))}`;
 	}
 
-	#bottom(width: number, live: readonly Peer[], names: ReadonlyMap<string, Named>): string {
+	#bottom(
+		width: number,
+		live: readonly Peer[],
+		names: ReadonlyMap<string, Named>,
+		split: number | undefined,
+	): string {
 		const { theme } = this.#options;
 		const keys: [string, string][] = [];
 		const selected = live[this.#selected];
-		const other =
-			selected !== undefined && selected.session !== this.#options.here.session
-				? names.get(selected.session)
-				: undefined;
-		if (this.#candidates().length > 0) {
+		const handle = selected === undefined ? undefined : names.get(selected.session)?.handle;
+		const other = selected !== undefined && selected.session !== this.#options.here.session;
+		if (this.#pane === "agents") {
+			keys.push(["\u2191\u2193", "pick"]);
+			if (other && handle !== undefined) keys.push(["enter", "write"]);
+			if (handle !== undefined) keys.push(["ctrl+f", this.#only === undefined ? "filter" : "all"]);
+			keys.push(["tab", "room"]);
+		} else if (this.#candidates().length > 0) {
 			keys.push(["\u2191\u2193", "pick"], ["tab", "mention"], ["esc", "keep writing"]);
-		} else if (this.#composer.getValue().trim() === "") {
-			keys.push(["\u2191\u2193", "agent"]);
-			if (other !== undefined) keys.push(["enter", `write to ${other.handle}`]);
-			if (selected !== undefined)
-				keys.push([
-					"ctrl+f",
-					this.#only === undefined ? `only ${names.get(selected.session)?.handle ?? "it"}` : "all",
-				]);
-			keys.push(["shift+\u2191\u2193", "scroll"], ["esc", "close"]);
 		} else {
-			keys.push(
-				["enter", "send"],
-				["@", "mention"],
-				["shift+\u2191\u2193", "scroll"],
-				["esc", "close"],
-			);
+			keys.push(["enter", "send"], ["\u2191\u2193", "scroll"], ["tab", "agents"], ["esc", "close"]);
 		}
 		const text = keys
 			.map(([key, action]) => `${theme.fg("muted", key)} ${theme.fg("dim", action)}`)
 			.join("   ");
-		return edge((part) => theme.fg("border", part), "\u2570", "\u256f", text, "", width);
+		if (split === undefined) return edge(theme, "\u2570", "\u256f", text, "", width);
+		// The column line meets the bottom border, and the keys sit under the room they act on.
+		const at = PAD + split + 1;
+		const left = theme.fg("border", `\u2570${"\u2500".repeat(at)}\u2534`);
+		return `${left}${edge(theme, "", "\u256f", text, "", width - at - 2)}`;
 	}
 
 	#nameOf(session: string): string {
@@ -324,8 +365,21 @@ export class RoomView implements Component, Focusable {
 		return this.#options.theme.fg((named?.color ?? "muted") as ThemeColor, named?.handle ?? "gone");
 	}
 
+	#live(): Peer[] {
+		return inOrder(this.#options.here.live(), this.#options.here.session);
+	}
+
 	#now(): number {
 		return this.#options.now?.() ?? Date.now();
+	}
+
+	#page(): number {
+		return Math.max(1, this.#height - 2);
+	}
+
+	#focus(pane: Pane): void {
+		this.#pane = pane;
+		this.#options.requestRender();
 	}
 
 	#send(text: string): void {
@@ -340,6 +394,7 @@ export class RoomView implements Component, Focusable {
 	}
 
 	#candidates(): Named[] {
+		if (this.#pane !== "room") return [];
 		const value = this.#composer.getValue();
 		if (value === this.#dismissed) return [];
 		const match = MENTION_TAIL.exec(value);
@@ -361,14 +416,6 @@ export class RoomView implements Component, Focusable {
 		this.#options.requestRender();
 	}
 
-	#startMention(): void {
-		const value = this.#composer.getValue();
-		this.#composer.setValue(value === "" || value.endsWith(" ") ? `${value}@` : `${value} @`);
-		this.#dismissed = undefined;
-		this.#pick = 0;
-		this.#options.requestRender();
-	}
-
 	#dismiss(): void {
 		this.#dismissed = this.#composer.getValue();
 		this.#options.requestRender();
@@ -379,18 +426,20 @@ export class RoomView implements Component, Focusable {
 		this.#options.requestRender();
 	}
 
+	/** Back to the room with the selected agent's name already written. */
 	#writeToSelected(): void {
 		const { here } = this.#options;
-		const selected = here.live()[this.#selected];
-		if (selected === undefined || selected.session === here.session) return;
-		const named = here.names().get(selected.session);
-		if (named === undefined) return;
-		this.#composer.setValue(`@${named.handle} `);
-		this.#options.requestRender();
+		const selected = this.#live()[this.#selected];
+		const named = selected === undefined ? undefined : here.names().get(selected.session);
+		if (named !== undefined && selected?.session !== here.session) {
+			const rest = this.#composer.getValue().replace(/^@[a-z0-9-]+\s*/i, "");
+			this.#composer.setValue(`@${named.handle} ${rest}`);
+		}
+		this.#focus("room");
 	}
 
 	#narrow(): void {
-		const selected = this.#options.here.live()[this.#selected];
+		const selected = this.#live()[this.#selected];
 		this.#only = this.#only !== undefined || selected === undefined ? undefined : selected.session;
 		this.#follow = true;
 		this.#options.requestRender();
@@ -403,7 +452,7 @@ export class RoomView implements Component, Focusable {
 	}
 
 	#move(delta: number): void {
-		const live = this.#options.here.live();
+		const live = this.#live();
 		if (live.length === 0) return;
 		this.#selected = (this.#selected + delta + live.length) % live.length;
 		if (this.#only !== undefined) this.#only = live[this.#selected]?.session;
@@ -423,15 +472,20 @@ export class RoomView implements Component, Focusable {
 	}
 }
 
+function printable(data: string): boolean {
+	return !data.startsWith("\x1b") && [...data].every((char) => char >= " " && char !== "\x7f");
+}
+
 function edge(
-	border: (text: string) => string,
+	theme: Theme,
 	left: string,
 	right: string,
 	label: string,
 	end: string,
 	width: number,
 ): string {
-	const room = Math.max(0, width - 4);
+	const border = (text: string) => theme.fg("border", text);
+	const room = Math.max(0, width - 2 - visibleWidth(left) - visibleWidth(right));
 	const head = label === "" ? "" : ` ${truncateToWidth(label, Math.max(0, room - 2), "...")} `;
 	const tail = end === "" || visibleWidth(head) + visibleWidth(end) + 4 > room ? "" : ` ${end} `;
 	const dashes = Math.max(0, room - visibleWidth(head) - visibleWidth(tail));
