@@ -6,7 +6,7 @@
   <a href="../../README.md">The harness</a> · <a href="../tasks">Tasks</a> · <a href="../compact">Compact</a>
 </p>
 
-Start pi in another terminal in the same folder and it appears here. There is no broker, no daemon and no server: every session writes its own log in `~/.pi/agent/harness/events/<folder>/`, and reads the others' logs. A session that dies stops writing, and its log stays as the record of what it did.
+Start pi in another terminal in the same folder and it appears here. There is no broker, no daemon and no server. Every session writes its own log in `~/.pi/agent/harness/events/<folder>/` and reads the others' logs. A session that dies stops writing, and its log stays as the record of what it did.
 
 ## The two ways they keep in touch
 
@@ -28,9 +28,9 @@ Press `Alt+G` to open it, and the footer keeps one mark per other agent: filled 
 
 ## Who takes what you ask everyone
 
-A request to everyone goes to the idle agent that fits it best, and every session works out the same winner from the same logs. Nothing coordinates them, so nothing can stop working.
+A request to everyone goes to the idle agent that fits it best, and every session works out the same winner from the same logs. No session coordinates the others, so if one exits the rest keep going.
 
-Each session bids with its own side model, which reads its tasks, the files it touched and its decisions. The agent itself is never interrupted to bid, and a bid costs about a cent. Busy sessions bid too and simply cannot win while they are busy, so a request waits for the first one that finishes instead of pulling anyone off their work.
+Each session bids with its own side model, which reads its tasks, the files it touched and its decisions. The agent itself is never interrupted to bid, and a bid costs less than a cent. Busy sessions bid too, and cannot win while they are busy. A request then waits for the first one that finishes, instead of pulling anyone off their work.
 
 The rule, in order: idle before busy, the highest fit, the fewest open tasks, the session that opened first. If the winner does not take the request within a few seconds, the next one in line does.
 
@@ -51,7 +51,7 @@ The rule, in order: idle before busy, the highest fit, the fewest open tasks, th
 
 A colleague's words are never yours. The judge that approves tool calls and the tasks keep reading only what you said, so no agent in the room can approve a push on your behalf. A colleague asking for work becomes a task marked as asked by that colleague, and the judge never reads those.
 
-Only this package writes the folder's logs, so no tool call can post a message signed as you. Editing a file a live colleague touched, or running `git add -A` while one has changes, goes to the judge with the colleague's name on it.
+Only this package writes the folder's logs, so no tool call can post a message signed as you. The board shows who edited what and when, and the agent is told to ask a colleague before editing a file that colleague just touched.
 
 ## Commands
 
