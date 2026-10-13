@@ -118,7 +118,9 @@ describe("a message", () => {
 		expect(b.sent).toEqual([]);
 		now += GRACE_MS;
 		b.here.sync();
-		expect(b.sent).toEqual([{ kind: "user", text: "run the tests", options: undefined }]);
+		expect(b.sent).toEqual([
+			{ kind: "user", text: "run the tests", options: { deliverAs: "followUp" } },
+		]);
 
 		a.here.post(["b"], "oops, wrong agent", "you");
 		expect(a.here.unsend()?.text).toBe("oops, wrong agent");
@@ -150,7 +152,7 @@ describe("a request to everyone", () => {
 		const request = [...a.here.folder.messages.values()][0];
 		expect(request?.takenBy).toBe("b");
 		expect(b.sent).toEqual([
-			{ kind: "user", text: "switch the login to OAuth", options: undefined },
+			{ kind: "user", text: "switch the login to OAuth", options: { deliverAs: "followUp" } },
 		]);
 		expect(a.sent).toEqual([]);
 		expect(c.sent).toEqual([]);

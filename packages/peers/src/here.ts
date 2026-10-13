@@ -373,10 +373,11 @@ export class Here {
 				: deliveryFor({ busy: !this.#hooks.idle(), urgent: message.urgent, fromYou, quiet });
 		if (fromYou && mode !== "next-turn") {
 			this.#unread.set(message.text, message.id);
-			this.#hooks.sendUserMessage(
-				message.text,
-				mode === "woke" ? undefined : { deliverAs: mode === "steered" ? "steer" : "followUp" },
-			);
+			// Its deliverAs only matters while the agent runs, so pass it whether or not it looks idle:
+			// a run starting between the two would otherwise make the call fail.
+			this.#hooks.sendUserMessage(message.text, {
+				deliverAs: mode === "steered" ? "steer" : "followUp",
+			});
 		} else {
 			this.#hooks.sendMessage(
 				{
@@ -398,10 +399,7 @@ export class Here {
 		if (me === undefined || message.takenBy !== me) return;
 		if (message.from === "you") {
 			this.#unread.set(message.text, message.id);
-			this.#hooks.sendUserMessage(
-				message.text,
-				this.#hooks.idle() ? undefined : { deliverAs: "followUp" },
-			);
+			this.#hooks.sendUserMessage(message.text, { deliverAs: "followUp" });
 		} else {
 			const details = this.#details(message);
 			this.#hooks.sendMessage(
