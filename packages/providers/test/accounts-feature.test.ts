@@ -232,6 +232,49 @@ test("after a limit, ask switches and pins, and stop keeps the error", async () 
 	expect(await afterLimit(scope, store, pins, ctx, "anthropic", work.id, "429")).toBeUndefined();
 });
 
+test("a limit lists every other account, the spent ones last, and switches to the one picked", async () => {
+	const store = new AccountStore();
+	store.add("anthropic", "personal", OAUTH);
+	store.add("anthropic", "work", OTHER);
+	store.add("anthropic", "side", OTHER);
+	store.add("anthropic", "spare", OTHER);
+	const [personal, work, side, spare] = store.accounts("anthropic");
+	if (personal === undefined || work === undefined || side === undefined || spare === undefined)
+		throw new Error("no accounts");
+	store.markLimited("anthropic", work.id, Math.floor(Date.now() / 1000) + 7200);
+	const pins: Pins = new Map([["anthropic", personal.id]]);
+	const limited = new Map<string, Set<string>>();
+	const scope = fakeScope({ pi: fakePi() });
+	scope.settings.register([onLimit]);
+	const shown: string[][] = [];
+	const ctx = fakeContext([], true, {
+		model: { provider: "anthropic" },
+		ui: {
+			setStatus: () => {},
+			notify: () => {},
+			select: async (_title: string, options: string[]) => {
+				shown.push(options);
+				return options[1];
+			},
+		},
+	});
+
+	const moved = await afterLimit(scope, store, pins, ctx, "anthropic", personal.id, "429", limited);
+	expect(shown[0]?.slice(0, 3)).toEqual([
+		"Switch to side",
+		"Switch to spare",
+		"Switch to work (limited, resets in 2h)",
+	]);
+	expect(moved?.id).toBe(spare.id);
+	expect(pins.get("anthropic")).toBe(spare.id);
+
+	await afterLimit(scope, store, pins, ctx, "anthropic", spare.id, "429", limited);
+	expect(shown[1]?.slice(0, 2)).toEqual([
+		"Switch to side",
+		"Switch to work (limited, resets in 2h)",
+	]);
+});
+
 test("asking always turns the policy into switch", async () => {
 	const store = new AccountStore();
 	store.add("anthropic", "personal", OAUTH);

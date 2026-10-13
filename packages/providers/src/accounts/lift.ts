@@ -143,7 +143,10 @@ function accountStream(
 	);
 }
 
-/** One account may serve a limit that another one does not have. A re-login costs an attempt too. */
+/**
+ * A re-login or a move after an auth failure costs an attempt. A move after a limit does not: the
+ * account that refused leaves the candidates, so those moves end when the accounts do.
+ */
 const MAX_ATTEMPTS = 3;
 
 async function* attempts(
@@ -158,7 +161,7 @@ async function* attempts(
 ): AsyncGenerator<AssistantMessageEvent> {
 	let account = first;
 
-	for (let attempt = 1; ; attempt++) {
+	for (let attempt = 1; ;) {
 		// Hold the events until something is visible: a retry on another account must not repeat a
 		// message the caller already saw.
 		const buffered: AssistantMessageEvent[] = [];
@@ -197,10 +200,12 @@ async function* attempts(
 		if (failure === undefined && thrown === undefined && account !== undefined)
 			session.served?.(account.id);
 
-		if (!output && attempt < MAX_ATTEMPTS) {
+		const why = output ? undefined : failureOf(failure, thrown, model.provider);
+		if (why !== undefined && (why.kind === "usage" || attempt < MAX_ATTEMPTS)) {
 			// oxlint-disable-next-line no-await-in-loop -- the answer comes from the user.
-			const next = await moveOn(session, account?.id, failureOf(failure, thrown, model.provider));
+			const next = await moveOn(session, account?.id, why);
 			if (next !== undefined) {
+				if (why.kind !== "usage") attempt++;
 				account = next;
 				continue;
 			}
@@ -226,12 +231,12 @@ function failureOf(
 async function moveOn(
 	session: AccountSession,
 	accountId: string | undefined,
-	failure: Failure | undefined,
+	failure: Failure,
 ): Promise<AccountCredential | undefined> {
 	// Without an account there is nothing to move from, and the error is the provider's to show.
 	if (accountId === undefined) return undefined;
-	if (failure?.kind === "usage") return await session.afterLimit(accountId, failure.message);
-	if (failure?.kind === "auth") return await session.afterAuthFailure?.(accountId, failure.message);
+	if (failure.kind === "usage") return await session.afterLimit(accountId, failure.message);
+	if (failure.kind === "auth") return await session.afterAuthFailure?.(accountId, failure.message);
 	return undefined;
 }
 

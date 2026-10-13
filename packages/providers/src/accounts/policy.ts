@@ -5,6 +5,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { classifyFailure } from "../errors.ts";
 import { pick } from "../ui/picker.ts";
+import { timeLeft } from "../usage/read.ts";
 import { refreshStatus } from "./actions.ts";
 import { reason } from "./describe.ts";
 import { loginFor } from "./interaction.ts";
@@ -43,23 +44,26 @@ export async function afterLimit(
 	const mode = onLimit.get(scope);
 	if (mode === "stop") return undefined;
 
-	const next = nextAccount(store.accounts(providerId), currentId, refused);
-	if (next === undefined) return undefined;
+	const candidates = limitCandidates(store.accounts(providerId), currentId, refused);
+	const [first] = candidates;
+	if (first === undefined) return undefined;
+	if (mode === "switch") return switchTo(scope, store, pins, ctx, providerId, first, detail);
 
-	if (mode === "ask") {
-		const current = store.accounts(providerId).find((entry) => entry.id === currentId);
-		const switchNow = `Switch to ${next.label}`;
-		const always = "Always switch when an account hits its limit";
-		const picked = await pick(ctx, `"${current?.label ?? providerId}" hit its limit`, [
-			switchNow,
-			always,
-			"Stop here",
-		]);
-		if (picked === always) scope.settings.set(onLimit, "switch");
-		else if (picked !== switchNow) return undefined;
+	const current = store.accounts(providerId).find((entry) => entry.id === currentId);
+	const choices = new Map(candidates.map((account) => [switchLabel(account), account]));
+	const always = `Always switch on its own (now to ${first.label})`;
+	const picked = await pick(ctx, `"${current?.label ?? providerId}" hit its limit`, [
+		...choices.keys(),
+		always,
+		"Stop here",
+	]);
+	if (picked === always) {
+		scope.settings.set(onLimit, "switch");
+		return switchTo(scope, store, pins, ctx, providerId, first, detail);
 	}
-
-	return switchTo(scope, store, pins, ctx, providerId, next, detail);
+	const chosen = picked === undefined ? undefined : choices.get(picked);
+	if (chosen === undefined) return undefined;
+	return switchTo(scope, store, pins, ctx, providerId, chosen, detail);
 }
 
 /** Follows the `accounts.onAuthFailure` policy: sign in again, switch, or stop. */
@@ -176,6 +180,34 @@ function markLimited(
 	refused.add(accountId);
 	limited.set(providerId, refused);
 	return refused;
+}
+
+/**
+ * Every other account that has not refused in this session, in the ring order after the current one.
+ * The ones a reading says are still spent go last, so a switch on its own does not land on them.
+ */
+function limitCandidates(
+	list: readonly Account[],
+	currentId: string,
+	refused: ReadonlySet<string>,
+): Account[] {
+	const index = list.findIndex((account) => account.id === currentId);
+	const ring = index < 0 ? list : [...list.slice(index + 1), ...list.slice(0, index)];
+	const open = ring.filter((account) => !refused.has(account.id));
+	const ready = open.filter((account) => resetsIn(account) === undefined);
+	return [...ready, ...open.filter((account) => !ready.includes(account))];
+}
+
+/** How long until a spent account's plan resets, or undefined when it is not known to be spent. */
+function resetsIn(account: Account): string | undefined {
+	return timeLeft(account.health?.limitedUntil ?? 0);
+}
+
+function switchLabel(account: Account): string {
+	const left = resetsIn(account);
+	return left === undefined
+		? `Switch to ${account.label}`
+		: `Switch to ${account.label} (limited, resets in ${left})`;
 }
 
 /** The account after this one that has not refused yet. */
