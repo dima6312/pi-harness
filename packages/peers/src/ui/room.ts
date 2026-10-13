@@ -46,6 +46,8 @@ export interface RoomOptions {
 	requestRender: () => void;
 	/** Now, for the ages on the board. Kept out of the wall clock so the pictures do not move. */
 	now?: () => number;
+	/** The clock the room reads, so a picture does not depend on where it was drawn. */
+	clock?: (at: number) => string;
 	/** What you typed, sent. */
 	send: (text: string) => void;
 	rows: () => number;
@@ -260,7 +262,7 @@ export class RoomView implements Component, Focusable {
 					case "took":
 						continue;
 				}
-				lines.push(theme.fg("dim", `${clock(happening.at)}  ${theme.fg(color, who)} ${what}`));
+				lines.push(theme.fg("dim", `${this.#time(happening.at)}  ${theme.fg(color, who)} ${what}`));
 				continue;
 			}
 			const message = item.message;
@@ -272,7 +274,9 @@ export class RoomView implements Component, Focusable {
 				message.from === "you" && me !== undefined && message.session === me
 					? ""
 					: this.#to(names, message.to);
-			lines.push(`${theme.fg("dim", clock(message.at))}  ${theme.fg(color, theme.bold(who))}${to}`);
+			lines.push(
+				`${theme.fg("dim", this.#time(message.at))}  ${theme.fg(color, theme.bold(who))}${to}`,
+			);
 			const body = message.unsent
 				? theme.fg("dim", `withdrawn: ${message.text}`)
 				: theme.fg("text", message.text);
@@ -284,7 +288,7 @@ export class RoomView implements Component, Focusable {
 			const named = names.get(typing.session);
 			const color = (named?.color ?? "muted") as ThemeColor;
 			lines.push(
-				`${theme.fg("dim", clock(typing.at))}  ${theme.fg(color, named?.handle ?? "an agent")} ${theme.fg("muted", `is writing${typing.to === "everyone" ? " to everyone" : ` to ${typing.to}`}`)}`,
+				`${theme.fg("dim", this.#time(typing.at))}  ${theme.fg(color, named?.handle ?? "an agent")} ${theme.fg("muted", `is writing${typing.to === "everyone" ? " to everyone" : ` to ${typing.to}`}`)}`,
 			);
 			const shown = typing.text.split("\n").slice(-2);
 			for (const line of shown)
@@ -441,6 +445,10 @@ export class RoomView implements Component, Focusable {
 		return keys
 			.map(([key, action]) => `${theme.fg("muted", key)} ${theme.fg("dim", action)}`)
 			.join("  ");
+	}
+
+	#time(at: number): string {
+		return (this.#options.clock ?? clock)(at);
 	}
 
 	#hint(): string {

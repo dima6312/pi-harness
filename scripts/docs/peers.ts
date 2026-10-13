@@ -103,6 +103,8 @@ export async function peersRoom(theme: Theme): Promise<string[]> {
 			folder: "pi-harness",
 			rows: () => 34,
 			now: () => now,
+			// UTC, so the picture reads the same on every machine.
+			clock: (at) => new Date(at).toISOString().slice(11, 16),
 			close() {},
 			requestRender() {},
 			send() {},
