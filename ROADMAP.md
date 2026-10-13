@@ -199,12 +199,13 @@ Open:
 
 ## Platform
 
-| Item                    | Status  | Note                                                                                                    |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| The pi defaults check   | done    | `bun run pi:defaults` fails when pi moves a default a harness setting was chosen against                |
-| `/harness setup`        | planned | Applies the pi settings listed in `packages/harness/src/setup.ts`, which a package cannot set by itself |
-| A release preflight     | planned | Refuses to release when `main` is behind, the tree is dirty, or CI is red for the commit                |
-| A local release dry run | planned | Installs the packed tarballs outside the repository and runs a real `pi` session against them           |
+| Item                       | Status  | Note                                                                                                                                                      |
+| -------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The pi defaults check      | done    | `bun run pi:defaults` fails when pi moves a default a harness setting was chosen against                                                                  |
+| One frame for every dialog | done    | `pi-kit` owns the frame, the keys on its edge, the pointer and the rule (`packages/kit/src/ui/frame.ts`), with `DESIGN.md`; every dialog draws through it |
+| `/harness setup`           | planned | Applies the pi settings listed in `packages/harness/src/setup.ts`, which a package cannot set by itself                                                   |
+| A release preflight        | planned | Refuses to release when `main` is behind, the tree is dirty, or CI is red for the commit                                                                  |
+| A local release dry run    | planned | Installs the packed tarballs outside the repository and runs a real `pi` session against them                                                             |
 
 ## Waiting on pi
 
