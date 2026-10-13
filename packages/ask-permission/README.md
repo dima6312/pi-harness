@@ -142,3 +142,12 @@ Ask me.
 The [reference](docs/reference.md) has every setting, the exact order in which a call is decided, the limits in full, and the events other extensions can listen to. `pi-ask-permission` on npm is this same extension under an older name, and it reads the same settings, grants and sessions: `pi remove npm:pi-ask-permission`, then install this one.
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
+
+## License
+
+MIT
+
+<p align="center">
+  <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
+  Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
+</p>

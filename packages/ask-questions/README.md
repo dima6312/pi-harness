@@ -150,3 +150,12 @@ What differs: a note belongs to an option and not to the question, there is no n
 The schema, the validation, the preview layout and the RPC fallback are ported from [`rpiv-ask-user-question`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-ask-user-question) by [juicesharp](https://github.com/juicesharp), under the MIT license. The dialog is new.
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
+
+## License
+
+MIT
+
+<p align="center">
+  <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
+  Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
+</p>

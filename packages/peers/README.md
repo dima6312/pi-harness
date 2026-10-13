@@ -1,13 +1,19 @@
 <h1 align="center">@adeildo/pi-peers</h1>
 
 <p align="center">
-  Agents working in the same folder see each other's work, talk in a room, and split what you ask everyone.
-  <br>
-  <a href="../../README.md">The harness</a> · <a href="../tasks">Tasks</a> · <a href="../compact">Compact</a>
+  <a href="https://www.npmjs.com/package/@adeildo/pi-peers"><img src="https://img.shields.io/npm/v/@adeildo/pi-peers" alt="npm"></a>
+  <a href="https://pi.dev"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Ffelipeadeildo%2Fpi-harness%2Fmain%2Fpackage.json&query=%24.devDependencies%5B%22%40earendil-works%2Fpi-coding-agent%22%5D&label=pi%20SDK&color=6E56CF" alt="pi SDK"></a>
 </p>
 
+<p align="center">
+  <strong>Agents in one folder, aware of each other.</strong><br>
+  The board, the room, and the auction for what you ask everyone.
+</p>
+
+<p align="center"><code>pi install npm:@adeildo/pi-peers</code></p>
+
 Start pi in another terminal in the same folder and it appears here. There is no broker, no daemon and no
-server: every session writes its own log in `~/.pi/agent/harness/events/<folder>/` and reads the others'. A
+server: each session writes its own log in `~/.pi/agent/harness/events/<folder>/` and reads the others'. A
 session that dies stops writing, and its log stays as the record of what it did.
 
 ## The board and the room
@@ -23,25 +29,24 @@ session that dies stops writing, and its log stays as the record of what it did.
 <!-- /docs -->
 
 **The board** is what each session is doing, what waits on you, what it edited and ran, and what it
-committed. Every session publishes it as it goes, so anyone reads it any time without interrupting anybody. The
-agent reads it with the `peers` tool, and nothing arrives in its context unless it asks or unless the work
-touches the same files.
+committed. Each session publishes it as it goes, so anyone reads it without interrupting anybody. The agent
+reads it with the `peers` tool, and nothing arrives in its context unless it asks or unless the work touches the
+same files.
 
 **The room** is a conversation. Everyone in the folder reads it, you included, and you type in it with `Alt+G`.
 A message with `@name` goes to that agent. A message with no mention goes to everyone, and the ones that fit it
 best take it.
 
-The room reaches you without being opened. While another agent writes, a line over the editor says who writes
-to whom and shows the words as they arrive. A request to everyone that another agent took appears in your chat
-with who took it, for you to read only: your agent never gets it, so two of them do not start the same work. The
-footer keeps one mark per other agent, filled while it works, hollow while it is idle, a flag when it waits on
-you, and `@N` when someone asked for your agent and it has not read the message yet.
+The room reaches you without being opened. A line over the editor names who writes to whom as the words
+arrive, and a request to everyone that another agent took shows in your chat with who took it, for you to read
+only: your agent never gets it, so two of them do not start the same work. The footer keeps one mark per other
+agent, filled while it works, hollow while it is idle, a flag when it waits on you, and `@N` for what your agent
+has not read yet.
 
 ## Reading the room
 
-An agent at work spins in its color, an idle one is a hollow diamond, and one waiting on you shows a flag. The
-message that just arrived keeps a lit rail in its writer's color for a few seconds, a message still on its way
-spins until the other side logs it, and an agent writing shows its words as they arrive.
+In the panel, the message that just arrived keeps a lit rail in its writer's color for a few seconds, a message
+still on its way spins until the other side logs it, and an agent writing shows its words as they arrive.
 
 Each message starts with a line naming who wrote it, to whom and when. The right end of that line says what
 became of it: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long
@@ -88,10 +93,9 @@ sequenceDiagram
     end
 
     rect rgb(58,52,36)
-      Note over OAuth,Migration: each bids with its own side model, and ranks the same way
+      Note over OAuth,Migration: each bids with its own side model
       OAuth->>Log: bid, idle, fit .82
       Migration->>Log: bid, idle, fit .37
-      Note over OAuth,Migration: idle before busy, then fit, fewest tasks, oldest session
       OAuth->>Log: took it, and its agent starts on it
     end
 
@@ -166,6 +170,8 @@ On the Peers tab of `Alt+S`, stored under `peers` in `~/.pi/agent/extensions/pi-
 | Setting | Default | Does                                                                                   |
 | ------- | ------- | -------------------------------------------------------------------------------------- |
 | Model   | `auto`  | The model that bids for this session. `auto` is the cheapest of the session's provider |
+
+Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
 
 ## License
 

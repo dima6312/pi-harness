@@ -72,3 +72,12 @@ The look never names a colour. Every piece names a theme token, so it follows wh
 The framed editor, and the idea of writing into its borders, come from [pi-open-tui](https://github.com/OldSuns/pi-open-tui), which this replaces. The segments with priorities come from [oh-my-pi](https://github.com/can1357/oh-my-pi).
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
+
+## License
+
+MIT
+
+<p align="center">
+  <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
+  Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
+</p>

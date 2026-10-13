@@ -69,6 +69,13 @@ On the Compact tab of `Alt+S`, stored under `compact` in `~/.pi/agent/extensions
 
 The tab also shows what this session's prunes freed and how many hidden outputs the agent ran again. A high share means the prune hides what the agent still needs.
 
+Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
+
 ## License
 
 MIT
+
+<p align="center">
+  <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
+  Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
+</p>

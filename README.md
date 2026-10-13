@@ -82,3 +82,12 @@ The pieces borrow from other people's work, and each page names where. In one li
 <p align="center">
   I build these for myself, and publish them. The longer version of why, and the rest of what I run, lives at <a href="https://adeildo.dev">adeildo.dev</a>.
 </p>
+
+## License
+
+MIT
+
+<p align="center">
+  <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
+  Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
+</p>

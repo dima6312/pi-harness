@@ -118,6 +118,13 @@ On the Tasks tab of `Alt+S`, stored under `tasks` in `~/.pi/agent/extensions/pi-
 
 Each call is one short request. With Claude Haiku it takes about 3 seconds and costs about $0.003, and a turn makes two or three: your message, the end of the run and the tidy pass. Every call records what it cost, even one that changed nothing (`pi-tasks:usage`). The Tasks tab shows the total, and the look adds it to the session's cost. Updates run only when pi has a UI, so print runs and subagents make no extra calls.
 
+Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
+
 ## License
 
 MIT
+
+<p align="center">
+  <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
+  Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
+</p>

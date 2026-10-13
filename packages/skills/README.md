@@ -38,6 +38,13 @@ At the start of the message, `/` still opens pi's own palette, with the commands
 - While the model works, the skills queue with the message, as a steer or a follow-up.
 - If a skill file cannot be read, the message goes without that skill and a warning says why.
 
+Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
+
 ## License
 
 MIT
+
+<p align="center">
+  <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
+  Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
+</p>
