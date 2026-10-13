@@ -53,6 +53,12 @@ const PARAMETERS = Type.Object({
 	),
 });
 
+/** The path the logs live under, as a command would name it. */
+const EVENTS = "harness/events";
+/** A shell redirection, or a command that changes a file. Reading one of these logs stays allowed. */
+const WRITES =
+	/(>>?|\btee\b|\brm\b|\bmv\b|\bcp\b|\btruncate\b|\bdd\b|\binstall\b|\btouch\b|\bchmod\b|\bsed -i\b|\bpython3? -c\b|\bnode -e\b|\bbun -e\b)/;
+
 export interface SentDetails {
 	id: string;
 	to: string[];
@@ -176,19 +182,21 @@ export const peers = defineFeature({
 			}
 		});
 
-		// Only this package writes the folder's logs, so no tool can post words as yours.
+		// Only this package writes the folder's logs, so no tool can post words as yours. Reading them
+		// stays allowed: looking at the folder is how an agent learns who else is here.
 		scope.on("tool_call", (event) => {
 			const root = eventsRoot();
 			const input = (event.input ?? {}) as { path?: unknown; command?: unknown };
 			const path = typeof input.path === "string" ? resolve(session?.cwd ?? ".", input.path) : "";
-			const touches =
-				(typeof input.command === "string" && input.command.includes("harness/events")) ||
-				(path !== "" && !relative(root, path).startsWith(".."));
-			if (!touches || event.toolName === "read") return undefined;
+			const target = path !== "" && !relative(root, path).startsWith("..");
+			const naming = event.toolName === "write" || event.toolName === "edit";
+			const command = typeof input.command === "string" ? input.command : "";
+			if (!((naming && target) || (WRITES.test(command) && command.includes(EVENTS))))
+				return undefined;
 			return {
 				block: true,
 				reason:
-					"The folder's message logs are written only by pi-peers. Use the peers tool to talk to other agents.",
+					"Only pi-peers writes the folder's logs. Read them, or use the peers tool to talk to the other agents.",
 			};
 		});
 

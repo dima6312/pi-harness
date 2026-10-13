@@ -1,17 +1,19 @@
 // What a session is called and painted with. Both come from the folder's logs, so every session
 // shows the same name in the same color, and a name stays put while it is open.
+import type { ThemeColor } from "@earendil-works/pi-coding-agent";
+
 import type { Peer } from "./folder.ts";
 
 /**
- * Theme colors with distinct hues in dark and light themes alike. The footer already uses warning,
- * success, error and accent for what it says, so a peer never wears one of those.
+ * Theme colors with distinct hues in dark and light themes alike. The footer already spends amber on
+ * warning, green on success, red on error and purple on accent, so a peer never wears those. With more
+ * than four sessions in one folder two share a color, and the name is what tells them apart.
  */
 export const PEER_COLORS = [
 	"syntaxKeyword",
 	"syntaxString",
 	"syntaxVariable",
 	"syntaxType",
-	"syntaxNumber",
 ] as const;
 
 export type PeerColor = (typeof PEER_COLORS)[number];
@@ -19,7 +21,9 @@ export type PeerColor = (typeof PEER_COLORS)[number];
 export interface Named {
 	session: string;
 	handle: string;
-	color: PeerColor;
+	/** What this session wears. Any theme color can arrive from the logs; the palette above is what
+	 * a new session is given. */
+	color: ThemeColor;
 }
 
 /**

@@ -62,6 +62,20 @@ test("no tool writes the folder's logs, so nothing can post words as yours", asy
 		ctx,
 	);
 	expect(edit).toBeUndefined();
+
+	// Reading the logs stays allowed: that is how an agent looks at the folder.
+	const [listed] = await fake.fire(
+		"tool_call",
+		{ toolName: "bash", input: { command: `ls ${logs}` } },
+		ctx,
+	);
+	expect(listed).toBeUndefined();
+	const [read] = await fake.fire(
+		"tool_call",
+		{ toolName: "read", input: { path: join(logs, "x.jsonl") } },
+		ctx,
+	);
+	expect(read).toBeUndefined();
 });
 
 test("what the agent edits, runs and commits goes on the board", async () => {
