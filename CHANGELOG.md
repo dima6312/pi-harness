@@ -2,6 +2,13 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.9.2](https://github.com/felipeadeildo/pi-harness/compare/v5.9.1...v5.9.2) (2026-10-13)
+
+
+### Bug Fixes
+
+* **ask-questions:** draw pi's error when the tool throws instead of crashing ([7f9a8a3](https://github.com/felipeadeildo/pi-harness/commit/7f9a8a374fa506a077bcdc9051ec30c7f0316ebc))
+
 ## [5.9.1](https://github.com/felipeadeildo/pi-harness/compare/v5.9.0...v5.9.1) (2026-10-13)
 
 
