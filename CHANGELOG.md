@@ -2,6 +2,13 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.9.1](https://github.com/felipeadeildo/pi-harness/compare/v5.9.0...v5.9.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **providers:** list every other account when one hits its limit ([e1e84a2](https://github.com/felipeadeildo/pi-harness/commit/e1e84a2d9163f20ca101931203456e9b233e3644))
+
 ## [5.9.0](https://github.com/felipeadeildo/pi-harness/compare/v5.8.0...v5.9.0) (2026-10-13)
 
 
