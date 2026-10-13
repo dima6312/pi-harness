@@ -178,13 +178,17 @@ describe("who takes a request", () => {
 });
 
 describe("when a message arrives", () => {
-	test("idle wakes, busy waits for the run's end, urgent cuts in, a long agent exchange stops waking", () => {
-		const base = { busy: false, urgent: false, fromYou: false, quiet: false };
+	test("idle wakes, busy takes it the way it is set, urgent attaches, a deep chain stops waking", () => {
+		const base = { busy: false, urgent: false, quiet: false, busyMode: "steered" } as const;
 		expect(deliveryFor(base)).toBe("woke");
-		expect(deliveryFor({ ...base, busy: true })).toBe("after-run");
-		expect(deliveryFor({ ...base, busy: true, urgent: true })).toBe("steered");
+		expect(deliveryFor({ ...base, busy: true })).toBe("steered");
+		expect(deliveryFor({ ...base, busy: true, busyMode: "after-run" })).toBe("after-run");
+		expect(deliveryFor({ ...base, busy: true, busyMode: "after-run", urgent: true })).toBe(
+			"steered",
+		);
+		expect(deliveryFor({ ...base, busy: true, busyMode: "next-turn" })).toBe("next-turn");
 		expect(deliveryFor({ ...base, quiet: true })).toBe("next-turn");
-		expect(deliveryFor({ ...base, quiet: true, fromYou: true })).toBe("woke");
+		expect(deliveryFor({ ...base, quiet: true, urgent: true })).toBe("woke");
 	});
 
 	test("a message keeps how many agent replies led to it", () => {

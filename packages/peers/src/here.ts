@@ -21,7 +21,7 @@ import { Folder, isAlive, livePeers, type Peer, type Posted } from "./folder.ts"
 import { type Named, namesOf } from "./names.ts";
 
 export type BoardMark = PeerMark;
-import { award, deliveryFor, QUIET_AFTER, turnToTake } from "./rules.ts";
+import { award, type BusyDelivery, deliveryFor, QUIET_AFTER, turnToTake } from "./rules.ts";
 
 export const PEER_MESSAGE = "pi-peers:message";
 /** A quiet note for the agent: who else is in the folder. It is not shown in the chat. */
@@ -56,10 +56,17 @@ export interface PeerMessageDetails {
 	takenBy?: string;
 }
 
+/** One arrival: everything that was waiting for this session when it looked. */
+export interface PeerDelivery {
+	items: PeerMessageDetails[];
+}
+
 export interface Hooks {
 	events: ExtensionAPI["events"];
 	sendMessage: ExtensionAPI["sendMessage"];
 	sendUserMessage: ExtensionAPI["sendUserMessage"];
+	/** What the delivery setting says for a colleague's message that arrives while the agent runs. */
+	busyDelivery?: () => BusyDelivery;
 	idle(): boolean;
 	fit(request: string, me: Peer, signal: AbortSignal): Promise<Fit>;
 	changed(): void;
@@ -412,12 +419,14 @@ export class Here {
 		const now = this.#now();
 		let next = Number.POSITIVE_INFINITY;
 
+		const due: Posted[] = [];
 		for (const message of this.#folder.messages.values()) {
 			if (!this.#due(message, me, now)) continue;
 			const at = message.from === "you" ? message.at + GRACE_MS : message.at;
-			if (now >= at) this.#deliver(message);
+			if (now >= at) due.push(message);
 			else next = Math.min(next, at);
 		}
+		if (due.length > 0) this.#deliver(due);
 
 		const live = this.live();
 		for (const message of this.#openRequests()) {
@@ -442,35 +451,53 @@ export class Here {
 		return now - message.at <= RECENT_MS;
 	}
 
-	#deliver(message: Posted): void {
-		this.#delivered.add(message.id);
-		const fromYou = message.from === "you";
-		const quiet = message.depth >= QUIET_AFTER;
-		// What was posted before this session opened waits for your next prompt.
-		const mode: Delivery =
-			message.at < this.#openedAt
-				? "next-turn"
-				: deliveryFor({ busy: !this.#hooks.idle(), urgent: message.urgent, fromYou, quiet });
-		if (fromYou && mode !== "next-turn") {
-			this.#unread.set(message.text, message.id);
-			// Its deliverAs only matters while the agent runs, so pass it whether or not it looks idle:
-			// a run starting between the two would otherwise make the call fail.
-			this.#hooks.sendUserMessage(message.text, {
-				deliverAs: mode === "steered" ? "steer" : "followUp",
-			});
-		} else {
-			this.#hooks.sendMessage(
-				{
-					customType: PEER_MESSAGE,
-					content: forModel(this.#details(message)),
-					display: true,
-					details: this.#details(message),
-				},
-				sendOptions(mode),
-			);
-		}
-		this.log("message.received", { id: message.id, mode });
-		if (mode !== "next-turn") this.#depth = runDepth(message);
+	#deliver(messages: readonly Posted[]): void {
+		const me = this.session;
+		if (me === undefined) return;
+		for (const message of messages) this.#delivered.add(message.id);
+		// Everything waiting right now arrives together: one run reads the burst, instead of one run
+		// per message, which is what made a reply feel slow.
+		const theirs = messages.filter((message) => message.from !== "you");
+		const yours = messages.filter((message) => message.from === "you");
+		if (theirs.length > 0) this.#handPeer(theirs, this.#modeFor(theirs));
+		if (yours.length > 0) this.#handYou(yours, this.#modeFor(yours));
+	}
+
+	/** Posted before this session opened waits for your next prompt; the rest follows the rule. */
+	#modeFor(messages: readonly Posted[]): Delivery {
+		if (messages.every((message) => message.at < this.#openedAt)) return "next-turn";
+		return deliveryFor({
+			busy: !this.#hooks.idle(),
+			urgent: messages.some((message) => message.urgent === true),
+			quiet: messages.every((message) => message.depth >= QUIET_AFTER),
+			busyMode: this.#hooks.busyDelivery?.() ?? "steered",
+		});
+	}
+
+	/** Colleagues' messages, wrapped so the agent knows who wrote and that they cannot approve. */
+	#handPeer(messages: readonly Posted[], mode: Delivery): void {
+		const items = messages.map((message) => this.#details(message));
+		this.#hooks.sendMessage(
+			{ customType: PEER_MESSAGE, content: forModel(items), display: true, details: { items } },
+			sendOptions(mode),
+		);
+		this.#logged(messages, mode);
+	}
+
+	/** Yours, sent from another session: the operator speaking, so no wrapper. */
+	#handYou(messages: readonly Posted[], mode: Delivery): void {
+		for (const message of messages) this.#unread.set(message.text, message.id);
+		// Its deliverAs only matters while the agent runs, so pass it whether or not it looks idle: a
+		// run starting between the two would otherwise make the call fail.
+		this.#hooks.sendUserMessage(messages.map((message) => message.text).join("\n\n"), {
+			deliverAs: mode === "steered" ? "steer" : "followUp",
+		});
+		this.#logged(messages, mode);
+	}
+
+	#logged(messages: readonly Posted[], mode: Delivery): void {
+		for (const message of messages) this.log("message.received", { id: message.id, mode });
+		if (mode !== "next-turn") this.#depth = Math.max(...messages.map(runDepth));
 	}
 
 	/** This session won the request: say so first, so nobody else takes it, then start on it. */
@@ -478,17 +505,8 @@ export class Here {
 		const me = this.session;
 		this.log("request.taken", { request: message.id });
 		if (me === undefined || message.takenBy !== me) return;
-		this.#depth = runDepth(message);
-		if (message.from === "you") {
-			this.#unread.set(message.text, message.id);
-			this.#hooks.sendUserMessage(message.text, { deliverAs: "followUp" });
-		} else {
-			const details = this.#details(message);
-			this.#hooks.sendMessage(
-				{ customType: PEER_MESSAGE, content: forModel(details), display: true, details },
-				sendOptions(this.#hooks.idle() ? "woke" : "after-run"),
-			);
-		}
+		if (message.from === "you") this.#handYou([message], this.#modeFor([message]));
+		else this.#handPeer([message], this.#modeFor([message]));
 	}
 
 	/** A message you withdrew after this session handed it over: the agent is told to ignore it. */
@@ -498,9 +516,9 @@ export class Here {
 		const handed = message.received.has(me) || message.takenBy === me;
 		if (!handed || message.read.has(me)) return;
 		this.#withdrawn.add(message.id);
-		const details = { ...this.#details(message), withdrawn: true };
+		const items = [{ ...this.#details(message), withdrawn: true }];
 		this.#hooks.sendMessage(
-			{ customType: PEER_MESSAGE, content: forModel(details), display: true, details },
+			{ customType: PEER_MESSAGE, content: forModel(items), display: true, details: { items } },
 			{ deliverAs: "nextTurn" },
 		);
 	}
@@ -552,7 +570,12 @@ function sendOptions(mode: Delivery): {
 }
 
 /** What the agent's model reads. A peer's words are never the operator's. */
-export function forModel(details: PeerMessageDetails): string {
+/** What the agent reads: everything that arrived together, one block each. */
+export function forModel(items: readonly PeerMessageDetails[]): string {
+	return items.map(oneForModel).join("\n\n");
+}
+
+function oneForModel(details: PeerMessageDetails): string {
 	if (details.withdrawn)
 		return `The operator withdrew a message sent from another session in this folder. Ignore it: "${details.text}"`;
 	if (details.fromYou)

@@ -8,7 +8,7 @@ import {
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
 
-import type { PeerMessageDetails } from "../here.ts";
+import type { PeerDelivery, PeerMessageDetails } from "../here.ts";
 
 export const PEER_MARK = "\u25c6";
 const INDENT = "  ";
@@ -16,6 +16,17 @@ const INDENT = "  ";
 export function messageBlock(details: PeerMessageDetails, theme: Theme): Component {
 	return {
 		render: (width) => messageLines(details, theme, width),
+		invalidate() {},
+	};
+}
+
+/** Everything that arrived together, one block under the other. */
+export function deliveryBlock(delivery: PeerDelivery, theme: Theme): Component {
+	return {
+		render: (width) =>
+			delivery.items.flatMap((item, index) =>
+				index === 0 ? messageLines(item, theme, width) : ["", ...messageLines(item, theme, width)],
+			),
 		invalidate() {},
 	};
 }

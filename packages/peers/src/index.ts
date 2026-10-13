@@ -20,10 +20,16 @@ import { Key } from "@earendil-works/pi-tui";
 
 import { fitFor } from "./bid.ts";
 import { boardText } from "./board.ts";
-import { Here, PEER_BROADCAST, PEER_MESSAGE, type PeerMessageDetails } from "./here.ts";
+import {
+	Here,
+	PEER_BROADCAST,
+	PEER_MESSAGE,
+	type PeerDelivery,
+	type PeerMessageDetails,
+} from "./here.ts";
 import { byHandle, mentionsIn } from "./names.ts";
-import { model, PEERS_SETTINGS } from "./settings.ts";
-import { messageBlock } from "./ui/message.ts";
+import { delivery, model, PEERS_SETTINGS } from "./settings.ts";
+import { deliveryBlock, messageBlock } from "./ui/message.ts";
 import { FRAME_MS } from "./ui/motion.ts";
 import { RoomView } from "./ui/room.ts";
 import { PEERS_STATUS, statusLine } from "./ui/status.ts";
@@ -93,6 +99,7 @@ export const peers = defineFeature({
 				showTyping();
 			},
 			show: (details) => scope.appendEntry(PEER_BROADCAST, details),
+			busyDelivery: () => delivery.get(scope),
 		});
 		let typingShown = false;
 
@@ -169,8 +176,10 @@ export const peers = defineFeature({
 
 		scope.on("message_start", (event) => {
 			const message = event.message;
-			if (message.role === "custom" && message.customType === PEER_MESSAGE)
-				here.read((message.details as PeerMessageDetails | undefined)?.id);
+			if (message.role === "custom" && message.customType === PEER_MESSAGE) {
+				const items = (message.details as PeerDelivery | undefined)?.items ?? [];
+				for (const item of items) here.read(item.id);
+			}
 			if (message.role === "user") here.read(undefined, textOf(message.content));
 		});
 
@@ -377,8 +386,8 @@ export const peers = defineFeature({
 			},
 		});
 
-		scope.registerMessageRenderer<PeerMessageDetails>(PEER_MESSAGE, (message, _options, theme) =>
-			message.details === undefined ? undefined : messageBlock(message.details, theme),
+		scope.registerMessageRenderer<PeerDelivery>(PEER_MESSAGE, (message, _options, theme) =>
+			message.details === undefined ? undefined : deliveryBlock(message.details, theme),
 		);
 		scope.registerEntryRenderer<PeerMessageDetails>(PEER_BROADCAST, (entry, _options, theme) =>
 			entry.data === undefined ? undefined : messageBlock(entry.data, theme),

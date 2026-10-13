@@ -62,18 +62,23 @@ function openTasks(peer: Peer | undefined): number {
 	return doing + tasksWith(tasks, "queued").length + tasksWith(tasks, "waiting").length;
 }
 
+/** How a colleague's message reaches this session while its agent is busy. */
+export const BUSY_DELIVERIES = ["steered", "after-run", "next-turn"] as const;
+export type BusyDelivery = (typeof BUSY_DELIVERIES)[number];
+
 /**
- * Idle agents wake, busy ones get it when their run ends, and `urgent` cuts in at the next safe
- * point. Your words always count. Agents that only answer each other stop waking each other after
- * `QUIET_AFTER` replies, until someone at a keyboard starts a run again.
+ * An idle agent wakes for anything that is not a chain too deep. A busy one takes it the way the
+ * setting says, and `urgent` always attaches between calls, without ending the run. Agents that only
+ * answer each other stop waking after `QUIET_AFTER` replies, until someone at a keyboard starts a run
+ * again.
  */
 export function deliveryFor(options: {
 	busy: boolean;
 	urgent: boolean;
-	fromYou: boolean;
 	quiet: boolean;
+	busyMode: BusyDelivery;
 }): Delivery {
-	if (options.quiet && !options.fromYou && !options.urgent) return "next-turn";
+	if (options.quiet && !options.urgent) return "next-turn";
 	if (!options.busy) return "woke";
-	return options.urgent ? "steered" : "after-run";
+	return options.urgent ? "steered" : options.busyMode;
 }

@@ -132,14 +132,19 @@ the winner does not take the request within a few seconds, the next one in line 
 
 ## When a message reaches the agent
 
+Everything waiting when the agent looks arrives together, so a burst of messages is one turn for the
+agent to read, not one turn per message. A message attaches at the end of the call the agent is running
+now, the way your own steer does, so nothing it was doing is thrown away. The setting below changes that
+for colleagues' messages.
+
 | What                                              | Idle agent                              | Busy agent                        |
 | ------------------------------------------------- | --------------------------------------- | --------------------------------- |
 | Board changes                                     | never sent                              | never sent                        |
 | A colleague joins or leaves                       | next prompt                             | next prompt                       |
 | A room message without a mention                  | not sent                                | not sent                          |
-| A mention, or an answer to its question           | wakes it                                | after its run ends                |
-| A colleague marks it urgent                       | wakes it                                | cuts in at the next safe point    |
-| What you send with `/to`                          | wakes it                                | after its run ends                |
+| A mention, or an answer to its question           | wakes it                                | attaches between calls            |
+| A colleague marks it urgent                       | wakes it                                | attaches between calls            |
+| What you send with `/to`                          | wakes it                                | attaches between calls            |
 | A request to everyone that it won                 | wakes it                                | waits for the next idle candidate |
 | A request to everyone another agent took          | shown in your chat, not sent            | same                              |
 | An agent answering the one that woke it, 4th time | stops waking, waits for the next prompt | same                              |
@@ -167,9 +172,10 @@ stays allowed, and the agent is told to ask a colleague before editing a file th
 
 On the Peers tab of `Alt+S`, stored under `peers` in `~/.pi/agent/extensions/pi-harness/settings.json`:
 
-| Setting | Default | Does                                                                                   |
-| ------- | ------- | -------------------------------------------------------------------------------------- |
-| Model   | `auto`  | The model that bids for this session. `auto` is the cheapest of the session's provider |
+| Setting       | Default       | Does                                                                                                                                                                                                  |
+| ------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| While it runs | between calls | How a colleague's message reaches your agent while its run is going: between calls (the default), after the run ends, or with your next prompt. A message marked urgent always attaches between calls |
+| Model         | `auto`        | The model that bids for this session. `auto` is the cheapest of the session's provider                                                                                                                |
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
 

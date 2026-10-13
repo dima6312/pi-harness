@@ -114,7 +114,7 @@ describe("being here", () => {
 });
 
 describe("a message", () => {
-	test("from an agent wakes an idle one at once, and waits for a busy one's run to end", () => {
+	test("from an agent wakes an idle one, and attaches to a busy one between its calls", () => {
 		const a = session("a");
 		const b = session("b");
 		a.here.post(["b"], "are you in auth.ts?", "agent");
@@ -127,12 +127,12 @@ describe("a message", () => {
 		b.state.idle = false;
 		a.here.post(["b"], "and session.ts?", "agent");
 		b.here.sync();
-		expect(b.sent[1]?.options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
+		expect(b.sent[1]?.options).toEqual({ triggerTurn: true, deliverAs: "steer" });
 		a.here.sync();
 		const receipts = [...a.here.folder.messages.values()].map(
 			(message) => message.received.get("b")?.mode,
 		);
-		expect(receipts).toEqual(["woke", "after-run"]);
+		expect(receipts).toEqual(["woke", "steered"]);
 	});
 
 	test("from you arrives as your words after a moment, unless you withdraw it", () => {
@@ -154,14 +154,14 @@ describe("a message", () => {
 		expect(b.sent).toHaveLength(1);
 	});
 
-	test("an idle agent wakes for every message from an agent its operator set going", () => {
+	test("a burst arrives as one, so a run reads it all instead of one run per message", () => {
 		const a = session("a");
 		const b = session("b");
 		for (let i = 0; i < 6; i++) a.here.post(["b"], `ping ${i}`, "agent");
 		b.here.sync();
-		expect(b.sent.map((one) => one.options)).toEqual(
-			Array.from({ length: 6 }, () => ({ triggerTurn: true })),
-		);
+		expect(b.sent).toHaveLength(1);
+		expect(b.sent[0]?.options).toEqual({ triggerTurn: true });
+		for (let i = 0; i < 6; i++) expect(b.sent[0]?.text).toContain(`ping ${i}`);
 	});
 
 	test("agents that only answer each other stop waking after four replies, until someone prompts", () => {
