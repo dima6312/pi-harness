@@ -30,6 +30,7 @@
 | [Questions](../ask-questions)   | The model asks instead of guessing, with options, a preview of each, a note on any and your own answer                   |
 | [Tasks](../tasks)               | Keeps what the session is doing, what it did and with what result, what waits on you, and what was decided               |
 | [Compact](../compact)           | Hides old tool output in long sessions to cut what each request costs, and writes pi's compaction summary from the tasks |
+| [Peers](../peers)               | Agents in the same folder see each other's work, talk in a room, and split what you ask everyone                         |
 | [Skill calls](../skills)        | Call the skills you already have from anywhere in a message, several at once, shown as chips                             |
 | [Look](../look)                 | The start screen, the editor with the branch and the model on its borders, and a box around each command                 |
 | [Providers](../providers)       | Bills Anthropic OAuth requests to your Claude plan, and keeps several accounts per provider                              |
@@ -41,7 +42,7 @@ All of them are on once the package is installed.
 
 ## Turning a piece off
 
-Each piece is its own extension in this package, so `pi config` switches off the one you do not want, globally or for one project. The settings file has a switch per feature too, read on the next `/reload`, and the feature ids are `permission`, `look`, `subscription`, `accounts`, `questions`, `skills`, `tasks` and `compact`.
+Each piece is its own extension in this package, so `pi config` switches off the one you do not want, globally or for one project. The settings file has a switch per feature too, read on the next `/reload`, and the feature ids are `permission`, `look`, `subscription`, `accounts`, `questions`, `skills`, `tasks`, `compact` and `peers`.
 
 ```json
 { "features": { "subscription": { "enabled": false } } }

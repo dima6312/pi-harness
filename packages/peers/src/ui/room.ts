@@ -44,6 +44,8 @@ export interface RoomOptions {
 	folder: string;
 	close: () => void;
 	requestRender: () => void;
+	/** Now, for the ages on the board. Kept out of the wall clock so the pictures do not move. */
+	now?: () => number;
 	/** What you typed, sent. */
 	send: (text: string) => void;
 	rows: () => number;
@@ -107,14 +109,15 @@ export class RoomView implements Component, Focusable {
 		const me = here.session;
 		this.#selected = Math.max(0, Math.min(this.#selected, live.length - 1));
 
-		const room = this.#roomLines(names, me, inner);
-		const board = this.#boardLines(live, names, me, inner);
 		const beside = inner >= BESIDE && live.length > 0;
 		const chrome = 8 + DETAIL_ROWS;
 		const budget = Math.max(4, this.#options.rows() - chrome);
 		const boardWidth = beside
 			? Math.max(BOARD_MIN, Math.min(BOARD_MAX, Math.floor(inner * 0.42)))
 			: inner;
+		// Each column lays out to its own width, so the room wraps and the board keeps its state at the edge.
+		const room = this.#roomLines(names, me, beside ? inner - boardWidth - 3 : inner);
+		const board = this.#boardLines(live, names, me, boardWidth);
 		const boardRoom = beside
 			? budget
 			: Math.min(PEER_ROWS * 2, Math.max(2, Math.floor(budget / 2)));
@@ -190,9 +193,10 @@ export class RoomView implements Component, Focusable {
 			const mine = peer.session === me ? theme.fg("dim", " this session") : "";
 			const head = `${theme.fg(color, MARKS.peer)} ${theme.fg(color, theme.bold(named?.handle ?? "anon"))}${mine}`;
 			const state = this.#stateOf(peer);
-			lines.push(selected ? theme.inverse(spread(head, state, width)) : spread(head, state, width));
+			const row = spread(head, state, width);
+			lines.push(selected ? theme.bg("selectedBg", row) : row);
 			for (const line of this.#peerLines(peer, width)) lines.push("  " + line);
-			while (lines.length % PEER_ROWS !== 0) lines.push("");
+			lines.push("");
 		}
 		return lines;
 	}
@@ -202,7 +206,9 @@ export class RoomView implements Component, Focusable {
 		const { theme } = this.#options;
 		const waiting = peer.tasks !== undefined && tasksWith(peer.tasks, "waiting").length > 0;
 		if (waiting) return theme.fg("warning", "waits on you");
-		if (peer.state === "running") return theme.fg("accent", `working ${since(peer.startedAt)}`);
+		const now = this.#options.now?.() ?? Date.now();
+		if (peer.state === "running")
+			return theme.fg("accent", `working ${since(peer.startedAt, now)}`);
 		return theme.fg("dim", "idle");
 	}
 
@@ -238,16 +244,22 @@ export class RoomView implements Component, Focusable {
 				const happening = item.happening;
 				const who = this.#name(names, happening.session);
 				const color = (names.get(happening.session)?.color ?? "muted") as ThemeColor;
-				const what =
-					happening.kind === "joined"
-						? "joined"
-						: happening.kind === "left"
-							? "left"
-							: happening.kind === "committed"
-								? `committed ${happening.sha} ${happening.subject}`
-								: happening.kind === "finished"
-									? `finished ${happening.task}`
-									: "took a request";
+				let what: string;
+				switch (happening.kind) {
+					case "joined":
+					case "left":
+						what = happening.kind;
+						break;
+					case "committed":
+						what = `committed ${happening.sha} ${happening.subject}`;
+						break;
+					case "finished":
+						what = `finished ${happening.task}`;
+						break;
+					// Who took a request shows on the request itself, beside the bids.
+					case "took":
+						continue;
+				}
 				lines.push(theme.fg("dim", `${clock(happening.at)}  ${theme.fg(color, who)} ${what}`));
 				continue;
 			}
@@ -299,7 +311,7 @@ export class RoomView implements Component, Focusable {
 		},
 	): string[] {
 		const { theme } = this.#options;
-		if (message.unsent || message.from === "you") return [];
+		if (message.unsent) return [];
 		if (message.to === "all") {
 			const bids = [...message.bids].map(
 				([session, bid]) =>
@@ -313,13 +325,15 @@ export class RoomView implements Component, Focusable {
 				? [theme.fg("dim", "waiting for bids")]
 				: [theme.fg("dim", "bids  ") + bids.join("   ")];
 		}
+		const many = message.to.length > 1;
 		return message.to.map((session) => {
+			const who = many ? ` ${this.#name(names, session)}` : "";
 			if (message.read.has(session))
-				return `${theme.fg("accent", "\u2713\u2713")} ${theme.fg("muted", "read")}`;
+				return `${theme.fg("accent", "\u2713\u2713")}${who} ${theme.fg("muted", "read")}`;
 			const received = message.received.get(session);
 			return received === undefined
-				? theme.fg("dim", "\u2713 sent")
-				: `${theme.fg("muted", "\u2713\u2713")} ${theme.fg("dim", ARRIVED[received.mode])}`;
+				? theme.fg("dim", `\u2713${who} sent`)
+				: `${theme.fg("muted", "\u2713\u2713")}${who} ${theme.fg("dim", ARRIVED[received.mode])}`;
 		});
 	}
 
@@ -506,8 +520,8 @@ const ARRIVED: Record<Delivery, string> = {
 	"next-turn": "gets it with the next prompt",
 };
 
-function since(at: number): string {
-	const minutes = Math.max(0, Math.round((Date.now() - at) / 60_000));
+function since(at: number, now: number): string {
+	const minutes = Math.max(0, Math.round((now - at) / 60_000));
 	if (minutes < 1) return "now";
 	if (minutes < 60) return `${minutes}m`;
 	return `${Math.round(minutes / 60)}h`;

@@ -25,6 +25,7 @@ import { pruneLine } from "./compact.ts";
 import { KEYS, openDialog, press, type, WIDTH } from "./drive.ts";
 import { drawLook, lookParts } from "./look.ts";
 import { assistantText, userMessage } from "./messages.ts";
+import { peersRoom } from "./peers.ts";
 import { tasksPanel } from "./tasks.ts";
 
 export interface Scene {
@@ -368,6 +369,13 @@ export const SCENES: readonly Scene[] = [
 		caption: "A prune's line, and the one cache rewrite it costs on the next request.",
 		alt: "After a tool call, the prune's line: 181 old tool outputs hidden, 705k to 250k tokens, and below it what the next request pays to rewrite the cache and in how many requests that pays back. Then pi's cache miss notice for that rewrite.",
 		draw: pruneLine,
+	},
+	{
+		name: "peers/room",
+		caption:
+			"Alt+G: the agents in this folder and what each is doing, beside the room you all talk in.",
+		alt: "The room panel: on the left oauth working four minutes on the OAuth callback and waiting on you to push, migration idle with two queued, and this session rewriting the README. On the right your request to switch the login to OAuth, both bids, oauth taking it, oauth asking migration about src/auth.ts, migration's answer, and oauth's commit.",
+		draw: peersRoom,
 	},
 	{
 		name: "harness/conversation",
