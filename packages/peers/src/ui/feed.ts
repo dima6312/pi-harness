@@ -8,7 +8,7 @@ import { byHandle, type Named } from "../names.ts";
 import { award, TAKE_MS, turnToTake } from "../rules.ts";
 import { blink, dots, isFresh, spin } from "./motion.ts";
 
-/** The words sit under the header behind a rail and a space, the only indent the room uses. */
+/** The words sit two columns under the header, the only indent the room uses. */
 const INDENT = 2;
 const BAR_CELLS = 5;
 const TOGETHER_MS = 60_000;
@@ -66,6 +66,7 @@ export function feedView(
 	const gap = () => add([""]);
 	const replies = answers(shown);
 	const newest = shown.findLast((item) => item.kind === "message");
+	let lastMessage: Posted | undefined;
 	for (let index = 0; index < shown.length; index++) {
 		const item = shown[index];
 		if (item === undefined) continue;
@@ -90,9 +91,12 @@ export function feedView(
 			continue;
 		}
 		if (lines.length > 0) gap();
+		// An answer right under its question needs no quote: the order already says it.
 		const answered = replies.get(item.message.id);
+		const quoted = answered !== undefined && answered !== lastMessage ? answered : undefined;
 		const full = item === newest || options.only !== undefined;
-		add(messageLines(item.message, answered, full, options), answered === undefined ? 0 : 1);
+		add(messageLines(item.message, quoted, full, options), quoted === undefined ? 0 : 1);
+		lastMessage = item.message;
 	}
 	const writing =
 		options.only === undefined ? typing : typing.filter((one) => one.session === options.only);
@@ -133,18 +137,21 @@ function messageLines(
 	const inline = message.to !== "all" && message.to.length === 1 ? receipts.shift() : undefined;
 	lines.push(header(head, inline ?? "", width));
 
-	const rail = fresh ? theme.fg(color, "\u2503") : theme.fg("borderMuted", "\u2502");
-	const body = message.unsent ? `withdrawn: ${message.text}` : message.text;
+	// Only a message that just arrived gets a rail, lit in its writer's color; the rest sit indented.
+	const lead = fresh ? `${theme.fg(color, "\u258e")} ` : "  ";
+	const body = message.unsent ? `withdrawn: ${message.text}` : message.text.trim();
 	let wrapped = wrapTextWithAnsi(body, Math.max(8, width - INDENT));
-	if (!full && wrapped.length > BODY_SHOWN) {
-		const hidden = wrapped.length - BODY_SHOWN + 1;
-		wrapped = [
-			...wrapped.slice(0, BODY_SHOWN - 1),
-			theme.fg("dim", `${hidden} more lines, ctrl+f to read`),
-		];
+	if (!full) {
+		// A preview skips blank lines, so its few lines carry words.
+		const words = wrapped.filter((line) => line.trim() !== "");
+		if (words.length > BODY_SHOWN)
+			wrapped = [
+				...words.slice(0, BODY_SHOWN - 1),
+				theme.fg("dim", `${words.length - BODY_SHOWN + 1} more lines, ctrl+f to read`),
+			];
 	}
 	for (const line of wrapped)
-		lines.push(`${rail} ${theme.fg(message.unsent ? "dim" : "text", line)}`);
+		lines.push(`${lead}${theme.fg(message.unsent ? "dim" : "text", line)}`);
 	for (const line of receipts) lines.push(truncateToWidth(`  ${line}`, width, "..."));
 	return lines;
 }
@@ -153,7 +160,7 @@ function messageLines(
 function quoteLine(question: Posted, options: FeedOptions): string {
 	const { theme, width } = options;
 	const first = question.text.split("\n")[0] ?? "";
-	const line = `${theme.fg("borderMuted", "\u256d\u2500")} ${speaker(question, options, false)} ${theme.fg("dim", first)}`;
+	const line = `${theme.fg("dim", "\u21b1")} ${speaker(question, options, false)} ${theme.fg("dim", first)}`;
 	return truncateToWidth(line, width, "...");
 }
 
@@ -256,9 +263,7 @@ function typingLines(typing: Typing, options: FeedOptions): string[] {
 	if (wrapped.length === 0) wrapped.push("");
 	for (const [index, line] of wrapped.entries()) {
 		const last = index === wrapped.length - 1;
-		lines.push(
-			`${theme.fg("borderMuted", "\u2502")} ${theme.fg("muted", line)}${last ? cursor : ""}`,
-		);
+		lines.push(`  ${theme.fg("muted", line)}${last ? cursor : ""}`);
 	}
 	return lines;
 }

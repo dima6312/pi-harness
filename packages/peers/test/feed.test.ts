@@ -72,14 +72,37 @@ function draw(room: RoomItem[], only?: string): string[] {
 }
 
 describe("the room", () => {
-	test("an answer quotes the question above it, and the words sit under the header", () => {
+	test("an answer right under its question shows just its words, indented under the header", () => {
 		const lines = draw([
 			said("1", "a", ["b"], "Are you touching src/auth.ts?", 1_000),
 			said("2", "b", ["a"], "Not anymore.", 2_000),
 		]);
 		const at = lines.findIndex((line) => line.startsWith("migration \u2192 oauth  12:00"));
-		expect(lines[at - 1]).toBe("\u256d\u2500 oauth Are you touching src/auth.ts?");
-		expect(lines[at + 1]).toBe("\u2502 Not anymore.");
+		expect(lines[at - 1]).toBe("");
+		expect(lines[at + 1]).toBe("  Not anymore.");
+	});
+
+	test("an answer with other messages in between quotes the first line it answers", () => {
+		const lines = draw([
+			said("1", "a", ["b"], "Are you touching src/auth.ts?", 1_000),
+			said("2", "c", ["a"], "Unrelated.", 1_500),
+			said("3", "b", ["a"], "Not anymore.", 2_000),
+		]);
+		const at = lines.findIndex((line) => line.startsWith("migration \u2192 oauth  12:00"));
+		expect(lines[at - 1]).toBe("\u21b1 oauth Are you touching src/auth.ts?");
+	});
+
+	test("a long preview skips blank lines and says how many more there are", () => {
+		const text = "\nfirst\n\nsecond\n\nthird\nfourth\nfifth";
+		const room = [said("1", "a", ["b"], text, 1_000), said("2", "b", ["a"], "ok", 2_000)];
+		const lines = draw(room);
+		const at = lines.findIndex((line) => line.startsWith("oauth \u2192 migration"));
+		expect(lines.slice(at + 1, at + 5)).toEqual([
+			"  first",
+			"  second",
+			"  third",
+			"  2 more lines, ctrl+f to read",
+		]);
 	});
 
 	test("joins close together read as one line, with the time after it", () => {
