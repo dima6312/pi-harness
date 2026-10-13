@@ -120,10 +120,6 @@ Each call is one short request. With Claude Haiku it takes about 3 seconds and c
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
 
-## License
-
-MIT
-
 <p align="center">
   <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
   Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>

@@ -58,10 +58,6 @@ The whole set, with the pictures and the settings of each piece, is in the [root
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which is this package. Every piece also ships on its own, for whoever wants only that one.
 
-## License
-
-MIT
-
 <p align="center">
   <a href="https://adeildo.dev"><img src="https://adeildo.dev/assets/images/cat.svg" width="42" height="42" alt="adeildo.dev"></a><br>
   Brought to you by <a href="https://adeildo.dev">adeildo.dev</a>
