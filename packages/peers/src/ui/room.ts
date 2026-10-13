@@ -1,4 +1,15 @@
-import { spread } from "@adeildo/pi-kit";
+import {
+	FRAME_X,
+	FRAME_Y,
+	type FrameLine,
+	frameBottom,
+	frameRow,
+	frameTop,
+	type KeyHint,
+	pointer,
+	rule,
+	spread,
+} from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import {
 	type Component,
@@ -18,10 +29,8 @@ import { feedMoving, feedView } from "./feed.ts";
 import { clock } from "./message.ts";
 import { spin } from "./motion.ts";
 
-const PAD = 2;
-const CHROME_X = 2 + PAD * 2;
-/** The top border, the row naming the two columns, and the bottom border. */
-const CHROME_Y = 3;
+/** The frame, and the row naming the two columns. */
+const CHROME_Y = FRAME_Y + 1;
 /** The rule over the line you write in, and that line. */
 const COMPOSER_ROWS = 2;
 const BESIDE = 90;
@@ -139,7 +148,7 @@ export class RoomView implements Component, Focusable {
 		const { theme, here } = this.#options;
 		this.#composer.focused = this.focused && this.#pane === "room";
 		const now = this.#now();
-		const inner = Math.max(20, width - CHROME_X);
+		const inner = Math.max(20, width - FRAME_X);
 		const live = this.#live();
 		const names = here.names();
 		const me = here.session;
@@ -165,38 +174,45 @@ export class RoomView implements Component, Focusable {
 		const agentsHeight = beside
 			? height
 			: Math.min(agents.lines.length, Math.floor((height - COMPOSER_ROWS) / 2));
-		const shownAgents = window(agents.lines, agents.selectedAt, agents.selectedEnd, agentsHeight);
+		const shown = window(agents.lines, agents.selectedAt, agents.selectedEnd, agentsHeight);
+		const pickedRow = this.#pane === "agents" ? agents.selectedAt - shown.start : -1;
 
 		const picker = this.#picker(this.#candidates(), names, roomWidth);
 		const columnHeight = beside ? height : height - agentsHeight - 1;
 		const right = this.#roomColumn(roomWidth, Math.max(2, columnHeight), picker, names, live);
 
-		const border = (text: string) => theme.fg("border", text);
-		const rule = (text: string) => theme.fg("borderMuted", text);
-		const pad = " ".repeat(PAD);
-		const row = (text: string) => {
-			const clipped = truncateToWidth(text, inner, "...");
-			return `${border("\u2502")}${pad}${clipped}${" ".repeat(Math.max(0, inner - visibleWidth(clipped)))}${pad}${border("\u2502")}`;
-		};
+		const column = theme.fg("borderMuted", "\u2502");
 		const pair = (left: string, room: string) => {
 			const clipped = truncateToWidth(left, agentsWidth, "");
 			const gap = " ".repeat(Math.max(0, agentsWidth - visibleWidth(clipped)));
-			return row(`${clipped}${gap} ${rule("\u2502")} ${room}`);
+			return `${clipped}${gap} ${column} ${room}`;
 		};
 
-		const lines = [this.#top(live, width)];
+		const body: FrameLine[] = [];
 		if (beside) {
-			lines.push(pair(this.#label("agents", "Agents"), this.#label("room", "Room")));
+			body.push(pair(this.#label("agents", "Agents"), this.#label("room", "Room")));
 			for (let line = 0; line < height; line++)
-				lines.push(pair(shownAgents[line] ?? "", right[line] ?? ""));
+				body.push({
+					text: pair(shown.lines[line] ?? "", right[line] ?? ""),
+					selected: line === pickedRow,
+				});
 		} else {
-			lines.push(row(this.#label("agents", "Agents")));
-			for (const line of shownAgents) lines.push(row(line));
-			lines.push(row(this.#label("room", "Room")));
-			for (const line of right) lines.push(row(line));
+			body.push(this.#label("agents", "Agents"));
+			for (const [line, text] of shown.lines.entries())
+				body.push({ text, selected: line === pickedRow });
+			body.push(this.#label("room", "Room"));
+			body.push(...right);
 		}
-		lines.push(this.#bottom(width, live, names, beside ? agentsWidth : undefined));
-		return lines;
+		const split = beside ? agentsWidth + 1 : undefined;
+		return [
+			this.#top(live, width, split),
+			...body.map((line) =>
+				typeof line === "string"
+					? frameRow(theme, width, line)
+					: frameRow(theme, width, line.text, line.selected === true),
+			),
+			frameBottom(theme, width, this.#keys(live, names), split),
+		];
 	}
 
 	/** The room column: what was said, then the line you write in under it. */
@@ -234,7 +250,7 @@ export class RoomView implements Component, Focusable {
 		return this.#pane === pane ? theme.fg("accent", theme.bold(text)) : theme.fg("dim", text);
 	}
 
-	#top(live: readonly Peer[], width: number): string {
+	#top(live: readonly Peer[], width: number, split: number | undefined): string {
 		const { theme } = this.#options;
 		const counts: string[] = [];
 		const count = (state: ReturnType<typeof stateOf>) =>
@@ -251,8 +267,7 @@ export class RoomView implements Component, Focusable {
 				`${theme.fg("warning", MARKS.waiting)} ${theme.fg("warning", `${waiting} waiting`)}`,
 			);
 		if (idle > 0) counts.push(`${theme.fg("dim", MARKS.idle)} ${theme.fg("dim", `${idle} idle`)}`);
-		const title = theme.bold(theme.fg("accent", this.#options.folder));
-		return edge(theme, "\u256d", "\u256e", title, counts.join("   "), width);
+		return frameTop(theme, width, this.#options.folder, counts.join("   "), split);
 	}
 
 	/** The rule over the line you write in, saying how far back you scrolled and what is filtered. */
@@ -261,9 +276,7 @@ export class RoomView implements Component, Focusable {
 		const only =
 			this.#only === undefined ? "" : `${theme.fg("dim", "only ")}${this.#nameOf(this.#only)}`;
 		const hint = [only, this.#scrollHint()].filter(Boolean).join(theme.fg("dim", "   "));
-		const line = (count: number) => theme.fg("borderMuted", "\u2500".repeat(Math.max(0, count)));
-		if (hint === "") return line(width);
-		return `${line(width - visibleWidth(hint) - 1)} ${hint}`;
+		return rule(theme, width, hint);
 	}
 
 	#scrollHint(): string {
@@ -290,7 +303,7 @@ export class RoomView implements Component, Focusable {
 			const mark = peer === undefined ? " " : markOf(peer, color, theme, now);
 			const state = peer === undefined ? "" : stateText(peer, theme, now);
 			const label = chosen ? theme.bold(named.handle) : named.handle;
-			const left = `  ${chosen ? theme.fg("accent", "\u203a") : " "} ${mark} ${theme.fg(color, label)}`;
+			const left = `${pointer(theme, chosen)}${mark} ${theme.fg(color, label)}`;
 			return spread(left, state, Math.min(width, 46));
 		});
 	}
@@ -298,13 +311,13 @@ export class RoomView implements Component, Focusable {
 	/** The line you write in. Where it goes shows on the right, only once you write. */
 	#composerLine(width: number, names: ReadonlyMap<string, Named>): string {
 		const { theme } = this.#options;
-		const pointer = theme.fg(this.#pane === "room" ? "accent" : "dim", "\u276f ");
+		const prompt = pointer(theme, true, this.#pane === "room");
 		const value = this.#composer.getValue();
 		const writing = value.trim() === "" || this.#candidates().length > 0;
 		const to = writing ? "" : this.#destination(value, names);
 		const room = Math.max(1, width - 2 - (to === "" ? 0 : visibleWidth(to) + 2));
 		const [drawn = ""] = this.#composer.render(room);
-		return to === "" ? `${pointer}${drawn}` : spread(`${pointer}${drawn}`, to, width);
+		return to === "" ? `${prompt}${drawn}` : spread(`${prompt}${drawn}`, to, width);
 	}
 
 	#destination(text: string, names: ReadonlyMap<string, Named>): string {
@@ -329,35 +342,29 @@ export class RoomView implements Component, Focusable {
 			.join(theme.fg("dim", ", "))}`;
 	}
 
-	#bottom(
-		width: number,
-		live: readonly Peer[],
-		names: ReadonlyMap<string, Named>,
-		split: number | undefined,
-	): string {
-		const { theme } = this.#options;
-		const keys: [string, string][] = [];
+	#keys(live: readonly Peer[], names: ReadonlyMap<string, Named>): KeyHint[] {
 		const selected = live[this.#selected];
 		const handle = selected === undefined ? undefined : names.get(selected.session)?.handle;
 		const other = selected !== undefined && selected.session !== this.#options.here.session;
 		if (this.#pane === "agents") {
-			keys.push(["\u2191\u2193", "pick"]);
+			const keys: KeyHint[] = [["\u2191\u2193", "pick"]];
 			if (other && handle !== undefined) keys.push(["enter", "write"]);
 			if (handle !== undefined) keys.push(["ctrl+f", this.#only === undefined ? "filter" : "all"]);
 			keys.push(["tab", "room"]);
-		} else if (this.#candidates().length > 0) {
-			keys.push(["\u2191\u2193", "pick"], ["tab", "mention"], ["esc", "keep writing"]);
-		} else {
-			keys.push(["enter", "send"], ["\u2191\u2193", "scroll"], ["tab", "agents"], ["esc", "close"]);
+			return keys;
 		}
-		const text = keys
-			.map(([key, action]) => `${theme.fg("muted", key)} ${theme.fg("dim", action)}`)
-			.join("   ");
-		if (split === undefined) return edge(theme, "\u2570", "\u256f", text, "", width);
-		// The column line meets the bottom border, and the keys sit under the room they act on.
-		const at = PAD + split + 1;
-		const left = theme.fg("border", `\u2570${"\u2500".repeat(at)}\u2534`);
-		return `${left}${edge(theme, "", "\u256f", text, "", width - at - 2)}`;
+		if (this.#candidates().length > 0)
+			return [
+				["\u2191\u2193", "pick"],
+				["tab", "mention"],
+				["esc", "keep writing"],
+			];
+		return [
+			["enter", "send"],
+			["\u2191\u2193", "scroll"],
+			["tab", "agents"],
+			["esc", "close"],
+		];
 	}
 
 	#nameOf(session: string): string {
@@ -476,25 +483,15 @@ function printable(data: string): boolean {
 	return !data.startsWith("\x1b") && [...data].every((char) => char >= " " && char !== "\x7f");
 }
 
-function edge(
-	theme: Theme,
-	left: string,
-	right: string,
-	label: string,
-	end: string,
-	width: number,
-): string {
-	const border = (text: string) => theme.fg("border", text);
-	const room = Math.max(0, width - 2 - visibleWidth(left) - visibleWidth(right));
-	const head = label === "" ? "" : ` ${truncateToWidth(label, Math.max(0, room - 2), "...")} `;
-	const tail = end === "" || visibleWidth(head) + visibleWidth(end) + 4 > room ? "" : ` ${end} `;
-	const dashes = Math.max(0, room - visibleWidth(head) - visibleWidth(tail));
-	return `${border(`${left}\u2500`)}${head}${border("\u2500".repeat(dashes))}${tail}${border(`\u2500${right}`)}`;
-}
-
-function window(lines: readonly string[], from: number, to: number, height: number): string[] {
-	if (lines.length <= height) return [...lines];
+/** The lines that fit, keeping the selected agent in view, and where they start. */
+function window(
+	lines: readonly string[],
+	from: number,
+	to: number,
+	height: number,
+): { lines: string[]; start: number } {
+	if (lines.length <= height) return { lines: [...lines], start: 0 };
 	const end = Math.min(lines.length, Math.max(height, to));
 	const start = Math.max(0, Math.min(from, end - height));
-	return lines.slice(start, start + height);
+	return { lines: lines.slice(start, start + height), start };
 }

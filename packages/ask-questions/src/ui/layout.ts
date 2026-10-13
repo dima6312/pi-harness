@@ -1,6 +1,7 @@
 // The geometry of the dialog. The question and the terminal decide all of it, never the row under
 // the cursor: reserving the space before it is needed is what keeps the dialog from jumping when
 // the focus moves.
+import { FRAME_X, FRAME_Y } from "@adeildo/pi-kit";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 export type Layout = "beside" | "below";
@@ -21,8 +22,8 @@ const LEFT_EXTRA = 24;
 /** The least room a body gets however short the terminal is, and the shortest cap of a panel. */
 export const PANEL_MIN_ROWS = 5;
 const PANEL_MAX_ROWS = 18;
-/** The frame, the tabs or the blank line, the blank under the question, the blank above the hint and the hint. */
-const CHROME_ROWS = 6;
+/** The frame, with the keys in its bottom edge, the tabs or the blank line, and the blank under the question. */
+const CHROME_ROWS = FRAME_Y + 2;
 
 /** A question never takes more than a quarter of the terminal; the rest becomes "n more lines". */
 export function questionRows(terminalRows: number): number {
@@ -35,7 +36,7 @@ export function bodyRows(terminalRows: number, askedRows: number): number {
 }
 
 export function layoutFor(inner: number): Layout {
-	return inner + 4 >= MIN_BESIDE ? "beside" : "below";
+	return inner + FRAME_X >= MIN_BESIDE ? "beside" : "below";
 }
 
 /** Fits the longest label with room for a note, and never takes more than 45% of the width. */

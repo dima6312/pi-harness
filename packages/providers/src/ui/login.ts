@@ -2,6 +2,7 @@
 // it waits for. The provider drives it through the interaction pi would hand it.
 import { spawn } from "node:child_process";
 
+import { frame, frameInner, type KeyHint } from "@adeildo/pi-kit";
 import type { AuthEvent, AuthPrompt, ProviderAuthInteraction } from "@earendil-works/pi-ai";
 import {
 	copyToClipboard,
@@ -20,8 +21,6 @@ import {
 	type TUI,
 	truncateToWidth,
 } from "@earendil-works/pi-tui";
-
-import { frameBottom, frameInner, frameRow, frameTop } from "./frame.ts";
 
 const MAX_LOG = 5;
 
@@ -139,12 +138,11 @@ export class LoginView implements Component, Focusable {
 			rows.push(this.linkHint());
 		}
 		if (this.code !== undefined) rows.push(this.theme.bold(this.code));
-		rows.push("", ...this.promptRows(inner), "", this.hint());
-		return [
-			frameTop(this.theme, `Entrar · ${this.label}`, width),
-			...rows.map((row) => frameRow(this.theme, row, inner)),
-			frameBottom(this.theme, width),
-		];
+		rows.push("", ...this.promptRows(inner));
+		return frame(this.theme, width, rows, {
+			title: `Entrar · ${this.label}`,
+			keys: this.hint(),
+		});
 	}
 
 	/** Ends the screen; the login it was drawing ended one way or another. */
@@ -259,20 +257,16 @@ export class LoginView implements Component, Focusable {
 		return [asked, `${this.theme.fg("accent", "❯ ")}${field}`];
 	}
 
-	private hint(): string {
-		const keys: [string, string][] =
-			this.pending?.prompt.type === "select"
-				? [
-						["↑↓", "move"],
-						["enter", "choose"],
-						["esc", "cancel"],
-					]
-				: [
-						["enter", "submit"],
-						["esc", "cancel"],
-					];
-		return keys
-			.map(([key, action]) => `${this.theme.fg("muted", key)} ${this.theme.fg("dim", action)}`)
-			.join("   ");
+	private hint(): KeyHint[] {
+		return this.pending?.prompt.type === "select"
+			? [
+					["↑↓", "move"],
+					["enter", "choose"],
+					["esc", "cancel"],
+				]
+			: [
+					["enter", "submit"],
+					["esc", "cancel"],
+				];
 	}
 }

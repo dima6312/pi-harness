@@ -1,6 +1,6 @@
 // Our dialogs wear the same frame as the rest of the harness. A host that cannot draw a component,
 // like RPC, falls back to pi's own select.
-import { oneAtATime } from "@adeildo/pi-kit";
+import { frame, frameInner, type KeyHint, oneAtATime } from "@adeildo/pi-kit";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -12,8 +12,6 @@ import {
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 
-import { frameBottom, frameInner, frameRow, frameTop } from "./frame.ts";
-
 /** One row of a picker: a label, and a second column on the right. */
 export interface PickOption {
 	label: string;
@@ -21,6 +19,11 @@ export interface PickOption {
 }
 
 const POINTER = "\u276f ";
+const KEYS: KeyHint[] = [
+	["↑↓", "move"],
+	["enter", "select"],
+	["esc", "cancel"],
+];
 const MAX_VISIBLE = 10;
 const GAP = 2;
 const MIN_DESCRIPTION = 12;
@@ -109,15 +112,15 @@ export class FramedSelect implements Component {
 			start > 0 || end < this.options.length
 				? `${this.selected + 1}/${this.options.length}`
 				: undefined;
-		return [
-			frameTop(this.theme, this.title, width),
-			...this.options
-				.slice(start, end)
-				.map((option, index) => this.line(this.row(option, start + index, inner), inner)),
-			this.line("", inner),
-			this.line(this.hint(position), inner),
-			frameBottom(this.theme, width),
-		];
+		const rows = this.options.slice(start, end).map((option, index) => ({
+			text: this.row(option, start + index, inner),
+			selected: start + index === this.selected,
+		}));
+		return frame(this.theme, width, rows, {
+			title: this.title,
+			keys: KEYS,
+			footnote: position === undefined ? "" : this.theme.fg("dim", position),
+		});
 	}
 
 	/** One line: the pointer, the label, and the description in a column shared by every row. */
@@ -160,19 +163,5 @@ export class FramedSelect implements Component {
 	private choose(): void {
 		const option = this.options[this.selected];
 		if (option !== undefined) this.done(labelOf(option));
-	}
-
-	private hint(position: string | undefined): string {
-		const keys = [
-			`${this.theme.fg("muted", "↑↓")} ${this.theme.fg("dim", "move")}`,
-			`${this.theme.fg("muted", "enter")} ${this.theme.fg("dim", "select")}`,
-			`${this.theme.fg("muted", "esc")} ${this.theme.fg("dim", "cancel")}`,
-		];
-		if (position !== undefined) keys.push(this.theme.fg("dim", position));
-		return keys.join("   ");
-	}
-
-	private line(text: string, inner: number): string {
-		return frameRow(this.theme, text, inner);
 	}
 }

@@ -349,10 +349,10 @@ describe("answers", () => {
 
 	test("the tabs say what is answered", () => {
 		const { dialog } = open(AUTH, FEATURES);
-		expect(dialog.render(80)[1]).toContain("0/2");
+		expect(dialog.render(80)[0]).toContain("0/2");
 		press(dialog, KEYS.enter);
 		expect(dialog.render(80)[1]).toContain("\u2713 Auth");
-		expect(dialog.render(80)[1]).toContain("1/2");
+		expect(dialog.render(80)[0]).toContain("1/2");
 	});
 
 	test("the typed answer is written in the panel", () => {

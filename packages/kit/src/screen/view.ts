@@ -21,6 +21,7 @@ import {
 	sameJson,
 } from "../control.ts";
 import type { Layer } from "../settings/store.ts";
+import { frameBottom, type KeyHint } from "../ui/frame.ts";
 import { applyRow, listTabs, runRow } from "./client.ts";
 import { keyOf, type Line, type ScreenModel } from "./model.ts";
 
@@ -77,7 +78,8 @@ type Mode = { kind: "browse" } | PickMode | CheckMode | InputMode | TextMode;
 type Tone = "success" | "error" | "warning" | "muted";
 
 const PANEL = 4;
-const CHROME = 7 + PANEL;
+/** The top edge, the tabs, two dividers, the one over the panel, and the bottom edge with the keys. */
+const CHROME = 5 + PANEL;
 const MIN_BODY = 6;
 
 export class ScreenView implements Component {
@@ -397,7 +399,7 @@ export class ScreenView implements Component {
 		const height = Math.max(CHROME + MIN_BODY, tui.terminal.rows);
 		this.#bodyHeight = height - CHROME;
 
-		const border = (text: string): string => theme.fg("borderMuted", text);
+		const border = (text: string): string => theme.fg("border", text);
 		const frame = (text: string): string =>
 			border("\u2502") + truncateToWidth(text, inner, "...", true) + border("\u2502");
 
@@ -416,9 +418,7 @@ export class ScreenView implements Component {
 
 		lines.push(border(divider("\u251c", "\u2524", inner, left, "\u2534")));
 		for (const line of this.#panel(inner - 2)) lines.push(frame(` ${line}`));
-		lines.push(border(divider("\u251c", "\u2524", inner, 0, "")));
-		lines.push(frame(` ${theme.fg("dim", this.#hints())}`));
-		lines.push(border(`\u2570${"\u2500".repeat(inner)}\u256f`));
+		lines.push(frameBottom(theme, inner + 2, this.#hints()));
 		return lines;
 	}
 
@@ -431,7 +431,7 @@ export class ScreenView implements Component {
 		}
 		const tabs = model.tabs.map((tab, index) =>
 			index === model.tab
-				? theme.bg("selectedBg", theme.fg("accent", theme.bold(` ${tab.title} `)))
+				? theme.fg("accent", theme.bold(` ${tab.title} `))
 				: theme.fg("muted", ` ${tab.title} `),
 		);
 		const hint = theme.fg("dim", "type to search ");
@@ -657,33 +657,50 @@ export class ScreenView implements Component {
 		return [...wrapped.map((line) => theme.fg("text", line)), theme.fg("dim", meta), status];
 	}
 
-	#hints(): string {
+	#hints(): KeyHint[] {
 		const mode = this.#mode;
 		switch (mode.kind) {
 			case "pick":
-				return "\u2191\u2193 move   \u21b5 pick   esc back";
+				return [
+					["\u2191\u2193", "move"],
+					["enter", "pick"],
+					["esc", "back"],
+				];
 			case "check":
-				return "\u2191\u2193 move   space check   alt+\u2191\u2193 reorder   \u21b5 save   esc back";
+				return [
+					["\u2191\u2193", "move"],
+					["space", "check"],
+					["alt+\u2191\u2193", "reorder"],
+					["enter", "save"],
+					["esc", "back"],
+				];
 			case "input":
-				return "\u21b5 save   esc cancel";
+				return [
+					["enter", "save"],
+					["esc", "cancel"],
+				];
 			case "text":
-				return "\u2191\u2193 scroll   esc back";
+				return [
+					["\u2191\u2193", "scroll"],
+					["esc", "back"],
+				];
 			case "browse":
 				break;
 		}
 
 		const model = this.#options.model;
 		const row = model.selected()?.row;
-		const parts = ["\u2191\u2193 move"];
-		if (row?.kind === "action") parts.push("\u21b5 run");
-		else if (row?.control?.type === "toggle") parts.push("\u21b5 flip");
-		else if (row?.control !== undefined) parts.push("\u21b5 change");
-		if (row?.control?.type === "choice" && !model.searching) parts.push("space next");
-		if (row?.kind === "setting" && row.layer === "project") parts.push("del drop project value");
-		else if (row?.kind === "setting" && row.layer === "global") parts.push("del reset");
-		if (!model.searching) parts.push("\u2190\u2192 tabs", "\u21e5 section");
-		parts.push(model.searching ? "esc clear search" : "esc close");
-		return parts.join("   ");
+		const keys: KeyHint[] = [["\u2191\u2193", "move"]];
+		if (row?.kind === "action") keys.push(["enter", "run"]);
+		else if (row?.control?.type === "toggle") keys.push(["enter", "flip"]);
+		else if (row?.control !== undefined) keys.push(["enter", "change"]);
+		if (row?.control?.type === "choice" && !model.searching) keys.push(["space", "next"]);
+		if (row?.kind === "setting" && row.layer === "project")
+			keys.push(["del", "drop project value"]);
+		else if (row?.kind === "setting" && row.layer === "global") keys.push(["del", "reset"]);
+		if (!model.searching) keys.push(["\u2190\u2192", "tabs"], ["tab", "section"]);
+		keys.push(["esc", model.searching ? "clear search" : "close"]);
+		return keys;
 	}
 }
 

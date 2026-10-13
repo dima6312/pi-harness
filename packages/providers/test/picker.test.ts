@@ -32,14 +32,14 @@ test("no options is no dialog", async () => {
 	expect(await pick(ctx, "Title", [])).toBeUndefined();
 });
 
-test("the frame holds the title, the options and the hint", () => {
+test("the frame holds the title and the options, and the keys sit in its bottom edge", () => {
 	const width = 40;
 	const component = new FramedSelect(TUI, THEME, "Pick one", ["alpha", "beta"], () => {});
 	const lines = component.render(width);
 	const body = lines.join("\n");
 
 	expect(lines[0]?.startsWith("╭─ Pick one ")).toBe(true);
-	expect(lines.at(-1)).toBe(`╰${"─".repeat(width - 2)}╯`);
+	expect(lines.at(-1)?.startsWith("╰─ ↑↓ move")).toBe(true);
 	expect(body).toContain("alpha");
 	expect(body).toContain("enter");
 	for (const line of lines) expect(visibleWidth(line)).toBe(width);

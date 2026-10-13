@@ -44,6 +44,7 @@ Build it with `defineFeature` and `createApp` from `@adeildo/pi-kit`. The harnes
 - Declare a setting next to the feature that reads it. Only settings that are safe to take from a cloned repository get `project: true`.
 - A feature never imports another feature's state. Anything that crosses features is an event in `packages/kit/src/contracts/`, with a plain JSON payload.
 - Every rule of the feature gets a test that fails when the rule breaks. `@adeildo/pi-kit/testing` fakes pi for that.
+- A dialog, panel or full screen draws its content inside the kit's `frame()` and follows [DESIGN.md](DESIGN.md): no backgrounds, the keys in the bottom edge, the same selected row everywhere.
 
 ## Tests
 

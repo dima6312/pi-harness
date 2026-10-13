@@ -1,4 +1,4 @@
-import { spread, type Task, tasksWith } from "@adeildo/pi-kit";
+import { pointer, spread, type Task, tasksWith } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
@@ -8,7 +8,6 @@ import { spin } from "./motion.ts";
 
 export const MARKS = { idle: "\u25c7", waiting: "\u2691" } as const;
 
-const POINTER = "\u276f";
 /** Room for the widest label, "waits", and a space. */
 const LABEL = 7;
 const DOING_SHOWN = 3;
@@ -81,13 +80,13 @@ export function agentLines(
 		const named = names.get(peer.session);
 		const color = (named?.color ?? "muted") as ThemeColor;
 		const selected = index === options.selected;
-		const pointer = selected ? theme.fg(options.focused ? "accent" : "dim", POINTER) : " ";
+		const marker = pointer(theme, selected, options.focused === true);
 		const you = peer.session === options.me ? theme.fg("dim", "  you") : "";
 		const name = theme.fg(color, theme.bold(named?.handle ?? "anon"));
 		if (selected) selectedAt = lines.length;
 		lines.push(
 			spread(
-				`${pointer} ${markOf(peer, color, theme, now)} ${name}${you}`,
+				`${marker}${markOf(peer, color, theme, now)} ${name}${you}`,
 				stateText(peer, theme, now),
 				width,
 			),

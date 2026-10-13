@@ -1,6 +1,7 @@
 // The accounts of one provider in our frame: which one is in use, what each plan has left, and the
 // keys to switch, rename, remove or add one. Renaming and removing happen in place, so the list stays
 // where it is and says what changed.
+import { frame, frameInner, type FrameLine } from "@adeildo/pi-kit";
 import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import {
 	type Component,
@@ -15,7 +16,6 @@ import {
 } from "@earendil-works/pi-tui";
 
 import type { UsageWindow } from "../usage/types.ts";
-import { frameBottom, frameInner, frameRow, frameTop } from "./frame.ts";
 import { quotaWindows } from "./quota.ts";
 
 /** What a row says past the account's name: its plan, or the trouble it is in. */
@@ -157,24 +157,25 @@ export class AccountsView implements Component, Focusable {
 		const states = new Map(rows.map((row) => [row.id, describeState(this.theme, row.state)]));
 		const columns = this.columns(rows, [...states.values()], inner);
 
-		const lines: string[] = [];
+		const lines: FrameLine[] = [];
 		if (rows.length === 0) lines.push(this.theme.fg("muted", this.listing.empty), "");
 		for (const item of items.slice(start, end)) {
 			const row = rows.find((candidate) => candidate.id === item);
-			if (row === undefined) lines.push(this.addLine());
-			else lines.push(this.accountLine(row, columns, states.get(row.id) ?? "", inner));
+			const text =
+				row === undefined
+					? this.addLine()
+					: this.accountLine(row, columns, states.get(row.id) ?? "", inner);
+			lines.push({ text, selected: item === this.cursor });
 		}
-		lines.push("");
 		const status = this.statusLine(rows);
-		if (status !== undefined) lines.push(status);
+		if (status !== undefined) lines.push("", status);
 		const position = start > 0 || end < items.length ? `${at + 1}/${items.length}` : undefined;
-		lines.push(this.hint(rows, position));
-
-		return [
-			frameTop(this.theme, `${this.listing.provider} accounts`, width),
-			...lines.map((line) => frameRow(this.theme, line, inner)),
-			frameBottom(this.theme, width),
-		];
+		const row = rows.find((candidate) => candidate.id === this.cursor);
+		return frame(this.theme, width, lines, {
+			title: `${this.listing.provider} accounts`,
+			keys: this.keys(row),
+			footnote: position === undefined ? "" : this.theme.fg("dim", position),
+		});
 	}
 
 	private browsing(data: string): void {
@@ -306,15 +307,6 @@ export class AccountsView implements Component, Focusable {
 			return this.theme.fg("warning", this.listing.removeQuestion(removing));
 		if (this.note === undefined) return undefined;
 		return this.theme.fg(this.note.tone, this.note.text);
-	}
-
-	private hint(rows: readonly AccountRow[], position: string | undefined): string {
-		const row = rows.find((candidate) => candidate.id === this.cursor);
-		const text = this.keys(row).map(
-			([key, action]) => `${this.theme.fg("muted", key)} ${this.theme.fg("dim", action)}`,
-		);
-		if (position !== undefined) text.push(this.theme.fg("dim", position));
-		return text.join("   ");
 	}
 
 	/** The keys that do something right now, and what each one does. */

@@ -941,7 +941,11 @@ describe("on Alt+T", () => {
 			{ op: "ask", text: "a" },
 			{ op: "ask", text: "b" },
 		]).tasks;
-		expect(taskKeys(doing!).map((key) => key.label)).toEqual(["x done", "p later", "\u232b drop"]);
+		expect(taskKeys(doing!).map((key) => key.hint.join(" "))).toEqual([
+			"x done",
+			"p later",
+			"\u232b drop",
+		]);
 		expect(taskKeys(queued!).map((key) => key.op)).toEqual([
 			{ op: "continue", id: "t2" },
 			{ op: "done", id: "t2" },

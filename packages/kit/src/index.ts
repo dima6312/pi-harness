@@ -19,6 +19,7 @@ export * from "./models.ts";
 export * from "./one-at-a-time.ts";
 export * from "./overlay-images.ts";
 export * from "./typing.ts";
+export * from "./ui/frame.ts";
 export {
 	globalSettingsPath,
 	projectSettingsPath,

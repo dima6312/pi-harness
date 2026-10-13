@@ -8,8 +8,8 @@ import { byHandle, type Named } from "../names.ts";
 import { award, TAKE_MS, turnToTake } from "../rules.ts";
 import { blink, dots, isFresh, spin } from "./motion.ts";
 
-const GUTTER = 7;
-const NEST = 2;
+/** The words sit under the header behind a rail and a space, the only indent the room uses. */
+const INDENT = 2;
 const BAR_CELLS = 5;
 const TOGETHER_MS = 60_000;
 /** A message nobody logged after this stops spinning. */
@@ -55,14 +55,15 @@ export function feedView(
 		options.only === undefined ? room : room.filter((item) => involves(item, options.only ?? ""));
 	const lines: string[] = [];
 	const heads: (number | undefined)[] = [];
-	const add = (block: readonly string[], titled: boolean) => {
-		const at = lines.length;
+	/** A block of lines; `head` is the line that says who wrote it, kept in view when it scrolls. */
+	const add = (block: readonly string[], head?: number) => {
+		const at = head === undefined ? undefined : lines.length + head;
 		for (const line of block) {
-			heads.push(titled ? at : undefined);
+			heads.push(at);
 			lines.push(line);
 		}
 	};
-	const gap = () => add([""], false);
+	const gap = () => add([""]);
 	const replies = answers(shown);
 	const newest = shown.findLast((item) => item.kind === "message");
 	for (let index = 0; index < shown.length; index++) {
@@ -73,7 +74,7 @@ export function feedView(
 			const back = shown[index + 1];
 			if (back?.kind === "happening" && restarted(item.happening, back.happening)) {
 				if (lines.length > 0 && !lastWasHappening(shown, index - 1)) gap();
-				add([restartLine(item.happening, options)], false);
+				add([restartLine(item.happening, options)]);
 				index++;
 				continue;
 			}
@@ -85,22 +86,19 @@ export function feedView(
 				index++;
 			}
 			if (lines.length > 0 && !lastWasHappening(shown, index - group.length)) gap();
-			add([happeningLine(group, options)], false);
+			add([happeningLine(group, options)]);
 			continue;
 		}
 		if (lines.length > 0) gap();
 		const answered = replies.get(item.message.id);
-		const previous = shown[index - 1];
-		const adjacent =
-			answered !== undefined && previous?.kind === "message" && previous.message.id === answered.id;
 		const full = item === newest || options.only !== undefined;
-		add(messageLines(item.message, answered, adjacent, full, options), true);
+		add(messageLines(item.message, answered, full, options), answered === undefined ? 0 : 1);
 	}
 	const writing =
 		options.only === undefined ? typing : typing.filter((one) => one.session === options.only);
 	for (const one of writing) {
 		if (lines.length > 0) gap();
-		add(typingLines(one, options), true);
+		add(typingLines(one, options), 0);
 	}
 	if (lines.length > 0) return { lines, heads };
 	const narrowed = options.only === undefined ? undefined : options.names.get(options.only)?.handle;
@@ -111,33 +109,33 @@ export function feedView(
 	return { lines: [theme.fg("dim", empty)], heads: [undefined] };
 }
 
+/**
+ * Like a chat: who wrote it to whom and when on one line, what became of it on the right, the words
+ * under it. An answer first quotes the line it answers.
+ */
 function messageLines(
 	message: Posted,
 	answered: Posted | undefined,
-	adjacent: boolean,
 	full: boolean,
 	options: FeedOptions,
 ): string[] {
 	const { theme, now, width } = options;
 	const color = speakerColor(message, options);
 	const fresh = isFresh(message.at, now);
-	const indent = " ".repeat(GUTTER + (answered === undefined ? 0 : NEST));
-	const time = theme.fg(fresh ? color : "dim", options.clock(message.at));
+	const lines: string[] = [];
+	if (answered !== undefined) lines.push(quoteLine(answered, options));
 
 	let head = `${speaker(message, options)}${theme.fg("dim", " \u2192 ")}${recipients(message, options)}`;
-	if (answered !== undefined) head = `${theme.fg("dim", "\u21b3 ")}${head}`;
+	head += `  ${theme.fg(fresh ? color : "dim", options.clock(message.at))}`;
 	if (message.urgent) head += theme.fg("warning", "  urgent");
-	if (answered !== undefined && !adjacent)
-		head += theme.fg("dim", `  re: ${answered.text.split("\n")[0] ?? ""}`);
 	// One addressee's receipt fits on the header line; several, or the bids, go under the words.
 	const receipts = receiptLines(message, options);
 	const inline = message.to !== "all" && message.to.length === 1 ? receipts.shift() : undefined;
-	const lines = [header(`${time}  ${head}`, inline ?? "", width)];
+	lines.push(header(head, inline ?? "", width));
 
 	const rail = fresh ? theme.fg(color, "\u2503") : theme.fg("borderMuted", "\u2502");
-	const room = Math.max(8, width - indent.length - 2);
 	const body = message.unsent ? `withdrawn: ${message.text}` : message.text;
-	let wrapped = wrapTextWithAnsi(body, room);
+	let wrapped = wrapTextWithAnsi(body, Math.max(8, width - INDENT));
 	if (!full && wrapped.length > BODY_SHOWN) {
 		const hidden = wrapped.length - BODY_SHOWN + 1;
 		wrapped = [
@@ -146,9 +144,17 @@ function messageLines(
 		];
 	}
 	for (const line of wrapped)
-		lines.push(`${indent}${rail} ${theme.fg(message.unsent ? "dim" : "text", line)}`);
-	for (const line of receipts) lines.push(truncateToWidth(`${indent}${line}`, width, "..."));
+		lines.push(`${rail} ${theme.fg(message.unsent ? "dim" : "text", line)}`);
+	for (const line of receipts) lines.push(truncateToWidth(`  ${line}`, width, "..."));
 	return lines;
+}
+
+/** The first line of the message an answer answers, quoted above it. */
+function quoteLine(question: Posted, options: FeedOptions): string {
+	const { theme, width } = options;
+	const first = question.text.split("\n")[0] ?? "";
+	const line = `${theme.fg("borderMuted", "\u256d\u2500")} ${speaker(question, options, false)} ${theme.fg("dim", first)}`;
+	return truncateToWidth(line, width, "...");
 }
 
 function header(left: string, right: string, width: number): string {
@@ -192,7 +198,7 @@ function requestLines(message: Posted, options: FeedOptions): string[] {
 		});
 	const bids = fitting(
 		parts,
-		options.width - GUTTER - (ranking.kind === "bidding" ? 14 : 0),
+		options.width - INDENT - (ranking.kind === "bidding" ? 14 : 0),
 		theme,
 	);
 	switch (ranking.kind) {
@@ -242,28 +248,25 @@ function typingLines(typing: Typing, options: FeedOptions): string[] {
 						return theme.fg((one?.color ?? "muted") as ThemeColor, written);
 					})
 					.join(theme.fg("dim", ", "));
-	const head = `${theme.fg(color, theme.bold(named?.handle ?? "an agent"))}${theme.fg("dim", " \u2192 ")}${to}  ${theme.fg("dim", `writing${dots(now)}`)}`;
-	const time = theme.fg("dim", options.clock(typing.at));
-	const lines = [truncateToWidth(`${time}  ${theme.fg(color, spin(now))} ${head}`, width, "...")];
-	const indent = " ".repeat(GUTTER);
-	const room = Math.max(8, width - GUTTER - 3);
+	const head = `${theme.fg(color, theme.bold(named?.handle ?? "an agent"))}${theme.fg("dim", " \u2192 ")}${to}  ${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`;
+	const lines = [truncateToWidth(head, width, "...")];
+	const room = Math.max(8, width - INDENT - 1);
 	const cursor = blink(now) ? theme.fg(color, "\u258c") : " ";
 	const wrapped = wrapTextWithAnsi(typing.text, room).slice(-2);
 	if (wrapped.length === 0) wrapped.push("");
 	for (const [index, line] of wrapped.entries()) {
 		const last = index === wrapped.length - 1;
 		lines.push(
-			`${indent}${theme.fg("borderMuted", "\u2502")} ${theme.fg("muted", line)}${last ? cursor : ""}`,
+			`${theme.fg("borderMuted", "\u2502")} ${theme.fg("muted", line)}${last ? cursor : ""}`,
 		);
 	}
 	return lines;
 }
 
 function happeningLine(group: readonly Happening[], options: FeedOptions): string {
-	const { theme, width } = options;
+	const { theme } = options;
 	const first = group[0];
 	if (first === undefined) return "";
-	const time = theme.fg("dim", options.clock(first.at));
 	const who = group.map((one) => name(one.session, options));
 	const names =
 		who.length < 3
@@ -286,7 +289,14 @@ function happeningLine(group: readonly Happening[], options: FeedOptions): strin
 		case "took":
 			return "";
 	}
-	return truncateToWidth(`${time}  ${line}`, width, "...");
+	return stamped(line, first.at, options);
+}
+
+/** A line of the room with its time after it, the line giving way so the time always shows. */
+function stamped(line: string, at: number, options: FeedOptions): string {
+	const time = `  ${options.theme.fg("dim", options.clock(at))}`;
+	const room = Math.max(8, options.width - visibleWidth(time));
+	return `${truncateToWidth(line, room, "...")}${time}`;
 }
 
 /** Left and came back within a minute: the session was reloaded. */
@@ -300,9 +310,9 @@ function restarted(left: Happening, back: Happening): boolean {
 }
 
 function restartLine(left: Happening, options: FeedOptions): string {
-	const { theme, width } = options;
-	const line = `${theme.fg("dim", options.clock(left.at))}  ${theme.fg("dim", "\u21bb")} ${name(left.session, options)} ${theme.fg("dim", "restarted")}`;
-	return truncateToWidth(line, width, "...");
+	const { theme } = options;
+	const line = `${theme.fg("dim", "\u21bb")} ${name(left.session, options)} ${theme.fg("dim", "restarted")}`;
+	return stamped(line, left.at, options);
 }
 
 function together(first: Happening | undefined, next: Happening): boolean {
@@ -350,10 +360,10 @@ function involves(item: RoomItem, session: string): boolean {
 	return message.to === "all" ? message.bids.has(session) : message.to.includes(session);
 }
 
-function speaker(message: Posted, options: FeedOptions): string {
+function speaker(message: Posted, options: FeedOptions, bold = true): string {
 	const { theme } = options;
-	if (message.from === "you") return theme.fg("accent", theme.bold("you"));
-	return theme.fg(speakerColor(message, options), theme.bold(handle(message.session, options)));
+	const who = message.from === "you" ? "you" : handle(message.session, options);
+	return theme.fg(speakerColor(message, options), bold ? theme.bold(who) : who);
 }
 
 function speakerColor(message: Posted, options: FeedOptions): ThemeColor {

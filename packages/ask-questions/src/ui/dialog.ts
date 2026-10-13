@@ -1,4 +1,11 @@
-import { type AskAnswer, type AskResult, isAnswered } from "@adeildo/pi-kit";
+import {
+	type AskAnswer,
+	type AskResult,
+	frame,
+	frameInner,
+	isAnswered,
+	type KeyHint,
+} from "@adeildo/pi-kit";
 // Drawn inline instead of as an overlay, so a tall dialog scrolls with the terminal.
 import { getSelectListTheme, type Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -102,6 +109,8 @@ export class QuestionDialog implements Component, Focusable {
 	private panelFor = "";
 	private panelRoom = 1;
 	private overflow = false;
+	/** The selected option's line in the question, or -1 on the submit tab. */
+	private pickedLine = -1;
 
 	private focusedFlag = false;
 	get focused(): boolean {
@@ -164,18 +173,28 @@ export class QuestionDialog implements Component, Focusable {
 	}
 
 	render(width: number): string[] {
-		const inner = Math.max(1, width - 4);
+		const inner = frameInner(width);
 		const lines: string[] = [];
 		// The tabs, or a blank line, so the question does not touch the title.
 		lines.push(this.questions.length > 1 ? this.tabBar(inner) : "");
 		this.overflow = false;
+		this.pickedLine = -1;
 		lines.push(
 			...(this.onSubmitTab
 				? this.submitLines(inner)
 				: this.questionLines(inner, this.tui.terminal.rows)),
 		);
-		lines.push("", this.hint());
-		return this.frame(lines, width, inner, this.title());
+		const picked = this.pickedLine < 0 ? -1 : this.pickedLine + 1;
+		const count =
+			this.questions.length > 1
+				? this.theme.fg("dim", `${this.answeredCount()}/${this.questions.length}`)
+				: "";
+		return frame(
+			this.theme,
+			width,
+			lines.map((text, index) => ({ text, selected: index === picked })),
+			{ title: this.title(), status: count, keys: this.hint() },
+		);
 	}
 
 	private get onSubmitTab(): boolean {
@@ -422,16 +441,12 @@ export class QuestionDialog implements Component, Focusable {
 	private tabBar(inner: number): string {
 		const parts = this.questions.map((question, index) => this.tabLabel(question.header, index));
 		parts.push(this.submitLabel());
-		const tabs = parts.join(" ");
-
-		const count = this.theme.fg("dim", `${this.answeredCount()}/${this.questions.length}`);
-		const gap = inner - visibleWidth(tabs) - visibleWidth(count);
-		return gap >= 2 ? `${tabs}${" ".repeat(gap)}${count}` : truncateToWidth(tabs, inner);
+		return truncateToWidth(parts.join("  "), inner);
 	}
 
+	/** The tab you are on: in the accent and bold, where the others are quiet. */
 	private pill(text: string): string {
-		const label = ` ${text} `;
-		return this.theme.bg("selectedBg", this.theme.bold(this.theme.fg("accent", label)));
+		return this.theme.bold(this.theme.fg("accent", ` ${text} `));
 	}
 
 	// A glyph and a color say the same thing, so the state survives a terminal with no color.
@@ -491,6 +506,7 @@ export class QuestionDialog implements Component, Focusable {
 			layout === "beside"
 				? this.besideBody(question, draft, { left, width, inner, wanted, budget, titled })
 				: this.belowBody(question, draft, { inner, wanted, budget, titled });
+		this.pickedLine = asked.length + 1 + this.row;
 		return [...asked, "", ...body];
 	}
 
@@ -558,17 +574,7 @@ export class QuestionDialog implements Component, Focusable {
 			: this.theme.fg("text", text);
 		const check = done ? this.theme.fg("success", CHECK) : "";
 		const line = `${pointer}${number}  ${box}${styled}${check}${marker}`;
-		return this.focusRow(truncateToWidth(line, width), width, active);
-	}
-
-	/** The focused row is filled across the column, so the eye finds it without reading. */
-	private focusRow(line: string, width: number, active: boolean): string {
-		if (!active) return line;
-		const padded = line + " ".repeat(Math.max(0, width - visibleWidth(line)));
-		if (typeof this.theme.getBgAnsi !== "function") return this.theme.bg("selectedBg", padded);
-		// Truncation and the cursor reset every attribute; the fill is reopened after each reset.
-		const open = this.theme.getBgAnsi("selectedBg");
-		return `${open}${padded.replaceAll("\x1b[0m", `\x1b[0m${open}`)}\x1b[49m`;
+		return truncateToWidth(line, width);
 	}
 
 	/** The detail of an option: what it means, then what it looks like. */
@@ -703,8 +709,8 @@ export class QuestionDialog implements Component, Focusable {
 		return { question: question.question, header: question.header, picked: [], notes };
 	}
 
-	private hint(): string {
-		const keys: [string, string][] = [];
+	private hint(): KeyHint[] {
+		const keys: KeyHint[] = [];
 		const tabs = this.questions.length > 1;
 		if (this.onSubmitTab) {
 			if (tabs) keys.push(["\u2190\u2192", "question"]);
@@ -726,26 +732,6 @@ export class QuestionDialog implements Component, Focusable {
 			else keys.push(["enter", "choose"]);
 			keys.push(["tab", "note"], ["esc", "cancel"]);
 		}
-		return keys
-			.map(([key, action]) => `${this.theme.fg("muted", key)} ${this.theme.fg("dim", action)}`)
-			.join("   ");
-	}
-
-	private frame(lines: string[], width: number, inner: number, title: string): string[] {
-		const border = (text: string) => this.theme.fg("border", text);
-		// 5 columns for "╭─ ", the space after the title, and "╮".
-		const room = Math.max(0, width - 5);
-		const label = this.theme.fg("accent", truncateToWidth(title, Math.max(0, room - 3), "..."));
-		const dashes = Math.max(0, room - visibleWidth(label));
-		const out = [
-			`${border("\u256d\u2500 ")}${label}${border(` ${"\u2500".repeat(dashes)}\u256e`)}`,
-		];
-		for (const line of lines) {
-			const clipped = truncateToWidth(line, inner);
-			const pad = " ".repeat(Math.max(0, inner - visibleWidth(clipped)));
-			out.push(`${border("\u2502")} ${clipped}${pad} ${border("\u2502")}`);
-		}
-		out.push(border(`\u2570${"\u2500".repeat(Math.max(0, width - 2))}\u256f`));
-		return out;
+		return keys;
 	}
 }

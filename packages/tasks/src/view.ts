@@ -1,12 +1,15 @@
 import {
-	cardTones,
 	type Decision,
+	FRAME_Y,
+	frame,
+	frameInner,
 	isOpen,
 	isStale,
-	keepBackground,
+	type KeyHint,
 	newestFirst,
+	POINTER,
+	rule,
 	type SessionTasks,
-	spread,
 	type Task,
 	type TaskOp,
 	type TaskStatus,
@@ -14,7 +17,6 @@ import {
 } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
-	backgroundAnsi,
 	type Component,
 	type KeyId,
 	matchesKey,
@@ -57,7 +59,7 @@ export interface TasksViewOptions {
 
 export interface TaskKey {
 	keys: KeyId[];
-	label: string;
+	hint: KeyHint;
 	op: TaskOp;
 }
 
@@ -66,12 +68,12 @@ export function taskKeys(task: Task): TaskKey[] {
 	const open = isOpen(task);
 	const keys: TaskKey[] = [];
 	if (task.status !== "doing")
-		keys.push({ keys: ["enter"], label: "\u21b5 doing", op: { op: "continue", id } });
-	if (open) keys.push({ keys: ["x"], label: "x done", op: { op: "done", id } });
+		keys.push({ keys: ["enter"], hint: ["enter", "doing"], op: { op: "continue", id } });
+	if (open) keys.push({ keys: ["x"], hint: ["x", "done"], op: { op: "done", id } });
 	if (open && task.status !== "deferred")
-		keys.push({ keys: ["p"], label: "p later", op: { op: "defer", id } });
+		keys.push({ keys: ["p"], hint: ["p", "later"], op: { op: "defer", id } });
 	if (task.status !== "dropped")
-		keys.push({ keys: ["backspace", "delete"], label: "\u232b drop", op: { op: "drop", id } });
+		keys.push({ keys: ["backspace", "delete"], hint: ["\u232b", "drop"], op: { op: "drop", id } });
 	return keys;
 }
 
@@ -88,8 +90,6 @@ interface Line {
 	id?: string;
 }
 
-const PAD = 2;
-const POINTER = "\u276f";
 const DETAIL_LINES = 4;
 const DOT = " \u00b7 ";
 
@@ -142,9 +142,10 @@ export class TasksView implements Component {
 		const at = picks.findIndex((pick) => idOf(pick) === this.#selected);
 		const selected = this.#select(picks, at === -1 ? this.#index : at);
 
-		const inner = Math.max(10, width - PAD * 2);
+		const inner = Math.max(10, frameInner(width));
 		const body = this.#body(state, picks, inner);
-		const chrome = 6 + DETAIL_LINES;
+		// The frame, the rule over the detail, and the detail.
+		const chrome = FRAME_Y + 1 + DETAIL_LINES;
 		const most = Math.max(3, this.#options.rows() - chrome);
 		// The panel never shrinks while open, so moving the cursor never moves the frame.
 		this.#room = Math.min(most, Math.max(this.#room, body.length));
@@ -154,27 +155,24 @@ export class TasksView implements Component {
 		const shown = body.slice(this.#offset, this.#offset + room);
 		while (shown.length < room) shown.push({ text: "" });
 
-		// A solid card with no frame: a border's corner cells can never match the card's background.
-		const mode = theme.getColorMode();
-		const tones = cardTones(theme);
-		const card = backgroundAnsi(tones.card, mode);
-		const band = backgroundAnsi(tones.band, mode);
-		const picked = theme.getBgAnsi("selectedBg");
-		const pad = " ".repeat(PAD);
-		const row = (text: string, background = card) =>
-			`${background}${pad}${keepBackground(truncateToWidth(text, inner, "...", true), background)}${pad}\x1b[49m`;
-		const line = (entry: Line) =>
-			row(entry.text, entry.id !== undefined && entry.id === this.#selected ? picked : card);
-		return [
-			row(this.#header(state, inner), band),
-			row(""),
-			...shown.map(line),
-			row(this.#scrollHint(body.length, room)),
-			row(theme.fg("borderMuted", "\u2500".repeat(inner))),
-			...this.#detail(selected, inner).map((text) => row(text)),
-			row(""),
-			row(this.#footer(inner, selected), band),
-		];
+		return frame(
+			theme,
+			width,
+			[
+				...shown.map((line) => ({
+					text: line.text,
+					selected: line.id !== undefined && line.id === this.#selected,
+				})),
+				rule(theme, inner, this.#scrollHint(body.length, room)),
+				...this.#detail(selected, inner),
+			],
+			{
+				title: state.title ?? "This session",
+				status: this.#counts(state),
+				keys: this.#keys(selected),
+				footnote: this.#spent(),
+			},
+		);
 	}
 
 	#picks(state: SessionTasks): Pick[] {
@@ -238,14 +236,22 @@ export class TasksView implements Component {
 		const mark = theme.fg(STATUS[task.status].mark, MARKS[task.status]);
 		const aside = task.status === "done" ? task.result : undefined;
 		const ink = faded ? "muted" : "text";
-		return { text: this.#fit(mark, task.text, ink, meta, width, aside), id: task.id };
+		const picked = task.id === this.#selected;
+		return { text: this.#fit(mark, task.text, ink, meta, width, picked, aside), id: task.id };
 	}
 
 	#decisionRow(decision: Decision, width: number): Line {
 		const { theme } = this.#options;
 		const meta = theme.fg("dim", this.#clock(decision.made.at));
 		return {
-			text: this.#fit(theme.fg("mdLink", MARKS.decision), decision.text, "text", meta, width),
+			text: this.#fit(
+				theme.fg("mdLink", MARKS.decision),
+				decision.text,
+				"text",
+				meta,
+				width,
+				decision.id === this.#selected,
+			),
 			id: decision.id,
 		};
 	}
@@ -256,6 +262,7 @@ export class TasksView implements Component {
 		ink: Tint,
 		meta: string,
 		width: number,
+		picked: boolean,
 		aside?: string,
 	): string {
 		const { theme } = this.#options;
@@ -265,7 +272,8 @@ export class TasksView implements Component {
 		const joined = aside === undefined ? words : `${words}${DOT}${aside}`;
 		const plain = truncateToWidth(joined, Math.max(8, room - 2 - metaWidth), "...");
 		const rest = plain.slice(words.length);
-		const head = `${mark} ${theme.fg(ink, plain.slice(0, words.length))}${theme.fg("dim", rest)}`;
+		const text = theme.fg(ink, plain.slice(0, words.length));
+		const head = `${mark} ${picked ? theme.bold(text) : text}${theme.fg("dim", rest)}`;
 		if (meta === "") return head;
 		return `${head}${" ".repeat(Math.max(2, room - visibleWidth(head) - visibleWidth(meta)))}${meta}`;
 	}
@@ -348,35 +356,33 @@ export class TasksView implements Component {
 		this.#offset = Math.min(Math.max(0, this.#offset), Math.max(0, body.length - room));
 	}
 
-	#header(state: SessionTasks, width: number): string {
+	#counts(state: SessionTasks): string {
 		const { theme } = this.#options;
 		const counted: TaskStatus[] = ["doing", "waiting", "queued", "done"];
-		const counts = counted
+		return counted
 			.flatMap((status) => {
 				const size = tasksWith(state, status).length;
 				return size === 0 ? [] : [theme.fg(STATUS[status].mark, `${MARKS[status]} ${size}`)];
 			})
 			.join("  ");
-		const room = Math.max(4, width - visibleWidth(counts) - 2);
-		const title = theme.bold(
-			theme.fg("accent", truncateToWidth(state.title ?? "This session", room, "...")),
-		);
-		return spread(title, counts, width);
 	}
 
-	#footer(width: number, selected: Pick | undefined): string {
-		const { theme, spent, act } = this.#options;
+	#keys(selected: Pick | undefined): KeyHint[] {
 		const actions =
-			act !== undefined && selected?.kind === "task"
-				? taskKeys(selected.task).map((entry) => entry.label)
+			this.#options.act !== undefined && selected?.kind === "task"
+				? taskKeys(selected.task).map((entry) => entry.hint)
 				: [];
-		const keys = theme.fg("dim", ["\u2191\u2193", ...actions, "d dropped", "esc"].join("  "));
-		const { cost, calls } = spent();
-		return spread(
-			keys,
-			calls === 0 ? "" : theme.fg("dim", `$${cost.toFixed(3)}, ${calls} calls`),
-			width,
-		);
+		return [
+			["\u2191\u2193", "move"],
+			...actions,
+			["d", this.#dropped ? "hide dropped" : "dropped"],
+			["esc", "close"],
+		];
+	}
+
+	#spent(): string {
+		const { cost, calls } = this.#options.spent();
+		return calls === 0 ? "" : this.#options.theme.fg("dim", `$${cost.toFixed(3)}, ${calls} calls`);
 	}
 
 	#scrollHint(total: number, room: number): string {
