@@ -8,7 +8,7 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "../src/bid.ts";
 import { GRACE_MS, Here, type Hooks, PEER_MESSAGE, PEER_NOTE } from "../src/here.ts";
-import { BID_WINDOW_MS } from "../src/rules.ts";
+import { BID_WINDOW_MS, QUIET_AFTER } from "../src/rules.ts";
 import { statusLine } from "../src/ui/status.ts";
 
 let root: string;
@@ -145,16 +145,39 @@ describe("a message", () => {
 		expect(b.sent).toHaveLength(1);
 	});
 
-	test("after a long exchange between agents, mentions stop waking anyone", () => {
+	test("an idle agent wakes for every message from an agent its operator set going", () => {
 		const a = session("a");
 		const b = session("b");
-		for (let i = 0; i < 5; i++) a.here.post(["b"], `ping ${i}`, "agent");
+		for (let i = 0; i < 6; i++) a.here.post(["b"], `ping ${i}`, "agent");
 		b.here.sync();
-		expect(b.sent.at(-1)?.options).toEqual({ deliverAs: "nextTurn" });
-		a.here.log("session.prompted", {});
-		a.here.post(["b"], "you spoke, so this wakes", "agent");
-		b.here.sync();
-		expect(b.sent.at(-1)?.options).toEqual({ triggerTurn: true });
+		expect(b.sent.map((one) => one.options)).toEqual(
+			Array.from({ length: 6 }, () => ({ triggerTurn: true })),
+		);
+	});
+
+	test("agents that only answer each other stop waking after four replies, until someone prompts", () => {
+		const a = session("a");
+		const b = session("b");
+		const sessions = [a, b];
+		let writer = 0;
+		a.here.post(["b"], "start", "agent");
+		// Each reply is written in the run the last message woke.
+		for (let reply = 1; reply <= QUIET_AFTER; reply++) {
+			const reader = sessions[1 - writer];
+			reader?.here.sync();
+			expect(reader?.sent.at(-1)?.options).toEqual({ triggerTurn: true });
+			writer = 1 - writer;
+			reader?.here.post([writer === 0 ? "b" : "a"], `reply ${reply}`, "agent");
+		}
+		const last = sessions[1 - writer];
+		last?.here.sync();
+		expect(last?.sent.at(-1)?.options).toEqual({ deliverAs: "nextTurn" });
+
+		last?.here.prompted();
+		last?.here.post([writer === 0 ? "b" : "a"], "you prompted, so this wakes", "agent");
+		const other = sessions[writer];
+		other?.here.sync();
+		expect(other?.sent.at(-1)?.options).toEqual({ triggerTurn: true });
 	});
 });
 

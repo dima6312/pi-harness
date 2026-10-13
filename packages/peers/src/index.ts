@@ -127,8 +127,7 @@ export const peers = defineFeature({
 		scope.on("agent_start", () => here.started());
 		scope.on("agent_settled", () => here.settled());
 		scope.on("input", (event) => {
-			if (event.source === "interactive" && !event.text.startsWith("/"))
-				here.log("session.prompted", {});
+			if (event.source === "interactive" && !event.text.startsWith("/")) here.prompted();
 			return { action: "continue" };
 		});
 

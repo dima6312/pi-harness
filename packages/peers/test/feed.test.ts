@@ -44,6 +44,7 @@ function said(id: string, session: string, to: Posted["to"], text: string, at: n
 			to,
 			text,
 			urgent: false,
+			depth: 0,
 			at,
 			received: new Map(),
 			read: new Set(),

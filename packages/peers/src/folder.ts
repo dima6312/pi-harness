@@ -42,6 +42,8 @@ export interface Posted {
 	to: string[] | "all";
 	text: string;
 	urgent: boolean;
+	/** How many agent replies, each waking the next writer, led to it. */
+	depth: number;
 	at: number;
 	received: Map<string, { mode: Delivery; at: number }>;
 	read: Set<string>;
@@ -66,7 +68,6 @@ export class Folder {
 	readonly messages = new Map<string, Posted>();
 	readonly room: RoomItem[] = [];
 	/** When you last spoke here, in a prompt or in the room. */
-	lastYou = 0;
 
 	apply(events: readonly LoggedEvent[]): void {
 		for (const event of events) this.#apply(event);
@@ -100,7 +101,6 @@ export class Folder {
 				return;
 			}
 			case "session.prompted":
-				this.lastYou = Math.max(this.lastYou, event.at);
 				return;
 			case "tasks.changed":
 				return this.#tasks(
@@ -151,7 +151,7 @@ export class Folder {
 	}
 
 	#posted(event: LoggedEvent<"message.posted">): void {
-		const { id, from, to, text, urgent } = event.data;
+		const { id, from, to, text, urgent, depth } = event.data;
 		if (this.messages.has(id)) return;
 		const message: Posted = {
 			id,
@@ -160,6 +160,7 @@ export class Folder {
 			to,
 			text,
 			urgent: urgent === true,
+			depth: depth ?? 0,
 			at: event.at,
 			received: new Map(),
 			read: new Set(),
@@ -168,7 +169,6 @@ export class Folder {
 		};
 		this.messages.set(id, message);
 		this.room.push({ kind: "message", message });
-		if (from === "you") this.lastYou = Math.max(this.lastYou, event.at);
 	}
 
 	#tasks(peer: Peer, state: SessionTasks, at: number): void {

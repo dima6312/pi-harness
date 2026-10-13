@@ -4,14 +4,7 @@ import { applyTaskOps, emptyTasks, type LoggedEvent, type LogEventMap } from "@a
 
 import { Folder, livePeers } from "../src/folder.ts";
 import { byHandle, mentionsIn, namesOf, PEER_COLORS } from "../src/names.ts";
-import {
-	agentStreak,
-	award,
-	BID_WINDOW_MS,
-	deliveryFor,
-	TAKE_MS,
-	turnToTake,
-} from "../src/rules.ts";
+import { award, BID_WINDOW_MS, deliveryFor, TAKE_MS, turnToTake } from "../src/rules.ts";
 
 let clock = 1_000;
 
@@ -194,14 +187,12 @@ describe("when a message arrives", () => {
 		expect(deliveryFor({ ...base, quiet: true, fromYou: true })).toBe("woke");
 	});
 
-	test("the streak counts agent messages since you last spoke", () => {
+	test("a message keeps how many agent replies led to it", () => {
 		const folder = folderOf(
 			started("a"),
 			event("a", "message.posted", { id: "1", from: "agent", to: ["b"], text: "x" }),
-			event("a", "session.prompted", {}),
-			event("a", "message.posted", { id: "2", from: "agent", to: ["b"], text: "x" }),
-			event("b", "message.posted", { id: "3", from: "agent", to: ["a"], text: "x" }),
+			event("b", "message.posted", { id: "2", from: "agent", to: ["a"], text: "x", depth: 1 }),
 		);
-		expect(agentStreak(folder.messages.values(), folder.lastYou)).toBe(2);
+		expect([...folder.messages.values()].map((message) => message.depth)).toEqual([0, 1]);
 	});
 });

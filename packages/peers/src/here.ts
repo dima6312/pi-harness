@@ -21,7 +21,7 @@ import { Folder, isAlive, livePeers, type Peer, type Posted } from "./folder.ts"
 import { type Named, namesOf } from "./names.ts";
 
 export type BoardMark = PeerMark;
-import { agentStreak, award, deliveryFor, QUIET_AFTER, turnToTake } from "./rules.ts";
+import { award, deliveryFor, QUIET_AFTER, turnToTake } from "./rules.ts";
 
 export const PEER_MESSAGE = "pi-peers:message";
 /** A quiet note for the agent: who else is in the folder. It is not shown in the chat. */
@@ -78,6 +78,8 @@ export class Here {
 	#abort = new AbortController();
 	#openedAt = 0;
 	#busy = false;
+	/** The depth of what this session's agent writes now: how many agent replies led to its run. */
+	#depth = 0;
 	readonly #delivered = new Set<string>();
 	readonly #bidding = new Set<string>();
 	readonly #fits = new Map<string, Fit>();
@@ -197,7 +199,15 @@ export class Here {
 	/** Posts to the room and returns the message's id. */
 	post(to: string[] | "all", text: string, from: "you" | "agent", urgent = false): string {
 		const id = `m${this.#now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-		this.log("message.posted", { id, from, to, text, ...(urgent ? { urgent } : {}) });
+		const depth = from === "agent" ? this.#depth : 0;
+		this.log("message.posted", {
+			id,
+			from,
+			to,
+			text,
+			...(urgent ? { urgent } : {}),
+			...(depth > 0 ? { depth } : {}),
+		});
 		return id;
 	}
 
@@ -258,6 +268,12 @@ export class Here {
 				return [];
 			}
 		});
+	}
+
+	/** Someone typed a prompt here: what the agent writes next starts a new chain. */
+	prompted(): void {
+		this.#depth = 0;
+		this.log("session.prompted", {});
 	}
 
 	started(): void {
@@ -408,7 +424,7 @@ export class Here {
 	#deliver(message: Posted): void {
 		this.#delivered.add(message.id);
 		const fromYou = message.from === "you";
-		const quiet = agentStreak(this.#folder.messages.values(), this.#folder.lastYou) > QUIET_AFTER;
+		const quiet = message.depth >= QUIET_AFTER;
 		// What was posted before this session opened waits for your next prompt.
 		const mode: Delivery =
 			message.at < this.#openedAt
@@ -433,6 +449,7 @@ export class Here {
 			);
 		}
 		this.log("message.received", { id: message.id, mode });
+		if (mode !== "next-turn") this.#depth = fromYou ? 0 : message.depth + 1;
 	}
 
 	/** This session won the request: say so first, so nobody else takes it, then start on it. */
@@ -440,6 +457,7 @@ export class Here {
 		const me = this.session;
 		this.log("request.taken", { request: message.id });
 		if (me === undefined || message.takenBy !== me) return;
+		this.#depth = message.from === "you" ? 0 : message.depth + 1;
 		if (message.from === "you") {
 			this.#unread.set(message.text, message.id);
 			this.#hooks.sendUserMessage(message.text, { deliverAs: "followUp" });

@@ -93,16 +93,16 @@ The rule, in order: idle before busy, the highest fit, the fewest open tasks, th
 
 ## When a message reaches the agent
 
-| What                                        | Idle agent                                                 | Busy agent                        |
-| ------------------------------------------- | ---------------------------------------------------------- | --------------------------------- |
-| Board changes                               | never sent                                                 | never sent                        |
-| A colleague joins or leaves                 | next prompt                                                | next prompt                       |
-| A room message without a mention            | not sent                                                   | not sent                          |
-| A mention, or an answer to its question     | wakes it                                                   | after its run ends                |
-| A colleague marks it urgent                 | wakes it                                                   | cuts in at the next safe point    |
-| What you send with `/to`                    | wakes it                                                   | after its run ends                |
-| A request to everyone that it won           | wakes it                                                   | waits for the next idle candidate |
-| After 4 agent messages without you speaking | mentions stop waking anyone, and wait with the next prompt | same                              |
+| What                                                            | Idle agent                                  | Busy agent                        |
+| --------------------------------------------------------------- | ------------------------------------------- | --------------------------------- |
+| Board changes                                                   | never sent                                  | never sent                        |
+| A colleague joins or leaves                                     | next prompt                                 | next prompt                       |
+| A room message without a mention                                | not sent                                    | not sent                          |
+| A mention, or an answer to its question                         | wakes it                                    | after its run ends                |
+| A colleague marks it urgent                                     | wakes it                                    | cuts in at the next safe point    |
+| What you send with `/to`                                        | wakes it                                    | after its run ends                |
+| A request to everyone that it won                               | wakes it                                    | waits for the next idle candidate |
+| An agent answering an agent that woke it, the 4th time in a row | stops waking, and waits for the next prompt | same                              |
 
 ## What the others can and cannot do
 

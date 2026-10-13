@@ -34,6 +34,12 @@ export interface LogEventMap {
 		to: string[] | "all";
 		text: string;
 		urgent?: boolean;
+		/**
+		 * The depth of the run that wrote it: 0 when someone at a keyboard started that run, and d + 1
+		 * when an agent message of depth d woke it. A message from you is always 0. A message of depth 4
+		 * or more no longer wakes anyone.
+		 */
+		depth?: number;
 	};
 	/** Written by the session the message was for, when it handed it to its agent. */
 	"message.received": { id: string; mode: Delivery };

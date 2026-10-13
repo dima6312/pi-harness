@@ -8,7 +8,7 @@ import type { Peer, Posted } from "./folder.ts";
 export const BID_WINDOW_MS = 6_000;
 /** How long the winner has to take it before the next one in line does. */
 export const TAKE_MS = 8_000;
-/** Agent messages in a row, without you speaking, after which a mention stops waking anyone. */
+/** Agent replies in a chain, each one waking the agent that writes the next, before the chain stops waking anyone. */
 export const QUIET_AFTER = 4;
 
 export type Award =
@@ -64,8 +64,8 @@ function openTasks(peer: Peer | undefined): number {
 
 /**
  * Idle agents wake, busy ones get it when their run ends, and `urgent` cuts in at the next safe
- * point. Your words always count. A long exchange between agents stops waking anyone until you
- * speak again.
+ * point. Your words always count. Agents that only answer each other stop waking each other after
+ * `QUIET_AFTER` replies, until someone at a keyboard starts a run again.
  */
 export function deliveryFor(options: {
 	busy: boolean;
@@ -76,12 +76,4 @@ export function deliveryFor(options: {
 	if (options.quiet && !options.fromYou && !options.urgent) return "next-turn";
 	if (!options.busy) return "woke";
 	return options.urgent ? "steered" : "after-run";
-}
-
-/** Messages agents sent since you last spoke, in the folder. */
-export function agentStreak(messages: Iterable<Posted>, lastYou: number): number {
-	let streak = 0;
-	for (const message of messages)
-		if (message.from === "agent" && message.at > lastYou && !message.unsent) streak++;
-	return streak;
 }
