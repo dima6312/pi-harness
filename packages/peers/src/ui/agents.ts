@@ -1,6 +1,6 @@
 import { pointer, spread, type Task, tasksWith } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 import type { Peer } from "../folder.ts";
 import type { Named } from "../names.ts";
@@ -8,10 +8,9 @@ import { spin } from "./motion.ts";
 
 export const MARKS = { idle: "\u25c7", waiting: "\u2691" } as const;
 
-/** Room for the widest label, "waits", and a space. */
-const LABEL = 7;
-const DOING_SHOWN = 3;
-const QUEUED_SHOWN = 2;
+/** Lines a task may wrap to: the selected agent shows it whole, the others a glance. */
+const TASK_LINES_OPEN = 4;
+const TASK_LINES_CLOSED = 2;
 const EDITED_SHOWN = 3;
 
 export interface AgentsOptions {
@@ -91,89 +90,53 @@ export function agentLines(
 				width,
 			),
 		);
-		const body = selected ? opened(peer, theme, width - 4) : closed(peer, theme, width - 4);
-		for (const line of body) lines.push(`    ${line}`);
+		for (const line of details(peer, theme, width - 4, selected)) lines.push(`    ${line}`);
 		if (selected) selectedEnd = lines.length;
 		if (index < live.length - 1) lines.push("");
 	}
 	return { lines, selectedAt, selectedEnd };
 }
 
-/** One line: what it is on, or what waits on you. */
-function closed(peer: Peer, theme: Theme, width: number): string[] {
+/**
+ * Under the name and its state: what waits on you, what it is on, and the files it edited. The task
+ * wraps instead of being cut, since a cut task says nothing.
+ */
+function details(peer: Peer, theme: Theme, width: number, selected: boolean): string[] {
 	const tasks = peer.tasks;
-	if (tasks === undefined) return [];
-	const waiting = tasksWith(tasks, "waiting");
-	if (waiting.length > 0) return [row(theme, "waits", waiting, width, "warning")];
-	const doing = tasksWith(tasks, "doing");
-	if (doing.length > 0) return [row(theme, "now", doing, width)];
-	const queued = tasksWith(tasks, "queued");
-	if (queued.length > 0) return [row(theme, "next", queued, width, "muted")];
-	return [];
-}
-
-function opened(peer: Peer, theme: Theme, width: number): string[] {
+	const most = selected ? TASK_LINES_OPEN : TASK_LINES_CLOSED;
 	const lines: string[] = [];
-	const tasks = peer.tasks;
 	if (tasks !== undefined) {
-		lines.push(...rows(theme, "waits", tasksWith(tasks, "waiting"), width, Infinity, "warning"));
-		lines.push(...rows(theme, "now", tasksWith(tasks, "doing"), width, DOING_SHOWN));
-		lines.push(...rows(theme, "next", tasksWith(tasks, "queued"), width, QUEUED_SHOWN, "muted"));
-		const done = tasksWith(tasks, "done").at(-1);
-		if (done !== undefined) lines.push(labeled(theme, "done", theme.fg("dim", done.text), width));
-	}
-	const ran = peer.ran.at(-1);
-	if (ran !== undefined) {
-		const mark = ran.ok ? theme.fg("success", "\u2713") : theme.fg("error", "\u00d7");
-		lines.push(labeled(theme, "ran", `${mark} ${theme.fg("dim", command(ran.command))}`, width));
+		const waiting = tasksWith(tasks, "waiting");
+		const doing = tasksWith(tasks, "doing");
+		lines.push(...task(theme, waiting, width, most, "warning"));
+		if (selected || waiting.length === 0) lines.push(...task(theme, doing, width, most, "text"));
 	}
 	const edited = [...peer.edited.keys()].slice(-EDITED_SHOWN).map(base);
 	if (edited.length > 0)
-		lines.push(labeled(theme, "files", theme.fg("dim", edited.join(", ")), width));
-	if (lines.length === 0) lines.push(theme.fg("dim", "nothing on its list yet"));
+		lines.push(theme.fg("dim", truncateToWidth(`edited ${edited.join(", ")}`, width, "...")));
+	if (selected && lines.length === 0) lines.push(theme.fg("dim", "nothing in progress"));
 	return lines;
 }
 
-/** Each task on its own line, the label on the first, and how many more did not fit. */
-function rows(
+/** The first task wrapped to at most `most` lines, and how many others there are. */
+function task(
 	theme: Theme,
-	label: string,
 	tasks: readonly Task[],
 	width: number,
-	shown: number,
-	tone: ThemeColor = "text",
+	most: number,
+	tone: ThemeColor,
 ): string[] {
-	const lines = tasks
-		.slice(0, shown)
-		.map((one, index) => labeled(theme, index === 0 ? label : "", theme.fg(tone, one.text), width));
-	if (tasks.length > shown)
-		lines.push(labeled(theme, "", theme.fg("dim", `${tasks.length - shown} more`), width));
-	return lines;
-}
-
-/** The first task, and how many others share the label. */
-function row(
-	theme: Theme,
-	label: string,
-	tasks: readonly Task[],
-	width: number,
-	tone: ThemeColor = "text",
-): string {
-	const more = tasks.length > 1 ? theme.fg("dim", ` +${tasks.length - 1}`) : "";
-	const room = Math.max(4, width - LABEL - visibleWidth(more));
-	const text = truncateToWidth(tasks[0]?.text ?? "", room, "...");
-	return `${theme.fg("dim", label.padEnd(LABEL))}${theme.fg(tone, text)}${more}`;
-}
-
-function labeled(theme: Theme, label: string, text: string, width: number): string {
-	const body = truncateToWidth(text, Math.max(4, width - LABEL), "...");
-	return `${theme.fg("dim", label.padEnd(LABEL))}${body}`;
-}
-
-/** The command without the `cd` into the folder that every agent puts in front. */
-function command(text: string): string {
-	const first = text.split("\n")[0] ?? text;
-	return first.replace(/^cd\s+\S+\s*&&\s*/, "");
+	const first = tasks[0];
+	if (first === undefined) return [];
+	let lines = wrapTextWithAnsi(first.text, width);
+	if (lines.length > most)
+		lines = [
+			...lines.slice(0, most - 1),
+			truncateToWidth(lines.slice(most - 1).join(" "), width, "..."),
+		];
+	const out = lines.map((line) => theme.fg(tone, line));
+	if (tasks.length > 1) out.push(theme.fg("dim", `and ${tasks.length - 1} more`));
+	return out;
 }
 
 export function since(at: number, now: number): string {
