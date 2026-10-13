@@ -26,6 +26,7 @@ packages/
   skills/           # @adeildo/pi-skills: /skill: references anywhere in a message
   tasks/            # @adeildo/pi-tasks: what the session is doing, did, waits on and decided
   compact/          # @adeildo/pi-compact: hides old tool output, writes the compaction summary
+  peers/            # @adeildo/pi-peers: agents in one folder, board and room
   harness/          # @adeildo/pi-harness: every piece above, one extension each
   kit/              # @adeildo/pi-kit: app builder, feature scope, settings, events
 ```
