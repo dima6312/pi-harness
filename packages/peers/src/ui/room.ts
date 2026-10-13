@@ -1,74 +1,59 @@
-// Alt+G: the agents in this folder on the left, the room on the right, and one line to type in. The
-// two time axes stay apart: what each one is doing now, and what happened and was said.
-import { cardTones, keepBackground, spread, type Delivery, tasksWith } from "@adeildo/pi-kit";
+import { spread } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import {
-	backgroundAnsi,
 	type Component,
 	type Focusable,
 	Input,
-	matchesKey,
-	type KeyId,
 	Key,
+	matchesKey,
 	truncateToWidth,
 	visibleWidth,
-	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
 
 import type { Peer } from "../folder.ts";
 import type { Here } from "../here.ts";
 import { byHandle, type Named } from "../names.ts";
+import { agentLines, MARKS, markOf, stateOf, stateText } from "./agents.ts";
+import { feedLines, feedMoving } from "./feed.ts";
 import { clock } from "./message.ts";
+import { spin } from "./motion.ts";
 
 const PAD = 2;
-const PEER_ROWS = 4;
-const DETAIL_ROWS = 5;
-/** Below this the board sits over the room instead of beside it. */
-const BESIDE = 96;
-const BOARD_MIN = 30;
-const BOARD_MAX = 46;
-
-const MARKS = {
-	peer: "\u25c6",
-	doing: "\u2316",
-	waiting: "\u2691",
-	queued: "\u29d7",
-	done: "\u2713",
-	mention: "@",
-} as const;
+const CHROME_X = 2 + PAD * 2;
+const CHROME_Y = 5;
+const BESIDE = 90;
+const AGENTS_MIN = 30;
+const AGENTS_MAX = 44;
+const PICKER_ROWS = 4;
+const MENTION_TAIL = /(?:^|\s)@([a-z0-9-]*)$/i;
 
 export interface RoomOptions {
 	theme: Theme;
 	here: Here;
-	/** The folder this session is in, for the title. */
 	folder: string;
 	close: () => void;
 	requestRender: () => void;
-	/** Now, for the ages on the board. Kept out of the wall clock so the pictures do not move. */
+	/** Injected so the docs pictures do not depend on when or where they are drawn. */
 	now?: () => number;
-	/** The clock the room reads, so a picture does not depend on where it was drawn. */
 	clock?: (at: number) => string;
-	/** What you typed, sent. */
 	send: (text: string) => void;
 	rows: () => number;
 }
 
-export interface RoomKey {
-	keys: KeyId[];
-	label: string;
-}
-
 export class RoomView implements Component, Focusable {
-	/** Set by the TUI when the overlay takes input, and passed on to the line you type in. */
 	focused = false;
 
 	readonly #options: RoomOptions;
 	readonly #composer: Input;
 	#selected = 0;
+	#only: string | undefined;
 	#offset = 0;
-	#room = 0;
+	#height = 0;
 	#follow = true;
 	#unread = 0;
+	#pick = 0;
+	/** The text the @ list was closed on: it stays closed until the text changes. */
+	#dismissed: string | undefined;
 
 	constructor(options: RoomOptions) {
 		this.#options = options;
@@ -80,21 +65,42 @@ export class RoomView implements Component, Focusable {
 		this.#composer.invalidate();
 	}
 
-	/** The room always shows its newest line, unless you scrolled back. */
 	get following(): boolean {
 		return this.#follow;
 	}
 
-	handleInput(data: string): void {
-		if (matchesKey(data, Key.escape)) return this.#options.close();
-		if (this.#scrollKey(data)) return;
-		if (matchesKey(data, Key.up)) return this.#move(-1);
-		if (matchesKey(data, Key.down)) return this.#move(1);
-		if (matchesKey(data, Key.tab)) return this.#complete();
-		this.#composer.handleInput(data);
+	moving(): boolean {
+		const { here } = this.#options;
+		const live = here.live();
+		if (live.some((peer) => stateOf(peer) === "running")) return true;
+		if (here.othersTyping().length > 0) return true;
+		return feedMoving(here.folder.room, live, this.#now());
 	}
 
-	/** The wheel scrolls the room back and stops following it. */
+	handleInput(data: string): void {
+		const picking = this.#candidates();
+		if (matchesKey(data, Key.escape)) {
+			if (picking.length > 0) return this.#dismiss();
+			return this.#options.close();
+		}
+		if (matchesKey(data, Key.shift("up"))) return this.#scroll(-1);
+		if (matchesKey(data, Key.shift("down"))) return this.#scroll(1);
+		if (matchesKey(data, Key.ctrl("f"))) return this.#narrow();
+		if (picking.length > 0) {
+			if (matchesKey(data, Key.up)) return this.#movePick(-1, picking.length);
+			if (matchesKey(data, Key.down)) return this.#movePick(1, picking.length);
+			if (matchesKey(data, Key.tab) || matchesKey(data, Key.enter))
+				return this.#complete(picking[this.#pick % picking.length]);
+		}
+		if (matchesKey(data, Key.up)) return this.#move(-1);
+		if (matchesKey(data, Key.down)) return this.#move(1);
+		if (matchesKey(data, Key.tab)) return this.#startMention();
+		if (matchesKey(data, Key.enter) && this.#composer.getValue().trim() === "")
+			return this.#writeToSelected();
+		this.#composer.handleInput(data);
+		this.#options.requestRender();
+	}
+
 	handleMouse(event: { type: string; wheelDelta?: number }): { handled: boolean } | undefined {
 		const delta = event.type === "wheel" ? (event.wheelDelta ?? 0) : 0;
 		if (delta === 0) return undefined;
@@ -105,356 +111,221 @@ export class RoomView implements Component, Focusable {
 	render(width: number): string[] {
 		const { theme, here } = this.#options;
 		this.#composer.focused = this.focused;
-		const inner = Math.max(20, width - PAD * 2);
+		const now = this.#now();
+		const inner = Math.max(20, width - CHROME_X);
 		const live = here.live();
 		const names = here.names();
 		const me = here.session;
 		this.#selected = Math.max(0, Math.min(this.#selected, live.length - 1));
+		if (this.#only !== undefined && !live.some((peer) => peer.session === this.#only))
+			this.#only = undefined;
 
+		const picking = this.#candidates();
+		const pickerRows = Math.min(PICKER_ROWS, picking.length);
+		const height = Math.max(4, this.#options.rows() - CHROME_Y - pickerRows);
 		const beside = inner >= BESIDE && live.length > 0;
-		const chrome = 8 + DETAIL_ROWS;
-		const budget = Math.max(4, this.#options.rows() - chrome);
-		const boardWidth = beside
-			? Math.max(BOARD_MIN, Math.min(BOARD_MAX, Math.floor(inner * 0.42)))
+		const agentsWidth = beside
+			? Math.max(AGENTS_MIN, Math.min(AGENTS_MAX, Math.floor(inner * 0.4)))
 			: inner;
-		// Each column lays out to its own width, so the room wraps and the board keeps its state at the edge.
-		const room = this.#roomLines(names, me, beside ? inner - boardWidth - 3 : inner);
-		const board = this.#boardLines(live, names, me, boardWidth);
-		const boardRoom = beside
-			? budget
-			: Math.min(PEER_ROWS * 2, Math.max(2, Math.floor(budget / 2)));
-		const roomRoom = beside ? budget : Math.max(2, budget - boardRoom - 1);
+		const roomWidth = beside ? inner - agentsWidth - 3 : inner;
 
-		this.#room = roomRoom;
-		this.#followRoom(room.length);
-		const shownRoom = room.slice(this.#offset, this.#offset + roomRoom);
-		const shownBoard = board.slice(0, boardRoom);
+		const agents = agentLines(live, names, {
+			theme,
+			now,
+			me,
+			selected: this.#selected,
+			width: agentsWidth,
+		});
+		const feed = feedLines(here.folder.room, here.othersTyping(), {
+			theme,
+			now,
+			width: roomWidth,
+			me,
+			names,
+			live,
+			clock: this.#options.clock ?? clock,
+			only: this.#only,
+		});
+		const agentsHeight = beside ? height : Math.min(agents.lines.length, Math.floor(height / 2));
+		const roomHeight = beside ? height : Math.max(2, height - agentsHeight - 1);
+		this.#height = roomHeight;
+		this.#followRoom(feed.length);
+		const shownRoom = feed.slice(this.#offset, this.#offset + roomHeight);
+		const shownAgents = window(agents.lines, agents.selectedAt, agents.selectedEnd, agentsHeight);
 
-		const tones = cardTones(theme);
-		const mode = theme.getColorMode();
-		const card = backgroundAnsi(tones.card, mode);
-		const band = backgroundAnsi(tones.band, mode);
+		const border = (text: string) => theme.fg("border", text);
+		const rule = (text: string) => theme.fg("borderMuted", text);
 		const pad = " ".repeat(PAD);
-		const row = (text: string, background = card) =>
-			`${background}${pad}${keepBackground(truncateToWidth(text, inner, "...", true), background)}${pad}\x1b[49m`;
-		const height = Math.max(shownBoard.length, shownRoom.length);
+		const row = (text: string) => {
+			const clipped = truncateToWidth(text, inner, "...");
+			return `${border("\u2502")}${pad}${clipped}${" ".repeat(Math.max(0, inner - visibleWidth(clipped)))}${pad}${border("\u2502")}`;
+		};
+
 		const body: string[] = [];
-		for (let line = 0; line < height; line++) {
-			if (!beside) {
-				body.push(row(shownBoard[line] ?? ""));
-				continue;
+		if (beside) {
+			for (let line = 0; line < height; line++) {
+				const left = truncateToWidth(shownAgents[line] ?? "", agentsWidth, "");
+				const gap = " ".repeat(Math.max(0, agentsWidth - visibleWidth(left)));
+				body.push(row(`${left}${gap} ${rule("\u2502")} ${shownRoom[line] ?? ""}`));
 			}
-			const left = truncateToWidth(shownBoard[line] ?? "", boardWidth, "");
-			const gap = " ".repeat(Math.max(0, boardWidth - visibleWidth(left)));
-			body.push(row(`${left}${gap} ${theme.fg("borderMuted", "\u2502")} ${shownRoom[line] ?? ""}`));
-		}
-		if (!beside && shownRoom.length > 0) {
-			body.push(row(""));
-			body.push(...shownRoom.map((line) => row(line)));
+		} else {
+			for (const line of shownAgents) body.push(row(line));
+			if (shownAgents.length > 0) body.push(row(rule("\u2500".repeat(inner))));
+			for (let line = 0; line < roomHeight; line++) body.push(row(shownRoom[line] ?? ""));
 		}
 
 		return [
-			row(this.#header(names, me, inner), band),
+			this.#top(live, width),
 			row(""),
 			...body,
-			row(this.#hint()),
-			row(theme.fg("borderMuted", "\u2500".repeat(inner))),
-			...this.#detail(live[this.#selected], names, inner).map((text) => row(text)),
-			row(this.#composerLine(inner)),
-			row(this.#keys(), band),
+			this.#divider(width, beside ? agentsWidth : undefined),
+			...this.#picker(picking, names, inner).map(row),
+			row(this.#composerLine(inner, names)),
+			this.#bottom(width, live, names),
 		];
 	}
 
-	#header(names: ReadonlyMap<string, Named>, me: string | undefined, width: number): string {
+	#top(live: readonly Peer[], width: number): string {
 		const { theme } = this.#options;
-		const title = theme.bold(
-			theme.fg("accent", truncateToWidth(`Agents in ${this.#options.folder}`, width - 12, "...")),
-		);
-		const others = [...names.values()].filter((named) => named.session !== me).length;
-		const count = theme.fg("dim", others === 1 ? "1 other" : `${others} others`);
-		return spread(title, count, width);
+		const border = (text: string) => theme.fg("border", text);
+		const counts: string[] = [];
+		const count = (state: ReturnType<typeof stateOf>) =>
+			live.filter((peer) => stateOf(peer) === state).length;
+		const running = count("running");
+		const waiting = count("waiting");
+		const idle = count("idle");
+		if (running > 0)
+			counts.push(
+				`${theme.fg("accent", spin(this.#now()))} ${theme.fg("muted", `${running} working`)}`,
+			);
+		if (waiting > 0)
+			counts.push(
+				`${theme.fg("warning", MARKS.waiting)} ${theme.fg("warning", `${waiting} waiting`)}`,
+			);
+		if (idle > 0) counts.push(`${theme.fg("dim", MARKS.idle)} ${theme.fg("dim", `${idle} idle`)}`);
+		const right = counts.join("   ");
+		const title = theme.bold(theme.fg("accent", `Agents in ${this.#options.folder}`));
+		return edge(border, "\u256d", "\u256e", title, right, width);
 	}
 
-	#boardLines(
-		live: readonly Peer[],
+	#divider(width: number, split: number | undefined): string {
+		const { theme } = this.#options;
+		const only =
+			this.#only === undefined
+				? ""
+				: `${theme.fg("dim", "only ")}${this.#nameOf(this.#only)}${theme.fg("dim", ", ctrl+f for all")}`;
+		const right = [only, this.#scrollHint()].filter(Boolean).join(theme.fg("dim", "   "));
+		const line = (text: string) => theme.fg("border", text);
+		const fill = Math.max(0, width - 2);
+		let rule = "\u2500".repeat(fill);
+		if (split !== undefined) {
+			const at = PAD + split + 1;
+			rule = `${rule.slice(0, at)}\u2534${rule.slice(at + 1)}`;
+		}
+		if (right === "") return line(`\u251c${rule}\u2524`);
+		const room = fill - visibleWidth(right) - 3;
+		return `${line(`\u251c${rule.slice(0, Math.max(0, room))} `)}${right}${line(` \u2500\u2524`)}`;
+	}
+
+	#scrollHint(): string {
+		const { theme } = this.#options;
+		if (this.#follow) return "";
+		if (this.#unread > 0) return theme.fg("accent", `\u2193 ${this.#unread} new`);
+		return theme.fg("dim", `\u2191 ${this.#offset} above`);
+	}
+
+	#picker(
+		candidates: readonly Named[],
 		names: ReadonlyMap<string, Named>,
-		me: string | undefined,
 		width: number,
 	): string[] {
-		const { theme } = this.#options;
-		if (live.length === 0)
-			return [
-				theme.fg("muted", "No other agent in this folder."),
-				theme.fg("dim", "Start pi in another terminal in this folder and it shows up here."),
-			];
-		const lines: string[] = [];
-		for (const [index, peer] of live.entries()) {
-			const named = names.get(peer.session);
-			const color = (named?.color ?? "muted") as ThemeColor;
-			const selected = index === this.#selected;
-			const mine = peer.session === me ? theme.fg("dim", " this session") : "";
-			const head = `${theme.fg(color, MARKS.peer)} ${theme.fg(color, theme.bold(named?.handle ?? "anon"))}${mine}`;
-			const state = this.#stateOf(peer);
-			const row = spread(head, state, width);
-			lines.push(selected ? theme.bg("selectedBg", row) : row);
-			for (const line of this.#peerLines(peer, width)) lines.push("  " + line);
-			lines.push("");
-		}
-		return lines;
-	}
-
-	/** Working since when, idle, or waiting on you. The state that matters most wins. */
-	#stateOf(peer: Peer): string {
-		const { theme } = this.#options;
-		const waiting = peer.tasks !== undefined && tasksWith(peer.tasks, "waiting").length > 0;
-		if (waiting) return theme.fg("warning", "waits on you");
-		const now = this.#options.now?.() ?? Date.now();
-		if (peer.state === "running")
-			return theme.fg("accent", `working ${since(peer.startedAt, now)}`);
-		return theme.fg("dim", "idle");
-	}
-
-	#peerLines(peer: Peer, width: number): string[] {
-		const { theme } = this.#options;
-		const lines: string[] = [];
-		const room = Math.max(8, width - 4);
-		for (const task of peer.tasks === undefined ? [] : tasksWith(peer.tasks, "doing"))
-			lines.push(
-				theme.fg("accent", MARKS.doing) +
-					" " +
-					theme.fg("text", truncateToWidth(task.text, room, "...")),
-			);
-		for (const task of peer.tasks === undefined ? [] : tasksWith(peer.tasks, "waiting"))
-			lines.push(
-				theme.fg("warning", MARKS.waiting) +
-					" " +
-					theme.fg("text", truncateToWidth(task.text, room, "...")),
-			);
-		const queued = peer.tasks === undefined ? 0 : tasksWith(peer.tasks, "queued").length;
-		if (queued > 0) lines.push(theme.fg("muted", `${MARKS.queued} ${queued} queued`));
-		const edited = [...peer.edited.keys()].slice(-2).map(base);
-		if (edited.length > 0)
-			lines.push(theme.fg("dim", truncateToWidth(`edited ${edited.join(", ")}`, room, "...")));
-		return lines.slice(0, PEER_ROWS - 1);
-	}
-
-	#roomLines(names: ReadonlyMap<string, Named>, me: string | undefined, width: number): string[] {
 		const { theme, here } = this.#options;
-		const lines: string[] = [];
-		for (const item of here.folder.room) {
-			if (item.kind === "happening") {
-				const happening = item.happening;
-				const who = this.#name(names, happening.session);
-				const color = (names.get(happening.session)?.color ?? "muted") as ThemeColor;
-				let what: string;
-				switch (happening.kind) {
-					case "joined":
-					case "left":
-						what = happening.kind;
-						break;
-					case "committed":
-						what = `committed ${happening.sha} ${happening.subject}`;
-						break;
-					case "finished":
-						what = `finished ${happening.task}`;
-						break;
-					// Who took a request shows on the request itself, beside the bids.
-					case "took":
-						continue;
-				}
-				lines.push(theme.fg("dim", `${this.#time(happening.at)}  ${theme.fg(color, who)} ${what}`));
-				continue;
-			}
-			const message = item.message;
-			const who = message.from === "you" ? "you" : this.#name(names, message.session);
-			const color = (
-				message.from === "you" ? "accent" : (names.get(message.session)?.color ?? "muted")
-			) as ThemeColor;
-			const to =
-				message.from === "you" && me !== undefined && message.session === me
-					? ""
-					: this.#to(names, message.to);
-			lines.push(
-				`${theme.fg("dim", this.#time(message.at))}  ${theme.fg(color, theme.bold(who))}${to}`,
-			);
-			const body = message.unsent
-				? theme.fg("dim", `withdrawn: ${message.text}`)
-				: theme.fg("text", message.text);
-			for (const line of wrapTextWithAnsi(body, Math.max(8, width - 6)))
-				lines.push("      " + line);
-			for (const receipt of this.#receipts(names, message)) lines.push("      " + receipt);
-		}
-		for (const typing of here.othersTyping()) {
-			const named = names.get(typing.session);
-			const color = (named?.color ?? "muted") as ThemeColor;
-			lines.push(
-				`${theme.fg("dim", this.#time(typing.at))}  ${theme.fg(color, named?.handle ?? "an agent")} ${theme.fg("muted", `is writing${typing.to === "everyone" ? " to everyone" : ` to ${typing.to}`}`)}`,
-			);
-			const shown = typing.text.split("\n").slice(-2);
-			for (const line of shown)
-				lines.push(
-					"      " + theme.fg("dim", truncateToWidth(line, Math.max(8, width - 8), "...")),
-				);
-			lines.push("      " + theme.fg("accent", "\u258c"));
-		}
-		return lines.length === 0
-			? [theme.fg("dim", "Nothing said yet. Type below, or @ to mention one agent.")]
-			: lines;
-	}
-
-	#receipts(
-		names: ReadonlyMap<string, Named>,
-		message: {
-			from: string;
-			to: string[] | "all";
-			received: Map<string, { mode: Delivery }>;
-			read: Set<string>;
-			bids: Map<string, { fit: number; idle: boolean }>;
-			takenBy?: string;
-			unsent: boolean;
-		},
-	): string[] {
-		const { theme } = this.#options;
-		if (message.unsent) return [];
-		if (message.to === "all") {
-			const bids = [...message.bids].map(
-				([session, bid]) =>
-					`${this.#name(names, session)} ${theme.fg("dim", bid.idle ? bid.fit.toFixed(2) : "busy")}`,
-			);
-			if (message.takenBy !== undefined)
-				return [
-					`${theme.fg("success", "\u2713\u2713")} ${this.#name(names, message.takenBy)} ${theme.fg("muted", "took it")}`,
-				];
-			return bids.length === 0
-				? [theme.fg("dim", "waiting for bids")]
-				: [theme.fg("dim", "bids  ") + bids.join("   ")];
-		}
-		const many = message.to.length > 1;
-		return message.to.map((session) => {
-			const who = many ? ` ${this.#name(names, session)}` : "";
-			if (message.read.has(session))
-				return `${theme.fg("accent", "\u2713\u2713")}${who} ${theme.fg("muted", "read")}`;
-			const received = message.received.get(session);
-			return received === undefined
-				? theme.fg("dim", `\u2713${who} sent`)
-				: `${theme.fg("muted", "\u2713\u2713")}${who} ${theme.fg("dim", ARRIVED[received.mode])}`;
+		const now = this.#now();
+		const live = new Map(here.live().map((peer) => [peer.session, peer]));
+		const at = this.#pick % Math.max(1, candidates.length);
+		const start = Math.max(0, Math.min(at - PICKER_ROWS + 1, candidates.length - PICKER_ROWS));
+		return candidates.slice(start, start + PICKER_ROWS).map((named, index) => {
+			const peer = live.get(named.session);
+			const chosen = start + index === at;
+			const color = (names.get(named.session)?.color ?? "muted") as ThemeColor;
+			const mark = peer === undefined ? " " : markOf(peer, color, theme, now);
+			const state = peer === undefined ? "" : stateText(peer, theme, now);
+			const left = `${chosen ? theme.fg("accent", "\u276f") : " "} ${mark} ${theme.fg(color, theme.bold(named.handle))}`;
+			const line = spread(left, state, Math.min(width, 44));
+			return chosen ? theme.bg("selectedBg", line) : line;
 		});
 	}
 
-	#to(names: ReadonlyMap<string, Named>, to: string[] | "all"): string {
+	#composerLine(width: number, names: ReadonlyMap<string, Named>): string {
 		const { theme } = this.#options;
-		if (to === "all") return theme.fg("dim", " to everyone");
-		return (
-			theme.fg("dim", " to ") +
-			to.map((session) => this.#name(names, session)).join(theme.fg("dim", ", "))
-		);
+		const prompt = `${theme.fg("accent", "\u276f")} ${this.#destination(this.#composer.getValue(), names)}  `;
+		const room = Math.max(1, width - visibleWidth(prompt));
+		const [drawn = ""] = this.#composer.render(room);
+		return `${prompt}${drawn}`;
 	}
 
-	#name(names: ReadonlyMap<string, Named>, session: string): string {
-		const named = names.get(session);
-		const color = (named?.color ?? "muted") as ThemeColor;
-		return this.#options.theme.fg(color, named?.handle ?? "gone");
-	}
-
-	#detail(peer: Peer | undefined, names: ReadonlyMap<string, Named>, width: number): string[] {
+	#destination(text: string, names: ReadonlyMap<string, Named>): string {
 		const { theme } = this.#options;
-		if (peer === undefined) return ["", "", "", "", ""];
-		const lines: string[] = [];
-		const tasks = peer.tasks;
-		if (tasks !== undefined) {
-			for (const task of tasksWith(tasks, "doing"))
-				lines.push(
-					theme.fg("accent", `${MARKS.doing} ${task.text}`) +
-						(task.result === undefined ? "" : theme.fg("muted", ` -> ${task.result}`)),
-				);
-			for (const task of tasksWith(tasks, "waiting"))
-				lines.push(
-					theme.fg("warning", `${MARKS.waiting} ${task.text}`) +
-						theme.fg(
-							"muted",
-							` (on ${task.waitingOn === "outside" ? "something outside" : "you"})`,
-						),
-				);
-			for (const task of tasksWith(tasks, "queued"))
-				lines.push(theme.fg("muted", `${MARKS.queued} ${task.text}`));
-			for (const task of tasksWith(tasks, "done").slice(-2))
-				lines.push(
-					theme.fg("success", `${MARKS.done} ${task.text}`) +
-						(task.result === undefined ? "" : theme.fg("dim", ` -> ${task.result}`)),
-				);
-			for (const decision of tasks.decisions.slice(-1))
-				lines.push(theme.fg("mdLink", `${MARKS.peer} ${decision.text}`));
-		}
-		const ran = peer.ran.at(-1);
-		if (ran !== undefined)
-			lines.push(
-				theme.fg(
-					"dim",
-					truncateToWidth(`${ran.ok ? "\u2713" : "\u00d7"} ${ran.command}`, width, "..."),
-				),
-			);
-		const missing = DETAIL_ROWS - lines.length;
-		for (let i = 0; i < missing; i++) lines.push("");
-		return lines
-			.slice(0, DETAIL_ROWS)
-			.map((line) => keepBackground(truncateToWidth(line, width, "...", true), ""));
-	}
-
-	/** The one line you type in, with where it will go on the right. */
-	#composerLine(width: number): string {
-		const { theme } = this.#options;
-		const text = this.#composer.getValue();
-		const where = this.#destination(text);
-		const room = Math.max(10, width - visibleWidth(where) - 2);
-		const prompt = theme.fg("accent", "\u276f ");
-		const [drawn = ""] = this.#composer.render(Math.max(1, room - visibleWidth(prompt)));
-		return `${prompt}${drawn}${" ".repeat(Math.max(1, room - visibleWidth(prompt) - visibleWidth(drawn)))}${where}`;
-	}
-
-	/** Mentions go to those agents; anything else goes to everyone, and the best fit takes it. */
-	#destination(text: string): string {
-		const { theme, here } = this.#options;
-		const names = here.names();
-		const mentioned = [...text.matchAll(/(?<![\w@])@([a-z][a-z0-9-]*)/gi)].map(
+		const mentioned = [...text.matchAll(/(?<![\w@])@([a-z][a-z0-9-]*)(?=\s|$|[.,:;!?])/gi)].map(
 			(match) => match[1] ?? "",
 		);
 		const found: Named[] = [];
+		const unknown: string[] = [];
 		for (const name of mentioned) {
 			const named = byHandle(names, name);
-			if (named === undefined) return theme.fg("warning", `no agent called ${name}`);
-			found.push(named);
+			if (named === undefined) unknown.push(name);
+			else found.push(named);
 		}
-		if (found.length === 0) return theme.fg("dim", "to everyone, best fit takes it");
-		return (
-			theme.fg("muted", "to ") +
-			found
-				.map((named) => theme.fg(named.color as ThemeColor, named.handle))
-				.join(theme.fg("muted", ", "))
-		);
+		// A name still being written is not a mistake yet.
+		const writing = MENTION_TAIL.exec(text)?.[1];
+		const wrong = unknown.filter((name) => name !== writing);
+		if (wrong.length > 0) return theme.fg("warning", `no agent called ${wrong[0]}`);
+		if (found.length === 0) return theme.fg("muted", "to everyone");
+		return `${theme.fg("muted", "to ")}${found
+			.map((named) => theme.fg(named.color as ThemeColor, theme.bold(named.handle)))
+			.join(theme.fg("muted", ", "))}`;
 	}
 
-	#keys(): string {
+	#bottom(width: number, live: readonly Peer[], names: ReadonlyMap<string, Named>): string {
 		const { theme } = this.#options;
-		const keys: [string, string][] = [
-			["\u2191\u2193", "agent"],
-			["shift+\u2191\u2193", "room"],
-			["tab", `${MARKS.mention}mention`],
-			["enter", "send"],
-			["esc", "close"],
-		];
-		return keys
+		const keys: [string, string][] = [];
+		const selected = live[this.#selected];
+		const other =
+			selected !== undefined && selected.session !== this.#options.here.session
+				? names.get(selected.session)
+				: undefined;
+		if (this.#candidates().length > 0) {
+			keys.push(["\u2191\u2193", "pick"], ["tab", "mention"], ["esc", "keep writing"]);
+		} else if (this.#composer.getValue().trim() === "") {
+			keys.push(["\u2191\u2193", "agent"]);
+			if (other !== undefined) keys.push(["enter", `write to ${other.handle}`]);
+			if (selected !== undefined)
+				keys.push([
+					"ctrl+f",
+					this.#only === undefined ? `only ${names.get(selected.session)?.handle ?? "it"}` : "all",
+				]);
+			keys.push(["shift+\u2191\u2193", "scroll"], ["esc", "close"]);
+		} else {
+			keys.push(
+				["enter", "send"],
+				["@", "mention"],
+				["shift+\u2191\u2193", "scroll"],
+				["esc", "close"],
+			);
+		}
+		const text = keys
 			.map(([key, action]) => `${theme.fg("muted", key)} ${theme.fg("dim", action)}`)
-			.join("  ");
+			.join("   ");
+		return edge((part) => theme.fg("border", part), "\u2570", "\u256f", text, "", width);
 	}
 
-	#time(at: number): string {
-		return (this.#options.clock ?? clock)(at);
+	#nameOf(session: string): string {
+		const named = this.#options.here.names().get(session);
+		return this.#options.theme.fg((named?.color ?? "muted") as ThemeColor, named?.handle ?? "gone");
 	}
 
-	#hint(): string {
-		const { theme } = this.#options;
-		if (this.#unread > 0 && !this.#follow) return theme.fg("muted", `\u2193 ${this.#unread} new`);
-		return this.#follow ? "" : theme.fg("dim", `\u2191 ${this.#offset} above`);
+	#now(): number {
+		return this.#options.now?.() ?? Date.now();
 	}
 
 	#send(text: string): void {
@@ -462,58 +333,89 @@ export class RoomView implements Component, Focusable {
 		if (words === "") return;
 		this.#options.send(words);
 		this.#composer.setValue("");
+		this.#dismissed = undefined;
 		this.#follow = true;
 		this.#unread = 0;
 		this.#options.requestRender();
 	}
 
-	/** Tab finishes the @name being typed, cycling through the matches. */
-	#complete(): void {
+	#candidates(): Named[] {
 		const value = this.#composer.getValue();
-		const match = /(?:^|\s)@([a-z0-9-]*)$/i.exec(value);
+		if (value === this.#dismissed) return [];
+		const match = MENTION_TAIL.exec(value);
+		if (match === null) return [];
+		const prefix = (match[1] ?? "").toLowerCase();
+		const { here } = this.#options;
+		const others = [...here.names().values()].filter((named) => named.session !== here.session);
+		if (others.some((named) => named.handle === prefix)) return [];
+		return others.filter((named) => named.handle.startsWith(prefix));
+	}
+
+	#complete(named: Named | undefined): void {
+		if (named === undefined) return;
+		const value = this.#composer.getValue();
+		const match = MENTION_TAIL.exec(value);
 		const prefix = match?.[1] ?? "";
-		const names = [...this.#options.here.names().values()].filter(
-			(named) =>
-				named.session !== this.#options.here.session &&
-				named.handle.startsWith(prefix.toLowerCase()),
-		);
-		if (names.length === 0) {
-			if (match === null) this.#composer.setValue(`${value}@`);
-			return;
-		}
-		const at = names.findIndex((named) => named.handle === prefix);
-		const next = names[(at + 1) % names.length];
-		if (next === undefined) return;
-		const head = match === null ? `${value}@` : value.slice(0, value.length - prefix.length);
-		this.#composer.setValue(`${head}${next.handle} `);
+		this.#composer.setValue(`${value.slice(0, value.length - prefix.length)}${named.handle} `);
+		this.#pick = 0;
+		this.#options.requestRender();
 	}
 
-	#scrollKey(data: string): boolean {
-		if (matchesKey(data, Key.shift("up"))) return this.#scroll(-1);
-		if (matchesKey(data, Key.shift("down"))) return this.#scroll(1);
-		return false;
+	#startMention(): void {
+		const value = this.#composer.getValue();
+		this.#composer.setValue(value === "" || value.endsWith(" ") ? `${value}@` : `${value} @`);
+		this.#dismissed = undefined;
+		this.#pick = 0;
+		this.#options.requestRender();
 	}
 
-	#scroll(lines: number): boolean {
+	#dismiss(): void {
+		this.#dismissed = this.#composer.getValue();
+		this.#options.requestRender();
+	}
+
+	#movePick(delta: number, count: number): void {
+		this.#pick = (this.#pick + delta + count) % count;
+		this.#options.requestRender();
+	}
+
+	#writeToSelected(): void {
+		const { here } = this.#options;
+		const selected = here.live()[this.#selected];
+		if (selected === undefined || selected.session === here.session) return;
+		const named = here.names().get(selected.session);
+		if (named === undefined) return;
+		this.#composer.setValue(`@${named.handle} `);
+		this.#options.requestRender();
+	}
+
+	#narrow(): void {
+		const selected = this.#options.here.live()[this.#selected];
+		this.#only = this.#only !== undefined || selected === undefined ? undefined : selected.session;
+		this.#follow = true;
+		this.#options.requestRender();
+	}
+
+	#scroll(lines: number): void {
 		this.#offset = Math.max(0, this.#offset + lines);
 		this.#follow = false;
 		this.#options.requestRender();
-		return true;
 	}
 
 	#move(delta: number): void {
 		const live = this.#options.here.live();
 		if (live.length === 0) return;
 		this.#selected = (this.#selected + delta + live.length) % live.length;
+		if (this.#only !== undefined) this.#only = live[this.#selected]?.session;
 		this.#options.requestRender();
 	}
 
-	/** Follows the newest line, unless you scrolled back to read something. */
 	#followRoom(total: number): void {
-		const most = Math.max(0, total - this.#room);
+		const most = Math.max(0, total - this.#height);
 		if (!this.#follow) {
 			this.#offset = Math.min(this.#offset, most);
 			this.#unread = Math.max(0, most - this.#offset);
+			if (this.#offset === most) this.#follow = true;
 			return;
 		}
 		this.#offset = most;
@@ -521,20 +423,24 @@ export class RoomView implements Component, Focusable {
 	}
 }
 
-const ARRIVED: Record<Delivery, string> = {
-	woke: "woke it",
-	"after-run": "gets it after its run",
-	steered: "cut into its run",
-	"next-turn": "gets it with the next prompt",
-};
-
-function since(at: number, now: number): string {
-	const minutes = Math.max(0, Math.round((now - at) / 60_000));
-	if (minutes < 1) return "now";
-	if (minutes < 60) return `${minutes}m`;
-	return `${Math.round(minutes / 60)}h`;
+function edge(
+	border: (text: string) => string,
+	left: string,
+	right: string,
+	label: string,
+	end: string,
+	width: number,
+): string {
+	const room = Math.max(0, width - 4);
+	const head = label === "" ? "" : ` ${truncateToWidth(label, Math.max(0, room - 2), "...")} `;
+	const tail = end === "" || visibleWidth(head) + visibleWidth(end) + 4 > room ? "" : ` ${end} `;
+	const dashes = Math.max(0, room - visibleWidth(head) - visibleWidth(tail));
+	return `${border(`${left}\u2500`)}${head}${border("\u2500".repeat(dashes))}${tail}${border(`\u2500${right}`)}`;
 }
 
-function base(path: string): string {
-	return path.split("/").pop() ?? path;
+function window(lines: readonly string[], from: number, to: number, height: number): string[] {
+	if (lines.length <= height) return [...lines];
+	const end = Math.min(lines.length, Math.max(height, to));
+	const start = Math.max(0, Math.min(from, end - height));
+	return lines.slice(start, start + height);
 }

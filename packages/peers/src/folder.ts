@@ -21,8 +21,8 @@ export interface Peer {
 	handle?: string;
 	title?: string;
 	state: SessionState;
+	stateAt: number;
 	tasks?: SessionTasks;
-	/** Each file it edited, and when it last did. */
 	edited: Map<string, number>;
 	ran: { command: string; ok: boolean; at: number }[];
 	commits: { sha: string; subject: string; at: number }[];
@@ -37,7 +37,6 @@ export interface Bid {
 
 export interface Posted {
 	id: string;
-	/** The session it was written in. */
 	session: string;
 	from: "you" | "agent";
 	to: string[] | "all";
@@ -94,9 +93,12 @@ export class Folder {
 				peer.title = data.title;
 				return;
 			}
-			case "session.state":
-				peer.state = (event.data as LoggedEvent<"session.state">["data"]).state;
+			case "session.state": {
+				const state = (event.data as LoggedEvent<"session.state">["data"]).state;
+				if (state !== peer.state) peer.stateAt = event.at;
+				peer.state = state;
 				return;
+			}
 			case "session.prompted":
 				this.lastYou = Math.max(this.lastYou, event.at);
 				return;
@@ -214,7 +216,15 @@ export class Folder {
 	#peer(session: string, at: number): Peer {
 		let peer = this.peers.get(session);
 		if (peer === undefined) {
-			peer = { session, startedAt: at, state: "idle", edited: new Map(), ran: [], commits: [] };
+			peer = {
+				session,
+				startedAt: at,
+				state: "idle",
+				stateAt: at,
+				edited: new Map(),
+				ran: [],
+				commits: [],
+			};
 			this.peers.set(session, peer);
 		}
 		return peer;

@@ -3,10 +3,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { applyTaskOps, emptyTasks } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "../src/bid.ts";
-import { GRACE_MS, Here, type Hooks, PEER_MESSAGE } from "../src/here.ts";
+import { GRACE_MS, Here, type Hooks, PEER_MESSAGE, PEER_NOTE } from "../src/here.ts";
 import { BID_WINDOW_MS } from "../src/rules.ts";
 import { statusLine } from "../src/ui/status.ts";
 
@@ -34,12 +35,27 @@ interface Sent {
 	options?: unknown;
 }
 
+/** The quiet notes the agent gets about who else is here, which never start a run. */
+interface Note {
+	text: string;
+	options?: unknown;
+	display?: boolean;
+}
+
 function session(id: string, fit: Fit = { fit: 0.5, reason: "" }) {
 	const sent: Sent[] = [];
+	const notes: Note[] = [];
 	const state = { idle: true };
 	const hooks: Hooks = {
 		events: { emit: () => {}, on: () => () => {} } as unknown as Hooks["events"],
-		sendMessage: ((message: { content: string; customType: string }, options: unknown) => {
+		sendMessage: ((
+			message: { content: string; customType: string; display?: boolean },
+			options: unknown,
+		) => {
+			if (message.customType === PEER_NOTE) {
+				notes.push({ text: message.content, options, display: message.display });
+				return;
+			}
 			expect(message.customType).toBe(PEER_MESSAGE);
 			sent.push({ kind: "custom", text: message.content, options });
 		}) as Hooks["sendMessage"],
@@ -54,7 +70,7 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }) {
 	const here = new Here(hooks);
 	opened.push(here);
 	here.open({ getCwd: () => "/repo", getSessionId: () => id }, undefined);
-	return { here, sent, state };
+	return { here, sent, notes, state };
 }
 
 function name(here: Here, handle: string, title = handle): void {
@@ -224,5 +240,47 @@ describe("what the footer shows", () => {
 		b.here.started();
 		a.here.sync();
 		expect(statusLine(a.here.summary(), plain)).toBe("\u25c6");
+	});
+});
+
+describe("who else is here", () => {
+	test("a colleague arriving is told to the agent, and never starts a run", () => {
+		const a = session("a");
+		const b = session("b");
+		name(b.here, "oauth", "OAuth for the MCP server");
+		a.here.sync();
+
+		expect(a.notes).toHaveLength(1);
+		expect(a.notes[0]?.text).toContain(
+			"oauth is working in this folder on OAuth for the MCP server",
+		);
+		expect(a.notes[0]?.text).toContain("Use the peers tool");
+		expect(a.notes[0]?.options).toEqual({ deliverAs: "nextTurn" });
+		expect(a.notes[0]?.display).toBe(false);
+
+		// Said once, not on every read of the folder.
+		a.here.sync();
+		expect(a.notes).toHaveLength(1);
+
+		b.here.close();
+		a.here.sync();
+		expect(a.notes.at(-1)?.text).toContain("oauth left this folder");
+	});
+
+	test("the agent is told what the new colleague is doing", () => {
+		const a = session("a");
+		const b = session("b");
+		name(b.here, "migration");
+		b.here.log("tasks.changed", {
+			state: applyTaskOps(emptyTasks(), [{ op: "ask", text: "Move the users table" }], {
+				at: now,
+				origin: "you",
+			}),
+		});
+		b.here.log("activity", { kind: "edited", path: "src/db.ts" });
+		a.here.sync();
+
+		expect(a.notes[0]?.text).toContain("doing: Move the users table");
+		expect(a.notes[0]?.text).toContain("edited: src/db.ts");
 	});
 });

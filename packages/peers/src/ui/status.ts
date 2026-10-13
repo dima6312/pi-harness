@@ -1,13 +1,17 @@
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 
 import type { BoardMark } from "../here.ts";
 
-/** The look's footer line: one mark per other session, and how many wait for an answer. */
+/**
+ * The status other interfaces read, from the RPC client to a remote bridge. The look draws its own
+ * segment from the peers contract, so this is the plain text form of the same summary.
+ */
 export function statusLine(
 	summary: { others: BoardMark[]; unread: number },
 	theme: Theme,
 ): string | undefined {
-	const marks = summary.others.map((one) => theme.fg(one.color, MARKS[one.state]));
+	// The colour comes from the contract as a name, so a peer looks the same everywhere.
+	const marks = summary.others.map((one) => theme.fg(one.color as ThemeColor, MARKS[one.state]));
 	if (summary.unread > 0) marks.push(theme.fg("warning", `@${summary.unread}`));
 	return marks.length === 0 ? undefined : marks.join(" ");
 }

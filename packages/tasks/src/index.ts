@@ -9,6 +9,7 @@ import {
 	tasksSpent,
 	tasksWith,
 	logFrom,
+	hideImagesUnderOverlays,
 } from "@adeildo/pi-kit";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
@@ -131,6 +132,7 @@ export const tasks = defineFeature({
 			let stopWatching: (() => void) | undefined;
 			await ctx.ui.custom<void>(
 				(tui, theme, _keybindings, done) => {
+					hideImagesUnderOverlays(tui);
 					stopWatching = scope.events.on(TASKS_CHANGED, () => tui.requestRender());
 					return new TasksView({
 						theme,

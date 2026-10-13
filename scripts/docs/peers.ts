@@ -15,7 +15,11 @@ import { WIDTH } from "./drive.ts";
 const START = Date.UTC(2026, 9, 8, 12, 38);
 const SECOND = 1_000;
 
-export async function peersRoom(theme: Theme): Promise<string[]> {
+export async function peersRoom(
+	theme: Theme,
+	width = WIDTH,
+	keys: readonly string[] = [],
+): Promise<string[]> {
 	const root = mkdtempSync(join(tmpdir(), "peers-docs-"));
 	process.env.PI_HARNESS_EVENTS = root;
 	let now = START;
@@ -61,6 +65,7 @@ export async function peersRoom(theme: Theme): Promise<string[]> {
 		});
 		oauth.log("activity", { kind: "edited", path: "src/auth.ts" });
 		oauth.log("activity", { kind: "edited", path: "src/session.ts" });
+		oauth.log("activity", { kind: "ran", command: "bun test src/auth", ok: true });
 
 		migration.log("session.named", { handle: "migration", title: "Move users to Postgres" });
 		migration.log("tasks.changed", {
@@ -85,6 +90,13 @@ export async function peersRoom(theme: Theme): Promise<string[]> {
 		now += 8 * SECOND;
 		await bid(oauth, migration);
 
+		now += 20 * SECOND;
+		migration.log("activity", {
+			kind: "committed",
+			sha: "7e1c208",
+			subject: "Move the users table",
+		});
+		now += 10 * SECOND;
 		oauth.post(
 			["77b0-migration"],
 			"Are you touching src/auth.ts? I'm halfway through the callback.",
@@ -92,9 +104,10 @@ export async function peersRoom(theme: Theme): Promise<string[]> {
 		);
 		now += 40 * SECOND;
 		migration.post(["9c1e-oauth"], "Not anymore, it's yours. I'm on the SQL files only.", "agent");
-		now += 20 * SECOND;
-		oauth.log("activity", { kind: "committed", sha: "3f2a91c", subject: "OAuth callback" });
-		now += 30 * SECOND;
+		// Two seconds on, the answer's rail is still lit and oauth is writing back.
+		now += 2 * SECOND;
+		oauth.sync();
+		oauth.typing("@migration", "Thanks. I'll push the callback and tell you when auth.ts is clear");
 		me.sync();
 
 		const view = new RoomView({
@@ -110,7 +123,8 @@ export async function peersRoom(theme: Theme): Promise<string[]> {
 			send() {},
 		});
 		view.focused = true;
-		return view.render(WIDTH);
+		for (const key of keys) view.handleInput(key);
+		return view.render(width);
 	} finally {
 		for (const here of opened) here.close();
 		delete process.env.PI_HARNESS_EVENTS;

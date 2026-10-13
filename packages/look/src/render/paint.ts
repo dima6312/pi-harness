@@ -80,6 +80,8 @@ export interface Paint {
 	stress(percent: number, text: string): string;
 	money(amount: number, text: string): string;
 	frame(text: string): string;
+	/** A theme colour a package named in a contract, like a peer's own colour. */
+	raw(color: string, text: string): string;
 }
 
 export function themePaint(theme: Theme, frame?: (text: string) => string): Paint {
@@ -94,6 +96,11 @@ export function themePaint(theme: Theme, frame?: (text: string) => string): Pain
 		stress: (percent, text) => theme.fg(stressToken(percent), text),
 		money: (amount, text) => theme.fg(moneyToken(amount), text),
 		frame: frame ?? ((text) => theme.fg("border", text)),
+		raw: (color, text) =>
+			theme.fg(
+				theme.colors[color as ThemeColor] === undefined ? "muted" : (color as ThemeColor),
+				text,
+			),
 	};
 }
 
@@ -120,6 +127,7 @@ export const PLAIN: Paint = {
 	stress: (_percent, text) => text,
 	money: (_amount, text) => text,
 	frame: identity,
+	raw: (_color, text) => text,
 };
 
 function identity(text: string): string {

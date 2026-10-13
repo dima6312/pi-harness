@@ -2,14 +2,16 @@
 // shows the same name in the same color, and a name stays put while it is open.
 import type { Peer } from "./folder.ts";
 
-/** Theme colors with distinct hues in dark and light themes alike. */
+/**
+ * Theme colors with distinct hues in dark and light themes alike. The footer already uses warning,
+ * success, error and accent for what it says, so a peer never wears one of those.
+ */
 export const PEER_COLORS = [
-	"syntaxFunction",
-	"syntaxString",
 	"syntaxKeyword",
+	"syntaxString",
+	"syntaxVariable",
 	"syntaxType",
 	"syntaxNumber",
-	"mdLink",
 ] as const;
 
 export type PeerColor = (typeof PEER_COLORS)[number];
@@ -44,10 +46,10 @@ export function namesOf(live: readonly Peer[]): Map<string, Named> {
 function colorFor(session: string, used: ReadonlySet<PeerColor>): PeerColor {
 	const start = hash(session) % PEER_COLORS.length;
 	for (let step = 0; step < PEER_COLORS.length; step++) {
-		const color = PEER_COLORS[(start + step) % PEER_COLORS.length] ?? "mdLink";
+		const color = PEER_COLORS[(start + step) % PEER_COLORS.length] ?? "syntaxKeyword";
 		if (!used.has(color)) return color;
 	}
-	return PEER_COLORS[start] ?? "mdLink";
+	return PEER_COLORS[start] ?? "syntaxKeyword";
 }
 
 function hash(text: string): number {

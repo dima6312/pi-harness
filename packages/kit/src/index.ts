@@ -8,6 +8,7 @@ export * from "./contracts/screen.ts";
 export * from "./contracts/skills.ts";
 export * from "./card.ts";
 export * from "./contracts/events.ts";
+export * from "./contracts/peers.ts";
 export * from "./contracts/tasks.ts";
 export * from "./events/log.ts";
 export * from "./tasks/index.ts";
@@ -16,6 +17,7 @@ export * from "./decode.ts";
 export * from "./events.ts";
 export * from "./models.ts";
 export * from "./one-at-a-time.ts";
+export * from "./overlay-images.ts";
 export * from "./typing.ts";
 export {
 	globalSettingsPath,

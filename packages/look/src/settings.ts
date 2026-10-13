@@ -89,7 +89,7 @@ export const stripRight = slot(
 	"stripRight",
 	"Answer strip, on the right",
 	"The other side of that line. When it does not fit beside the strip, it gets a line of its own under it.",
-	["tasks"],
+	["tasks", "peers"],
 );
 export const topLeft = slot("frame.topLeft", "Frame, top left", "After the working spinner.", [
 	"branch",

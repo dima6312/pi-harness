@@ -8,6 +8,7 @@ export interface Glyphs {
 	host: string;
 	session: string;
 	tasks: string;
+	peers: string;
 	waiting: string;
 	queued: string;
 	version: string;
@@ -57,6 +58,7 @@ export const NERD: Glyphs = {
 	host: "\u{f108}", // nf-fa-desktop
 	session: "\u{f02b}", // nf-fa-tag
 	tasks: "\u{f04fe}", // nf-md-target
+	peers: "\u{f0c0}", // nf-fa-users
 	waiting: "\u{f024}", // nf-fa-flag
 	queued: "\u{f051f}", // nf-md-timer_sand
 	version: "π",
@@ -87,6 +89,7 @@ export const UNICODE: Glyphs = {
 	host: "⌂",
 	session: "#",
 	tasks: "▸",
+	peers: "◆",
 	waiting: "⚑",
 	queued: "⧗",
 	version: "π",
@@ -116,6 +119,7 @@ export const ASCII: Glyphs = {
 	host: "@",
 	session: "#",
 	tasks: ">",
+	peers: "@",
 	waiting: "",
 	queued: "",
 	version: "v",

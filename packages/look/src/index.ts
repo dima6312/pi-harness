@@ -1,12 +1,12 @@
 import {
 	accountStateOf,
 	createApp,
+	currentPeers,
 	currentTasks,
 	defineFeature,
 	drawSkillRefs,
 	type FeatureScope,
 	SKILL_REF,
-	type SessionTasks,
 	skillNames,
 } from "@adeildo/pi-kit";
 import type {
@@ -17,7 +17,7 @@ import type {
 import type { TUI } from "@earendil-works/pi-tui";
 
 import { type GitState, readGit } from "./data/git.ts";
-import { emptySnapshot, type Snapshot, SnapshotReader } from "./data/snapshot.ts";
+import { emptySnapshot, type LiveInputs, type Snapshot, SnapshotReader } from "./data/snapshot.ts";
 import { Telemetry } from "./data/telemetry.ts";
 import type { DeltaKind } from "./data/telemetry.ts";
 import { REQUEST_ENTRY, type RequestRecord } from "./data/totals.ts";
@@ -323,8 +323,13 @@ function createScreen(
 	};
 }
 
-function tasksOf(scope: FeatureScope): { tasks?: SessionTasks } {
-	return { tasks: currentTasks(scope.events)?.state };
+function tasksOf(scope: FeatureScope): Pick<LiveInputs, "tasks" | "peers" | "peersUnread"> {
+	const peers = currentPeers(scope.events);
+	return {
+		tasks: currentTasks(scope.events)?.state,
+		peers: peers?.peers,
+		peersUnread: peers?.unread,
+	};
 }
 
 function installEditor(

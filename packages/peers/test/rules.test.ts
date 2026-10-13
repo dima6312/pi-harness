@@ -93,6 +93,7 @@ function peer(session: string, handle?: string, startedAt = 0) {
 		session,
 		handle,
 		startedAt,
+		stateAt: startedAt,
 		state: "idle" as const,
 		edited: new Map(),
 		ran: [],

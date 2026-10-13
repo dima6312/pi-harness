@@ -1,6 +1,6 @@
 import { hostname } from "node:os";
 
-import type { AccountState, SessionTasks } from "@adeildo/pi-kit";
+import type { AccountState, PeerMark, SessionTasks } from "@adeildo/pi-kit";
 import { VERSION, type ExtensionContext, type SessionEntry } from "@earendil-works/pi-coding-agent";
 
 import type { GitState } from "./git.ts";
@@ -51,6 +51,10 @@ export interface Snapshot {
 	statuses: ReadonlyMap<string, string>;
 	/** What the session is doing, when a tasks feature keeps it. */
 	tasks: SessionTasks | undefined;
+	/** The other sessions in this folder, when a peers feature keeps them. */
+	peers: PeerMark[];
+	/** Messages a peer sent this session that its agent has not read yet. */
+	peersUnread: number;
 }
 
 export function emptySnapshot(): Snapshot {
@@ -77,6 +81,8 @@ export function emptySnapshot(): Snapshot {
 		averages: { decode: undefined, prefill: undefined },
 		statuses: new Map(),
 		tasks: undefined,
+		peers: [],
+		peersUnread: 0,
 	};
 }
 
@@ -89,6 +95,8 @@ export interface LiveInputs {
 	run: RunView | undefined;
 	statuses: ReadonlyMap<string, string>;
 	tasks?: SessionTasks | undefined;
+	peers?: PeerMark[] | undefined;
+	peersUnread?: number | undefined;
 }
 
 interface Derived {
@@ -139,6 +147,8 @@ export class SnapshotReader {
 					.filter(([, text]) => text !== ""),
 			),
 			tasks: live.tasks,
+			peers: live.peers ?? [],
+			peersUnread: live.peersUnread ?? 0,
 		};
 	}
 

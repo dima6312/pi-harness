@@ -1,4 +1,4 @@
-import { type AccountWindow, tasksWith } from "@adeildo/pi-kit";
+import { type AccountWindow, type PeerMark, tasksWith } from "@adeildo/pi-kit";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
 import type { Snapshot } from "../data/snapshot.ts";
@@ -28,6 +28,7 @@ export const SEGMENT_IDS = [
 	"host",
 	"session",
 	"tasks",
+	"peers",
 	"version",
 	"clock",
 	"provider",
@@ -67,6 +68,7 @@ export function isSegmentId(value: string): value is SegmentId {
 const CLAIMED_BY_SEGMENT: Partial<Record<BuiltinSegment, string>> = {
 	model: "pi-providers:account",
 	tasks: "pi-tasks",
+	peers: "pi-peers",
 };
 
 export function claimedStatuses(slots: readonly (readonly SegmentId[])[]): Set<string> {
@@ -154,6 +156,29 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 			snapshot.host === undefined || snapshot.host === ""
 				? undefined
 				: { text: `${mark(glyphs.host, paint, "host")}${paint.role("host", snapshot.host)}` },
+	},
+	peers: {
+		priority: 25,
+		describe:
+			"the other agents in this folder, each by the name it chose and in its colour, then @ how many messages wait for an answer",
+		// The whole folder, then one name, then the bare mark, as the line runs out of room.
+		render: ({ snapshot, glyphs, paint }) => {
+			const peers = snapshot.peers;
+			const mentions =
+				snapshot.peersUnread > 0 ? paint.role("waiting", `@${snapshot.peersUnread}`) : "";
+			const first = peers[0];
+			if (first === undefined) return mentions === "" ? undefined : { text: mentions };
+			const named = (peer: PeerMark) => paint.raw(peer.color, `${glyphs.peers} ${peer.handle}`);
+			const rest = peers.length > 1 ? paint.dim(` +${peers.length - 1}`) : "";
+			const full = joined([...peers].map(named).join("  "), mentions);
+			const short = joined(named(first) + rest, mentions);
+			const least = joined(paint.raw(first.color, glyphs.peers), mentions);
+			return {
+				text: full,
+				shrink: (width) =>
+					visibleWidth(full) <= width ? full : visibleWidth(short) <= width ? short : least,
+			};
+		},
 	},
 	tasks: {
 		priority: 30,
@@ -514,6 +539,11 @@ function quotaWindow(paint: Paint, window: AccountWindow): string {
 	const reset =
 		window.resetsIn === undefined ? "" : ` ${paint.muted(`resets in ${window.resetsIn}`)}`;
 	return `${paint.dim(window.name)} ${used}${reset}`;
+}
+
+/** The parts that have something to say, with the gap the footer uses between things. */
+function joined(...parts: string[]): string {
+	return parts.filter((part) => part !== "").join("  ");
 }
 
 function mark(glyph: string, paint: Paint, role: Role): string {

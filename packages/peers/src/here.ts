@@ -13,22 +13,19 @@ import {
 	targetOf,
 	tasksWith,
 } from "@adeildo/pi-kit";
+import type { PeerMark } from "@adeildo/pi-kit";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { ThemeColor } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "./bid.ts";
 import { Folder, isAlive, livePeers, type Peer, type Posted } from "./folder.ts";
 import { type Named, namesOf } from "./names.ts";
 
-/** What the footer shows of another session: its colour, and what it is up to. */
-export interface BoardMark {
-	handle: string;
-	color: ThemeColor;
-	state: "running" | "idle" | "waiting";
-}
+export type BoardMark = PeerMark;
 import { agentStreak, award, deliveryFor, QUIET_AFTER, turnToTake } from "./rules.ts";
 
 export const PEER_MESSAGE = "pi-peers:message";
+/** A quiet note for the agent: who else is in the folder. It is not shown in the chat. */
+export const PEER_NOTE = "pi-peers:note";
 /** Your words wait this long before they reach another agent, so /unsend can still stop them. */
 export const GRACE_MS = 3_000;
 /** Older messages and requests are history, never delivered or bid on. */
@@ -85,6 +82,8 @@ export class Here {
 	readonly #bidding = new Set<string>();
 	readonly #fits = new Map<string, Fit>();
 	readonly #withdrawn = new Set<string>();
+	/** The peers this session has already been told about, and the name each had. */
+	#known = new Map<string, string>();
 	/** Your words handed to the agent, waiting for its model to read them. */
 	readonly #unread = new Map<string, string>();
 	#typedAt = 0;
@@ -182,6 +181,8 @@ export class Here {
 			return;
 		}
 		this.#folder.apply(fresh);
+		// After applying, so a colleague that just logged shows up in the note.
+		this.#announce();
 		for (const event of fresh) {
 			const id = (event.data as { id?: string }).id;
 			const message = id === undefined ? undefined : this.#folder.messages.get(id);
@@ -288,6 +289,48 @@ export class Here {
 		if (text !== undefined) this.#unread.delete(text);
 		if (this.#folder.messages.get(message)?.read.has(this.session)) return;
 		this.log("message.read", { id: message });
+	}
+
+	/**
+	 * Tells the agent who else is here, so it knows without being asked and nobody has to carry the
+	 * message. The note waits for the next prompt: it never starts a run and never interrupts one.
+	 */
+	#announce(): void {
+		const names = this.names();
+		const live = this.live().filter((peer) => peer.session !== this.session);
+		const now = new Map(
+			live.map((peer) => [peer.session, names.get(peer.session)?.handle ?? "anon"]),
+		);
+		const lines: string[] = [];
+		for (const peer of live) {
+			if (this.#known.has(peer.session)) continue;
+			const named = names.get(peer.session);
+			const doing = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "doing");
+			const waiting = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "waiting");
+			const edited = [...peer.edited.keys()].slice(-3);
+			const parts = [
+				`${named?.handle ?? "another agent"} is working in this folder`,
+				peer.title === undefined ? "" : ` on ${peer.title}`,
+			];
+			lines.push(`${parts.join("")}.`);
+			if (doing.length > 0) lines.push(`  doing: ${doing.map((task) => task.text).join("; ")}`);
+			if (waiting.length > 0)
+				lines.push(`  waiting: ${waiting.map((task) => task.text).join("; ")}`);
+			if (edited.length > 0) lines.push(`  edited: ${edited.join(", ")}`);
+		}
+		// A session that left is not in the names any more, so use the name it had while it was here.
+		for (const [session, handle] of this.#known)
+			if (!now.has(session)) lines.push(`${handle} left this folder.`);
+		this.#known = now;
+		if (lines.length === 0) return;
+		this.#hooks.sendMessage(
+			{
+				customType: PEER_NOTE,
+				content: `${lines.join("\n")}\nUse the peers tool to read the board or to send one a message.`,
+				display: false,
+			},
+			{ deliverAs: "nextTurn" },
+		);
 	}
 
 	#consider(message: Posted): void {

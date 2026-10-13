@@ -73,6 +73,19 @@ describe("segments", () => {
 		expect(icons?.text).toBe("\u{f04fe} draw the segment  \u{f024} 1  \u{f051f} 1  \u{f00c} 1");
 	});
 
+	test("the peers show each agent by name, and the line tightens one name at a time", () => {
+		const peers = [
+			{ handle: "oauth", color: "syntaxFunction", state: "waiting" as const },
+			{ handle: "migration", color: "syntaxString", state: "idle" as const },
+		];
+		const [piece] = render(["peers"], snapshot({ peers, peersUnread: 2 }));
+		expect(plainText(piece?.text ?? "")).toBe("@ oauth  @ migration  @2");
+		expect(plainText(piece?.shrink?.(22) ?? "")).toBe("@ oauth +1  @2");
+		expect(plainText(piece?.shrink?.(6) ?? "")).toBe("@  @2");
+		expect(claimedStatuses([["peers"]])).toContain("pi-peers");
+		expect(text(["peers"], snapshot())).toEqual([]);
+	});
+
 	test("with several tasks under way, the first shows and the rest count", () => {
 		let tasks = applyTaskOps(emptyTasks(), [{ op: "ask", text: "a" }], YOU);
 		tasks = applyTaskOps(tasks, [{ op: "ask", text: "b" }], { ...YOU, busy: true });
