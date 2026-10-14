@@ -4,7 +4,7 @@ import { entryFrame, GLYPH, type Json } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
-import { BOXES, type FrameStyle } from "../render/frame.ts";
+import { BOXES, border, type FrameStyle } from "../render/frame.ts";
 import { type IconMode, resolveIcons } from "../render/glyphs.ts";
 import { stateMark, toolIcon } from "../render/tools.ts";
 
@@ -42,21 +42,19 @@ export function framePreview(value: Json, theme: Theme, width: number): string[]
 			theme.fg("dim", "pi's editor, as pi draws it, with the edges' information in the footer"),
 		];
 	const box = BOXES[style];
-	const edge = (left: string, right: string, label: string, rest: string) => {
-		// Two corners, two rules beside them and four spaces around the labels.
-		const fill = Math.max(0, room - visibleWidth(label) - visibleWidth(rest) - 8);
-		return `${line("borderAccent", `${left}${box.horizontal}`)} ${label} ${line("borderAccent", box.horizontal.repeat(fill))} ${rest} ${line("borderAccent", `${box.horizontal}${right}`)}`;
-	};
+	// The preview draws its edges with the frame's own border, so it cannot drift from the editor.
+	const edge = (which: "top" | "bottom", label: string, rest: string) =>
+		border(room, [{ text: label, priority: 1 }], [{ text: rest, priority: 2 }], {
+			box,
+			edge: which,
+			paint: (text) => line("borderAccent", text),
+			separator: " ",
+		});
 	const side = style === "line" ? " " : line("borderAccent", box.vertical);
 	return [
-		edge(box.topLeft, box.topRight, theme.fg("warning", "main"), theme.fg("muted", "~/project")),
+		edge("top", theme.fg("warning", "main"), theme.fg("muted", "~/project")),
 		`${side} ${theme.fg("accent", GLYPH.cursor)}${" ".repeat(Math.max(0, room - 4))}${side}`,
-		edge(
-			box.bottomLeft,
-			box.bottomRight,
-			theme.fg("text", "Opus 5.5"),
-			theme.fg("muted", "ctx 34%"),
-		),
+		edge("bottom", theme.fg("text", "Opus 5.5"), theme.fg("muted", "ctx 34%")),
 	];
 }
 
