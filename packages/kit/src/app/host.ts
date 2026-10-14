@@ -106,6 +106,7 @@ function settingRow(
 	else row.control = control;
 	if (layer === "project") row.hidden = toJson(settings.hidden(entry));
 	if (ui.restart === true) row.restart = true;
+	if (ui.preview !== undefined) row.preview = ui.preview;
 	return row;
 }
 

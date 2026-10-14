@@ -43,9 +43,8 @@ import {
 	LOOK_SETTINGS,
 	pathLength,
 	peek,
-	separator,
 	SECTIONS,
-	SEPARATORS,
+	SEPARATOR,
 	strip,
 	stripRight,
 	topLeft,
@@ -119,20 +118,6 @@ export const look = defineFeature({
 		const visitsFile = join(dirname(scope.settings.globalPath), "look-visits.json");
 		let visited = false;
 		let lastVisit: LastVisit | undefined;
-		header.listen(
-			scope,
-			() =>
-				live.ctx &&
-				installHeader(
-					live.ctx,
-					screen,
-					scope,
-					() => lastVisit,
-					() => live.github,
-				),
-		);
-		cursor.listen(scope, (style) => live.tui && applyCursor(live.tui, style));
-		peek.listen(scope, (on) => !on && live.ctx?.ui.setWorkingMessage());
 
 		scope.onSessionStart((ctx) => {
 			live.ctx = ctx;
@@ -259,9 +244,9 @@ export const look = defineFeature({
 
 		scope.screen.action({
 			id: "explain",
-			section: "Slots",
+			section: "Appearance",
 			label: "What is on screen",
-			description: "Every piece the slots show right now, and what it means.",
+			description: "Every piece around the editor right now, and what it means.",
 			run: () => explain(screen),
 		});
 	},
@@ -350,7 +335,7 @@ function createScreen(
 		},
 		glyphs: () => resolveIcons(icons.get(scope)),
 		paint: (border) => (live.ctx === undefined ? PLAIN : themePaint(live.ctx.ui.theme, border)),
-		separator: () => SEPARATORS[separator.get(scope)],
+		separator: () => SEPARATOR,
 		options: () => ({
 			pathLength: pathLength.get(scope),
 			gaugeCells: gaugeCells.get(scope),

@@ -457,10 +457,11 @@ export class ScreenView implements Component {
 		if (mode.kind === "text") return this.#textBody(mode, inner);
 
 		const right = inner - (left === 0 ? 0 : left + 1);
-		const content =
+		const listed =
 			mode.kind === "pick" || mode.kind === "check"
 				? this.#pickLines(mode, right)
 				: this.#rowLines(right);
+		const content = this.#withPreview(listed, right);
 		const sections = left === 0 ? [] : this.#sectionLines(left);
 
 		const out: string[] = [];
@@ -474,6 +475,28 @@ export class ScreenView implements Component {
 			out.push(side + this.#options.theme.fg("borderMuted", LINE.v) + main);
 		}
 		return out;
+	}
+
+	/**
+	 * The list, and under it what the selected value looks like, when the setting draws one and there
+	 * is room left. While picking, the preview follows the highlighted value.
+	 */
+	#withPreview(listed: string[], width: number): string[] {
+		const mode = this.#mode;
+		const row =
+			mode.kind === "browse"
+				? this.#options.model.selected()?.row
+				: mode.kind === "pick"
+					? mode.row
+					: undefined;
+		if (row?.preview === undefined) return listed;
+		const value = mode.kind === "pick" ? mode.items[mode.index]?.value : row.value;
+		if (value === undefined) return listed;
+		// Under the last row, a blank line apart, so it reads as that list's.
+		const used = listed.findLastIndex((line) => visibleWidth(line.trim()) > 0) + 1;
+		const preview = row.preview(value, this.#options.theme, Math.max(1, width - 4));
+		if (preview.length === 0 || this.#bodyHeight - used - 1 < preview.length) return listed;
+		return [...listed.slice(0, used), "", ...preview.map((line) => `  ${line}`)];
 	}
 
 	#sectionLines(width: number): string[] {

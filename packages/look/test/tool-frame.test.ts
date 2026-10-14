@@ -462,11 +462,11 @@ describe("the mark of a phase that lasts", () => {
 		expect(new Set(hours).size).toBe(12);
 	});
 
-	test("the pen leaves more ink each step while the model writes", () => {
-		const widths = Array.from(
-			{ length: 6 },
-			(_, step) => [...stateMark("writing", "unicode", step * 140)].length,
-		);
-		expect(widths).toEqual([1, 2, 2, 3, 4, 5]);
+	test("the pencil moves in its own cell while the model writes, never pushing the words", () => {
+		for (const set of ["nerd", "unicode"] as const) {
+			const frames = Array.from({ length: 8 }, (_, step) => stateMark("writing", set, step * 180));
+			expect(new Set(frames).size).toBeGreaterThan(1);
+			for (const frame of frames) expect([...frame]).toHaveLength(1);
+		}
 	});
 });

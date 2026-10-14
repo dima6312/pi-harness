@@ -90,7 +90,7 @@ it just wrote.
 
 Something moves only to say something changed: a spinner while an agent works or writes, a lit rail
 for a few seconds on a message that just arrived, a blinking cursor where words arrive, the mark of a tool call that is writing, waiting or running:
-a pen leaving ink, an hourglass flowing, a clock going round. A still panel redraws once a
+a pencil inking, an hourglass flowing, a clock going round, each in its own cell. A still panel redraws once a
 second; a moving one every frame. The start screen has the one move made for show, once per launch,
 and never delays typing.
 

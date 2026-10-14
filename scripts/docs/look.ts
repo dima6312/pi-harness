@@ -24,8 +24,7 @@ import {
 	gaugeCells,
 	labels,
 	pathLength,
-	SEPARATORS,
-	separator,
+	SEPARATOR,
 	strip,
 	stripRight,
 	topLeft,
@@ -40,14 +39,14 @@ import { shippingTasks } from "./tasks.ts";
 const WIDTH = 100;
 
 const SLOTS: Record<SlotName, SegmentId[]> = {
-	strip: strip.default,
-	stripRight: stripRight.default,
-	topLeft: topLeft.default,
-	topRight: topRight.default,
-	bottomLeft: bottomLeft.default,
-	bottomRight: bottomRight.default,
-	below: below.default,
-	belowRight: belowRight.default,
+	strip: strip.get(),
+	stripRight: stripRight.get(),
+	topLeft: topLeft.get(),
+	topRight: topRight.get(),
+	bottomLeft: bottomLeft.get(),
+	bottomRight: bottomRight.get(),
+	below: below.get(),
+	belowRight: belowRight.get(),
 };
 
 function snapshot(theme: Theme): Snapshot {
@@ -102,11 +101,11 @@ function screen(theme: Theme): Screen {
 		snapshot: () => data,
 		glyphs: () => NERD,
 		paint: (frame) => themePaint(theme, frame),
-		separator: () => SEPARATORS[separator.default],
+		separator: () => SEPARATOR,
 		options: () => ({
-			pathLength: pathLength.default,
-			gaugeCells: gaugeCells.default,
-			labels: labels.default,
+			pathLength: pathLength.get(),
+			gaugeCells: gaugeCells.get(),
+			labels: labels.get(),
 			claimed: claimedStatuses(Object.values(SLOTS)),
 		}),
 		slot: (name) => SLOTS[name],

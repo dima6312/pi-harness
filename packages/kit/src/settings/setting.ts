@@ -2,6 +2,7 @@
 // helpers, so one handle works against any app.
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
+import type { Preview } from "../contracts/screen.ts";
 import type { Control } from "../control.ts";
 import type { Decoder } from "../decode.ts";
 import type { SettingsStore } from "./store.ts";
@@ -15,6 +16,8 @@ export interface SettingUi {
 	control?: Control | ((ctx: ExtensionContext) => Control);
 	/** Applies only after `/reload`. */
 	restart?: boolean;
+	/** What a value looks like, drawn under the list while the setting or a value is selected. */
+	preview?: Preview;
 }
 
 export interface SettingDefinition<T> {

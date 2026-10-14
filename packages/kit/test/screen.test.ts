@@ -562,3 +562,56 @@ describe("the screen view", () => {
 		expect(model.selected()?.row.value).toBe(12);
 	});
 });
+
+function preview(value: unknown): string[] {
+	return [`looks like ${String(value)}`];
+}
+
+describe("a setting's preview", () => {
+	const tabs: TabView[] = [
+		{
+			title: "Look",
+			sections: ["Appearance"],
+			rows: [
+				row("style", "Appearance", {
+					value: "rounded",
+					control: {
+						type: "choice",
+						options: [
+							{ value: "rounded", label: "rounded" },
+							{ value: "square", label: "square" },
+						],
+					},
+					preview,
+				}),
+				row("plain", "Appearance", { value: true }),
+			],
+		},
+	];
+
+	function open() {
+		const model = new ScreenModel(tabs);
+		const screen = new ScreenView({
+			tui: { terminal: { rows: 30 }, requestRender: () => {} } as unknown as TUI,
+			theme: THEME,
+			events: { emit: () => {}, on: () => () => {} } as never,
+			model,
+			done: () => {},
+		});
+		return { screen, model, text: () => screen.render(100).join("\n") };
+	}
+
+	test("shows the current value under the list while the setting is selected", () => {
+		const { model, text } = open();
+		expect(text()).toContain("looks like rounded");
+		model.move(1);
+		expect(text()).not.toContain("looks like");
+	});
+
+	test("follows the highlighted value while picking", () => {
+		const { screen, text } = open();
+		screen.handleInput("\r");
+		screen.handleInput("\u001b[B");
+		expect(text()).toContain("looks like square");
+	});
+});

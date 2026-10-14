@@ -74,15 +74,8 @@ export const SPIN = {
 	hourglass: ["\u29d6", "\u29d7"],
 	/** | / - \ the same, in ASCII. */
 	ascii: ["|", "/", "-", "\\"],
-	/** The ink a pen leaves while the model writes a call, one cell more each frame. */
-	scribble: [
-		"",
-		"\u2840",
-		"\u2860",
-		"\u2860\u280a",
-		"\u2860\u280a\u2880",
-		"\u2860\u280a\u2880\u2814",
-	],
+	/** ✎ ✏ ✐ ✏ a pencil that tilts as it writes, in one cell: the model writing a call. */
+	pencil: ["\u270e", "\u270f", "\u2710", "\u270f"],
 } as const;
 
 /** The lines frames, rules and scroll bars are drawn with. */

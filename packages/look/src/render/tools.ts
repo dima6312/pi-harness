@@ -92,12 +92,13 @@ const CLOCK = [0xf1456, ...Array.from({ length: 11 }, (_, hour) => 0xf144b + hou
 
 const MOTIONS: Record<IconSet, Partial<Record<CallPhase, Motion>>> = {
 	nerd: {
-		writing: { frames: SPIN.scribble.map((ink) => `\u{f044}${ink}`), stepMs: 140 }, // nf-fa-pencil_square_o
+		// nf-md-pencil_outline and nf-md-pencil: the pencil fills with ink and empties again.
+		writing: { frames: ["\u{f0cb6}", "\u{f03eb}"], stepMs: 350 },
 		waiting: { frames: ["\u{f251}", "\u{f252}", "\u{f253}"], stepMs: 400 }, // nf-fa-hourglass_start..end
 		running: { frames: CLOCK, stepMs: 110 }, // nf-md-clock_time_*_outline
 	},
 	unicode: {
-		writing: { frames: SPIN.scribble.map((ink) => `${GLYPH.pencil}${ink}`), stepMs: 140 },
+		writing: { frames: SPIN.pencil, stepMs: 180 },
 		waiting: { frames: SPIN.hourglass, stepMs: 500 },
 		running: { frames: SPIN.quadrants, stepMs: 150 },
 	},

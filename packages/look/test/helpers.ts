@@ -4,7 +4,6 @@ import { emptySnapshot, type Snapshot } from "../src/data/snapshot.ts";
 import { ASCII, type Glyphs } from "../src/render/glyphs.ts";
 import { PLAIN, type Paint } from "../src/render/paint.ts";
 import type { SegmentId } from "../src/render/segments.ts";
-import { SEPARATORS } from "../src/settings.ts";
 import type { Screen, SlotName } from "../src/ui/screen.ts";
 
 export function snapshot(overrides: Partial<Snapshot> = {}): Snapshot {
@@ -43,7 +42,7 @@ export function screen(
 		snapshot: () => data,
 		glyphs: (): Glyphs => ASCII,
 		paint: (frame?: (text: string) => string): Paint => ({ ...PLAIN, frame: frame ?? PLAIN.frame }),
-		separator: () => SEPARATORS.dot,
+		separator: () => " · ",
 		options: () => ({ pathLength: 40, gaugeCells: 8, claimed: new Set<string>(), labels: false }),
 		slot: (name) => slots[name],
 		frameStyle: () => "rounded",
