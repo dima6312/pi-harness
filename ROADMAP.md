@@ -90,14 +90,15 @@ It replaced `@adeildo/pi-goal`. In a week of sessions, the goal timeline left mo
 
 Hiding old tool output works as well as summarizing it and costs less ([JetBrains, NeurIPS 2025](https://arxiv.org/abs/2508.21433)), so the rules are plain code and a model only writes pi's summary.
 
-| Item                      | Status | Note                                                                                                                                                                       |
-| ------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hide old tool output      | done   | past 150k tokens and outside the last 10 turns, in batches that free two fifths or more. At least 32% less on a week of sessions, counting all of the context as rewritten |
-| Clear on Anthropic's side | done   | on Anthropic's models, `clear_tool_uses` in place of the prune, keeping parameters and the last 10 calls. The agent keeps its thinking; 27% less on the same week          |
-| The prune's line          | done   | in the chat, with the most the cache rewrite costs and in how many requests it pays back                                                                                   |
-| Summary from the tasks    | done   | pi's prompt on the side model, with the tasks and my words on top. As good as pi on Opus on 48 probes, at 1/40 of the price                                                |
-| Re-read share             | done   | each hidden call the agent runs again is counted on the Compact tab. 1 of 181 in the first live prune                                                                      |
-| Jev keeps exceptions      | later  | only if the re-read share passes ~10%. A model picking what stays cost 94% more in [OpenHands' study](https://arxiv.org/abs/2605.18854)                                    |
+| Item                      | Status | Note                                                                                                                                                                                                                                                                            |
+| ------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hide old tool output      | done   | past 150k tokens when a run ends, so the cache rewrite lands on my next message, and mid-run only past 80% of the window. Outside the last 10 turns, in batches that free two fifths or more. At least 32% less on a week of sessions, counting all of the context as rewritten |
+| Clear on Anthropic's side | done   | `clear_tool_uses` in place of the prune, keeping the agent's thinking. Off by default: on 744 requests of Opus 5.5 each clear rewrote the whole prompt to free 5 to 30% of it, about $2 a clear                                                                                 |
+| Copies of a pruned call   | done   | a call that copies the prune's note, or a value cut short, does not run, so the agent does not learn to cut its own                                                                                                                                                             |
+| The prune's line          | done   | in the chat, with the most the cache rewrite costs and in how many requests it pays back                                                                                                                                                                                        |
+| Summary from the tasks    | done   | pi's prompt on the side model, with the tasks and my words on top. As good as pi on Opus on 48 probes, at 1/40 of the price                                                                                                                                                     |
+| Re-read share             | done   | each hidden call the agent runs again is counted on the Compact tab. 1 of 181 in the first live prune                                                                                                                                                                           |
+| Jev keeps exceptions      | later  | only if the re-read share passes ~10%. A model picking what stays cost 94% more in [OpenHands' study](https://arxiv.org/abs/2605.18854)                                                                                                                                         |
 
 Open:
 
@@ -105,16 +106,17 @@ Open:
 
 ## Accounts. `@adeildo/pi-providers`
 
-| Item               | Status  | Note                                                                                                                                     |
-| ------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Subscription       | done    | an Anthropic OAuth request is billed to the Claude plan, and an API key goes out untouched                                               |
-| Several accounts   | done    | every credential of a provider with accounts is a named account, `/accounts` manages them and `Alt+A` switches                           |
-| Switch on limit    | done    | an account that hits a limit hands over to the next one, asking first by default                                                         |
-| Cache between runs | done    | pi's idle refreshes go out while the chance you come back, learned from a month of sessions, pays for them. About 23 minutes on Opus 5.5 |
-| Cache misses       | next    | the Providers tab names why each miss happened: a pause, a restart, a changed system prompt, the server's clearing                       |
-| Quota per plan     | next    | what is left and when it resets, read from the endpoints below. A feature of its own, because three items read it                        |
-| Account by quota   | planned | the switch moves to the account with the most left, instead of the next in the list. Needs the quota                                     |
-| Quota on the look  | planned | a segment in the footer, in percent and reset time. Needs the quota                                                                      |
+| Item               | Status  | Note                                                                                                                                                                                                        |
+| ------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Subscription       | done    | an Anthropic OAuth request is billed to the Claude plan, and an API key goes out untouched                                                                                                                  |
+| Several accounts   | done    | every credential of a provider with accounts is a named account, `/accounts` manages them and `Alt+A` switches                                                                                              |
+| Switch on limit    | done    | an account that hits a limit hands over to the next one, asking first by default                                                                                                                            |
+| Cache between runs | done    | pi's idle refreshes go out while the chance you come back, learned from a month of sessions, pays for them. About 23 minutes on Opus 5.5                                                                    |
+| Cache misses       | done    | the Providers tab lists each request that wrote the cache again, what it cost over reading it, and why: a pause, a prune or a server clear, a compaction, a new model, a changed system prompt or tool list |
+| Claude Code pin    | done    | the version Pi reports is pinned, and a cron reverse engineers each Claude Code release and opens the bump pull request                                                                                     |
+| Quota per plan     | next    | what is left and when it resets, read from the endpoints below. A feature of its own, because three items read it                                                                                           |
+| Account by quota   | planned | the switch moves to the account with the most left, instead of the next in the list. Needs the quota                                                                                                        |
+| Quota on the look  | planned | a segment in the footer, in percent and reset time. Needs the quota                                                                                                                                         |
 
 The quota endpoints are not official, and each needs the token pi already stores.
 
@@ -135,12 +137,14 @@ Open:
 
 ## What I see. `@adeildo/pi-look`
 
-| Item                     | Status | Note                                                                                                       |
-| ------------------------ | ------ | ---------------------------------------------------------------------------------------------------------- |
-| The start card           | done   | the model with its effort, the folder and the tree, the machine, what loaded, and the keys worth knowing   |
-| The framed editor        | done   | the branch, the folder, the permission mode, the model and the context in its borders                      |
-| The strip and the footer | done   | the stopwatch, the last call's wait and speed, then the cost, the tokens, the cache and the average speeds |
-| A box around each call   | done   | the icon, the name, the reason it ran, a cut before the output, and the time on the bottom line            |
+| Item                     | Status | Note                                                                                                                                                                                                                                              |
+| ------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The start card           | done   | the π, the folder and the model, and under them only what changed or waits on me since my last session there: a sign-in, a conflict, a branch behind, a failed CI run, a pull request with changes requested, other agents, a new harness version |
+| The framed editor        | done   | the branch, the folder, the permission mode, the model and the context in its borders                                                                                                                                                             |
+| The strip and the footer | done   | the stopwatch, the last call's wait and speed, then the cost, the tokens, the cache and the average speeds                                                                                                                                        |
+| A box around each call   | done   | the icon, the name, the reason it ran, a cut before the output, and the time on the bottom line. An `edit` or `write` shows its end while the model writes it, and my messages and pi's own entries wear the same frame                           |
+| The output of a call     | done   | `Alt+O` opens one call's whole output to scroll, newest first, the arrows moving between calls                                                                                                                                                    |
+| Settings with a preview  | done   | `Alt+S` keeps three choices, the icons, the editor's frame and my messages' frame, each drawn as I pick it                                                                                                                                        |
 
 Open:
 
@@ -205,6 +209,7 @@ Open:
 | -------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The pi defaults check      | done    | `bun run pi:defaults` fails when pi moves a default a harness setting was chosen against                                                                  |
 | One frame for every dialog | done    | `pi-kit` owns the frame, the keys on its edge, the pointer and the rule (`packages/kit/src/ui/frame.ts`), with `DESIGN.md`; every dialog draws through it |
+| The typing bench           | done    | `bun run bench:typing` measures what one keystroke costs on a real session, with the profile of the window                                                |
 | `/harness setup`           | planned | Applies the pi settings listed in `packages/harness/src/setup.ts`, which a package cannot set by itself                                                   |
 | A release preflight        | planned | Refuses to release when `main` is behind, the tree is dirty, or CI is red for the commit                                                                  |
 | A local release dry run    | planned | Installs the packed tarballs outside the repository and runs a real `pi` session against them                                                             |
