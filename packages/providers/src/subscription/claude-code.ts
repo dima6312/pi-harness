@@ -52,8 +52,7 @@ export const CLAUDE_CODE_FEATURES = [
 		name: "web_search",
 		header: "web-search-2025-03-05",
 		turn: false,
-		description:
-			"Vertex and Foundry only. Vertex and Foundry only, where the server runs the search.",
+		description: "Vertex and Foundry only. The server runs the search.",
 	},
 	{
 		name: "tool_search",

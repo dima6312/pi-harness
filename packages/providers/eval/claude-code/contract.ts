@@ -51,7 +51,7 @@ const NOTES: Record<string, string> = {
 	"context-management-2025-06-27":
 		"travels with `context_management`, the edits that clear old tool results",
 	"structured-outputs-2025-12-15": "travels with `output_config.format`, which pi never sends",
-	"web-search-2025-03-05": "Vertex and Foundry only, where the server runs the search",
+	"web-search-2025-03-05": "the server runs the search",
 	"advanced-tool-use-2025-11-20": "tools load on demand instead of all at once",
 	"tool-search-tool-2025-10-19": "the earlier name of that same tool search",
 	"effort-2025-11-24": "travels with `output_config.effort`",

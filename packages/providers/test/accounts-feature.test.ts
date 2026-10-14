@@ -336,6 +336,25 @@ test("after you stop on an account at its limit, its next limits fail without as
 	expect(asked).toBe(2);
 });
 
+test("closing the limit dialog with esc counts as stopping there", async () => {
+	const store = new AccountStore();
+	store.add("anthropic", "personal", OAUTH);
+	store.add("anthropic", "work", OTHER);
+	const [personal] = store.accounts("anthropic");
+	if (personal === undefined) throw new Error("no accounts");
+	const pins: Pins = new Map([["anthropic", personal.id]]);
+	const declined = new Map<string, Set<string>>();
+	const scope = fakeScope({ pi: fakePi() });
+	scope.settings.register([onLimit]);
+	const ctx = fakeContext([], true, {
+		model: { provider: "anthropic" },
+		ui: { setStatus: () => {}, notify: () => {}, select: async () => undefined },
+	});
+
+	await afterLimit(scope, store, pins, ctx, "anthropic", personal.id, "429", new Map(), declined);
+	expect(declined.get("anthropic")?.has(personal.id)).toBe(true);
+});
+
 test("a second account that refuses in the same session is not asked about again", async () => {
 	const store = new AccountStore();
 	store.add("anthropic", "personal", OAUTH);
