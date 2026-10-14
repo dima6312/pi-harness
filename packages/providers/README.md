@@ -94,6 +94,8 @@ A refresh goes out when that chance times the cost of a miss is more than the co
 
 A restart or `/reload` stops the refreshes, since they run inside pi.
 
+The Prompt cache section of the Providers tab also lists this session's misses: the requests that wrote the prompt cache again instead of reading it, what that cost over reading, and why. A miss comes from a pause past the cache's life, a prune or a server clear that cut the context, a compaction, a change of model, or a change to the system prompt or the tools. A miss after a warming refresh that kept the cache alive does not count as a pause.
+
 ## Settings
 
 In `~/.pi/agent/extensions/pi-harness/settings.json`:

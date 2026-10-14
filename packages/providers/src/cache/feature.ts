@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { defineFeature, type FeatureScope } from "@adeildo/pi-kit";
+import { defineFeature, type FeatureScope, type ScreenEntry } from "@adeildo/pi-kit";
 import type { ExtensionContext, TurnEndEvent } from "@earendil-works/pi-coding-agent";
 
+import { missesOf, missesSummary, missLine } from "./misses.ts";
 import {
 	endsOnQuestion,
 	isReturns,
@@ -90,6 +91,41 @@ function registerScreen(scope: FeatureScope, learned: () => Learned | undefined)
 		description: `When you came back after a run, over the last ${LEARN_DAYS} days of sessions.`,
 		text: (ctx) => learnedText(learned(), ctx.model),
 	});
+	// Read when the screen opens: a session's misses only change with its requests.
+	scope.screen.rows((ctx) => {
+		const misses = missesOf(ctx.sessionManager.getBranch());
+		const prices = ctx.model?.cost;
+		const summary: ScreenEntry = {
+			kind: "info",
+			id: "cache.misses",
+			section: WARM_SECTION,
+			label: "Misses",
+			description:
+				"Requests that wrote the prompt cache again instead of reading it, in this session, and why.",
+			text: () => missesSummary(misses, prices),
+		};
+		const latest = misses.slice(-LATEST_MISSES).toReversed();
+		return [
+			summary,
+			...latest.map((miss, index): ScreenEntry => ({
+				kind: "info",
+				id: `cache.miss.${index}`,
+				section: WARM_SECTION,
+				label: clockOf(miss.at),
+				description: "A miss, newest first.",
+				indent: 1,
+				text: () => missLine(miss, prices),
+			})),
+		];
+	});
+}
+
+/** The newest misses listed under the summary. */
+const LATEST_MISSES = 5;
+
+function clockOf(at: number): string {
+	const date = new Date(at);
+	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 export function learnedText(
