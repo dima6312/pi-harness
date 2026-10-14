@@ -38,6 +38,7 @@ export function screen(
 	overrides: Partial<Screen> & { slots?: Partial<Record<SlotName, SegmentId[]>> } = {},
 ): Screen {
 	const slots = { ...SLOTS, ...overrides.slots };
+	let revision = 0;
 	return {
 		snapshot: () => data,
 		glyphs: (): Glyphs => ASCII,
@@ -49,6 +50,10 @@ export function screen(
 		decorate: (line) => line,
 		skills: () => false,
 		cursor: () => "block",
+		revision: () => revision,
+		bump: () => {
+			revision++;
+		},
 		...overrides,
 	};
 }

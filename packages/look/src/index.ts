@@ -112,7 +112,10 @@ export const look = defineFeature({
 			return { theme: live.ctx.ui.theme, set: glyphs().set, you: userFrame.get(scope) };
 		});
 		frameQueue(() => live.ctx?.ui.theme);
-		const repaint = () => live.repaint?.();
+		const repaint = () => {
+			screen.bump();
+			live.repaint?.();
+		};
 
 		for (const entry of LOOK_SETTINGS) entry.listen(scope, repaint);
 		frame.listen(scope, () => live.ctx && installEditor(live.ctx, screen, live, scope));
@@ -131,7 +134,12 @@ export const look = defineFeature({
 					new FooterComponent(tui, data, screen, {
 						attach: (footerData, paint) => {
 							live.footerData = footerData;
-							live.repaint = paint;
+							// Everything that asks for a redraw says what the screen draws may have changed, which is
+							// what a component that keeps its drawing for a moment compares.
+							live.repaint = () => {
+								screen.bump();
+								paint();
+							};
 						},
 						detach: () => {
 							live.footerData = undefined;
@@ -304,6 +312,8 @@ function createScreen(
 	telemetry: Telemetry,
 	glyphs: () => Glyphs,
 ): Screen {
+	// What the components that keep a drawing for a moment compare: an event, a probe, a new branch.
+	let revision = 0;
 	const slots: Record<SlotName, typeof strip> = {
 		strip,
 		stripRight,
@@ -337,6 +347,10 @@ function createScreen(
 			return snapshot;
 		},
 		glyphs,
+		revision: () => revision,
+		bump: () => {
+			revision++;
+		},
 		paint: (border) => (live.ctx === undefined ? PLAIN : themePaint(live.ctx.ui.theme, border)),
 		separator: () => SEPARATOR,
 		options: () => ({

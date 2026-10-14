@@ -97,6 +97,7 @@ function snapshot(theme: Theme): Snapshot {
 
 function screen(theme: Theme): Screen {
 	const data = snapshot(theme);
+	let revision = 0;
 	return {
 		snapshot: () => data,
 		glyphs: () => NERD,
@@ -113,6 +114,10 @@ function screen(theme: Theme): Screen {
 		decorate: (line) => line,
 		skills: () => false,
 		cursor: () => "block",
+		revision: () => revision,
+		bump: () => {
+			revision++;
+		},
 	};
 }
 

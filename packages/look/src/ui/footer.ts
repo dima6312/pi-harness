@@ -8,6 +8,45 @@ import { type Screen, type SlotName, slotPieces } from "./screen.ts";
 const GAP = 3;
 /** Room reserved for the strip, so its changing width never moves the right side between lines. */
 const STRIP_ROOM = 56;
+/**
+ * How long the footer and the strip are drawn again without a reason. What they show moves with the
+ * clock, the live tokens and the context, and none of that reads differently 100 ms later, while a
+ * keystroke always redraws both. Anything that asks for a redraw drops the drawing anyway.
+ */
+const REDRAW_MS = 100;
+
+/**
+ * A drawing kept per width and per revision of the screen for a moment. The transcript draws every
+ * entry on every keystroke, and the footer and the strip were built again each time.
+ */
+class KeptDrawing {
+	#drawn: { width: number; revision: number; at: number; lines: string[] } | undefined;
+
+	constructor(
+		private readonly screen: Screen,
+		private readonly draw: (width: number) => string[],
+	) {}
+
+	render(width: number): string[] {
+		const now = Date.now();
+		const revision = this.screen.revision();
+		const drawn = this.#drawn;
+		if (
+			drawn !== undefined &&
+			drawn.width === width &&
+			drawn.revision === revision &&
+			now - drawn.at < REDRAW_MS
+		)
+			return drawn.lines;
+		const lines = this.draw(width);
+		this.#drawn = { width, revision, at: now, lines };
+		return lines;
+	}
+
+	invalidate(): void {
+		this.#drawn = undefined;
+	}
+}
 
 export function indentOf(screen: Screen): number {
 	const style = screen.frameStyle();
@@ -16,12 +55,22 @@ export function indentOf(screen: Screen): number {
 
 export class StripComponent implements Component {
 	readonly #screen: Screen;
+	readonly #kept: KeptDrawing;
 
 	constructor(screen: Screen) {
 		this.#screen = screen;
+		this.#kept = new KeptDrawing(screen, (width) => this.#draw(width));
 	}
 
 	render(width: number): string[] {
+		return this.#kept.render(width);
+	}
+
+	invalidate(): void {
+		this.#kept.invalidate();
+	}
+
+	#draw(width: number): string[] {
 		const screen = this.#screen;
 		const indent = indentOf(screen);
 		const room = width - indent * 2;
@@ -40,8 +89,6 @@ export class StripComponent implements Component {
 		}
 		return [pad(renderSlot(screen, "strip", room)), pad(renderSlot(screen, "stripRight", room))];
 	}
-
-	invalidate(): void {}
 }
 
 export interface FooterHooks {
@@ -53,15 +100,29 @@ export class FooterComponent implements Component {
 	readonly #screen: Screen;
 	readonly #hooks: FooterHooks;
 	readonly #stopWatching: () => void;
+	readonly #kept: KeptDrawing;
 
 	constructor(tui: TUI, data: ReadonlyFooterDataProvider, screen: Screen, hooks: FooterHooks) {
 		this.#screen = screen;
 		this.#hooks = hooks;
+		this.#kept = new KeptDrawing(screen, (width) => this.#draw(width));
 		hooks.attach(data, () => tui.requestRender());
-		this.#stopWatching = data.onBranchChange(() => tui.requestRender());
+		this.#stopWatching = data.onBranchChange(() => {
+			// A new branch is drawn now, not on the next keystroke.
+			screen.bump();
+			tui.requestRender();
+		});
 	}
 
 	render(width: number): string[] {
+		return this.#kept.render(width);
+	}
+
+	invalidate(): void {
+		this.#kept.invalidate();
+	}
+
+	#draw(width: number): string[] {
 		const screen = this.#screen;
 		const indent = indentOf(screen);
 		const room = width - indent * 2;
@@ -77,8 +138,6 @@ export class FooterComponent implements Component {
 		const kept = lines.filter((line) => line !== "").map((line) => `${pad}${line}`);
 		return kept.length === 0 ? [""] : kept;
 	}
-
-	invalidate(): void {}
 
 	dispose(): void {
 		this.#stopWatching();

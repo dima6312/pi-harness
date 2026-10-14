@@ -29,6 +29,14 @@ export interface Screen {
 	decorate(line: string): string;
 	/** True when a skills feature expands `/skill:` references. */
 	skills(): boolean;
+	/**
+	 * How many times the screen was told that what it draws changed. Something that keeps a drawing
+	 * for a moment compares this: a branch, a model or a probe that answered must not wait for the
+	 * next keystroke to show up.
+	 */
+	revision(): number;
+	/** Records that something the screen draws changed, such as an event or a probe that answered. */
+	bump(): void;
 }
 
 export function slotPieces(

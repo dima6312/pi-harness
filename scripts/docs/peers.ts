@@ -73,15 +73,21 @@ export async function peersRoom(
 				{ op: "ask", text: "Move the users table" },
 				{ op: "done", id: "t1", result: "7e1c208, 41 tests" },
 				{ op: "ask", text: "Move the sessions table" },
+				{ op: "progress", id: "t2" },
 				{ op: "ask", text: "Tick the schema off the list" },
 			]),
 		});
+
+		migration.log("session.state", { state: "running" });
 
 		me.log("session.named", { handle: "docs", title: "Rewrite the README" });
 		me.log("session.state", { state: "running" });
 		me.log("tasks.changed", {
 			state: tasks("Rewrite the README", [{ op: "ask", text: "Rewrite the README" }]),
 		});
+		me.log("activity", { kind: "edited", path: "packages/peers/README.md" });
+		me.log("activity", { kind: "edited", path: "packages/kit/src/ui/entry.ts" });
+		me.log("activity", { kind: "ran", command: "bun run docs", ok: true });
 
 		// You ask anyone, both agents bid, and the best fit takes it.
 		me.post("any", "Switch the login to OAuth", "you");
