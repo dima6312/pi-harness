@@ -43,6 +43,6 @@ export function pruneLine(theme: Theme): string[] {
 		"",
 		...new PruneEntry(record, false, theme).render(WIDTH),
 		"",
-		` ${theme.fg("warning", "Cache miss: 168k tokens re-billed (~$0.95)")}`,
+		` ${theme.fg("warning", "Cache miss: 168k tokens re-billed ($0.947)")}`,
 	];
 }

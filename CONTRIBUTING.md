@@ -54,6 +54,7 @@ Build it with `defineFeature` and `createApp` from `@adeildo/pi-kit`. The harnes
 bun test                      # everything
 bun test ./packages/look      # one package
 bun run perf                  # the redraw guard on its own
+bun run bench:typing          # what one keystroke costs on a real session, with the profile of the window
 ```
 
 `@adeildo/pi-kit/testing` fakes pi, a scope and a context, and two fakes on one event bus behave like two extensions in the same process. A test file for a package, a feature or a single rule is the unit here: the rule is what the test names, and the failing case matters more than the happy one.

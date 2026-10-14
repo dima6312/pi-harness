@@ -125,7 +125,7 @@ for (const scene of SCENES) {
 const stale = pictures.filter(isStale);
 const write = !process.argv.includes("--check");
 
-if (write) for (const entry of stale) await draw(entry);
+if (write) await Promise.all(stale.map((entry) => draw(entry)));
 const changed = [...syncPages(blocks, write), ...stale.map((entry) => entry.file)];
 
 if (!write && changed.length > 0) {
