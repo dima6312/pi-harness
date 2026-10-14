@@ -8,6 +8,8 @@ import { isObject } from "@adeildo/pi-kit";
 import { clearAtLeast, KEPT_TOOLS } from "./prune.ts";
 
 export const KEEP_TOOL_USES = 10;
+// The providers package merges its own betas too, but compact cannot import it, and the list here
+// only ever holds strings.
 const BETA = "context-management-2025-06-27";
 
 /** Anthropic's own API only: other endpoints that speak it may refuse the beta. */
