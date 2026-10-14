@@ -8,6 +8,7 @@ import { type Component, truncateToWidth, wrapTextWithAnsi } from "@earendil-wor
 import { addressees } from "../folder.ts";
 import type { Here } from "../here.ts";
 import type { SentDetails } from "../index.ts";
+import { EVERYONE_MENTION } from "../mention.ts";
 import { award } from "../rules.ts";
 
 interface Args {
@@ -78,7 +79,7 @@ function callLines(
 	writing: boolean,
 ): string[] {
 	if (args.action !== "send") return [theme.fg("muted", "read the board")];
-	const to = (args.to ?? "everyone")
+	const to = (args.to ?? EVERYONE_MENTION)
 		.split(",")
 		.map((name) => name.trim())
 		.filter(Boolean)

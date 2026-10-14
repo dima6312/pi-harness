@@ -130,14 +130,16 @@ export class Here {
 
 	/** One mark per other session, and how many asked this one something its agent has not read. */
 	summary(): { others: BoardMark[]; unread: number } {
-		const named = this.names();
+		const live = this.live();
+		const named = namesOf(live);
 		const others: BoardMark[] = [];
-		for (const peer of this.live()) {
+		for (const peer of live) {
 			if (peer.session === this.session) continue;
+			const handle = named.get(peer.session);
 			const waiting = peer.tasks !== undefined && tasksWith(peer.tasks, "waiting").length > 0;
 			others.push({
-				handle: named.get(peer.session)?.handle ?? "anon",
-				color: named.get(peer.session)?.color ?? "muted",
+				handle: handle?.handle ?? "anon",
+				color: handle?.color ?? "muted",
 				state: waiting ? "waiting" : peer.state === "running" ? "running" : "idle",
 			});
 		}

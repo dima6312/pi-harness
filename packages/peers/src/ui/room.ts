@@ -24,7 +24,7 @@ import {
 } from "@earendil-works/pi-tui";
 
 import type { Peer } from "../folder.ts";
-import type { Here } from "../here.ts";
+import type { Here, Typing } from "../here.ts";
 import { ANYONE_MENTION, EVERYONE_MENTION, isGroupMention, typingMention } from "../mention.ts";
 import { byHandle, mentionedNames, mentionsIn, type Named } from "../names.ts";
 import { agentLines, inOrder, MARKS, markOf, stateOf, stateText } from "./agents.ts";
@@ -171,9 +171,17 @@ export class RoomView implements Component, Focusable {
 		const shown = window(agents.lines, agents.selectedAt, agents.selectedEnd, agentsHeight);
 		const pickedRow = this.#pane === "agents" ? agents.selectedAt - shown.start : -1;
 
+		const typing = here.othersTyping();
 		const picker = this.#picker(this.#candidates(), names, roomWidth);
 		const columnHeight = beside ? height : height - agentsHeight - 1;
-		const right = this.#roomColumn(roomWidth, Math.max(2, columnHeight), picker, names, live);
+		const right = this.#roomColumn(
+			roomWidth,
+			Math.max(2, columnHeight),
+			picker,
+			names,
+			live,
+			typing,
+		);
 
 		const column = theme.fg("borderMuted", LINE.v);
 		const pair = (left: string, room: string) => {
@@ -212,9 +220,10 @@ export class RoomView implements Component, Focusable {
 		picker: readonly string[],
 		names: ReadonlyMap<string, Named>,
 		live: readonly Peer[],
+		typing: readonly Typing[],
 	): string[] {
 		const { theme, here } = this.#options;
-		const feed = feedView(here.folder.room, here.othersTyping(), {
+		const feed = feedView(here.folder.room, typing, {
 			theme,
 			now: this.#now(),
 			width,
@@ -305,7 +314,7 @@ export class RoomView implements Component, Focusable {
 		const prompt = pointer(theme, true, this.#pane === "room");
 		const value = this.#composer.getValue();
 		const writing = value.trim() === "" || this.#candidates().length > 0;
-		const to = writing ? theme.fg("dim", "everyone") : this.#destination(value, names);
+		const to = writing ? theme.fg("dim", EVERYONE_MENTION) : this.#destination(value, names);
 		const room = Math.max(1, width - ENTRY_X - 2);
 		const [drawn = ""] = this.#composer.render(room);
 		return entryFrame([`${prompt}${drawn}`], width, theme, {
@@ -332,7 +341,7 @@ export class RoomView implements Component, Focusable {
 		if (mentioned.includes(EVERYONE_MENTION)) return theme.fg("muted", EVERYONE_MENTION);
 		if (mentioned.includes(ANYONE_MENTION)) return theme.fg("muted", ANYONE_MENTION);
 		const found = mentionsIn(names, text);
-		if (found.length === 0) return theme.fg("dim", "everyone");
+		if (found.length === 0) return theme.fg("dim", EVERYONE_MENTION);
 		return found
 			.map((named) => theme.fg(named.color as ThemeColor, `@${named.handle}`))
 			.join(theme.fg("dim", ", "));

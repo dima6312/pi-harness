@@ -5,6 +5,7 @@ import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component } from "@earendil-works/pi-tui";
 
 import type { Typing } from "../here.ts";
+import { EVERYONE_MENTION } from "../mention.ts";
 import { byHandle, type Named } from "../names.ts";
 import { dots, FRAME_MS, spin } from "./motion.ts";
 
@@ -75,7 +76,7 @@ export function typingRecipients(
 	theme: Theme,
 	me?: string,
 ): string {
-	if (to === "everyone") return theme.fg("muted", "everyone");
+	if (to === EVERYONE_MENTION) return theme.fg("muted", EVERYONE_MENTION);
 	return to
 		.split(",")
 		.map((part) => part.trim().replace(/^@/, ""))
