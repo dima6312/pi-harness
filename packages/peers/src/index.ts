@@ -145,6 +145,13 @@ export const peers = defineFeature({
 			);
 		});
 
+		// Something else may set the active tools before this one registers, as pi-subagents does on a
+		// reload, and then the agent has no way to talk to the others.
+		scope.on("before_agent_start", () => {
+			const active = scope.getActiveTools();
+			if (!active.includes(TOOL)) scope.setActiveTools([...active, TOOL]);
+		});
+
 		scope.onSessionStart((ctx) => {
 			session = ctx;
 			here.open(ctx.sessionManager, ctx.model === undefined ? undefined : modelRef(ctx.model));

@@ -23,6 +23,13 @@ afterEach(() => {
 async function mounted(id: string) {
 	writeFileSync(join(dir, "settings.json"), "{}");
 	const fake = fakePi();
+	let active = ["read", "bash"];
+	Object.assign(fake.pi, {
+		getActiveTools: () => active,
+		setActiveTools: (names: string[]) => {
+			active = names;
+		},
+	});
 	createApp(fake.pi, { name: "test", settingsPath: join(dir, "settings.json") })
 		.use(peers)
 		.build();
@@ -41,7 +48,7 @@ async function mounted(id: string) {
 		isIdle: () => true,
 	});
 	await fake.fire("session_start", {}, ctx);
-	return { fake, ctx, notes, editor: () => editor };
+	return { fake, ctx, notes, editor: () => editor, active: () => active };
 }
 
 test("no tool writes the folder's logs, so nothing can post words as yours", async () => {
@@ -166,6 +173,14 @@ test("@everyone alone in the folder puts your words back in the editor", async (
 	expect(notes).toEqual(["No other agent works in this folder."]);
 	expect(editor()).toBe("@everyone ship it");
 	expect(posted()).toEqual([]);
+});
+
+test("a run turns the tool back on when something else left it off", async () => {
+	const { fake, ctx, active } = await mounted("a");
+	await fake.fire("before_agent_start", { type: "before_agent_start", prompt: "" }, ctx);
+	expect(active()).toEqual(["read", "bash", "peers"]);
+	await fake.fire("before_agent_start", { type: "before_agent_start", prompt: "" }, ctx);
+	expect(active()).toEqual(["read", "bash", "peers"]);
 });
 
 test("the tool reads the board and refuses names nobody has", async () => {
