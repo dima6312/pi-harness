@@ -68,33 +68,20 @@ A quota belongs to the account, so an account that refused is skipped until it a
 
 ## Prompt cache
 
-Anthropic keeps a prompt in cache for 5 minutes. With pi's `cacheWarming` setting on `idle`, pi sends the last request again before the 5 minutes end, while the agent waits for you. Your next message then reads the prompt from cache instead of writing all of it again. On Opus 5.5 a refresh reads the prompt at 5% of the input price, and a miss writes it at 125%.
+Anthropic keeps a prompt in cache for 5 minutes. With pi's `cacheWarming` setting on `idle`, pi sends the last request again before that, while the agent waits for you, so your next message reads the prompt from cache instead of writing it again. On Opus 5.5 a refresh costs 5% of the input price, and a miss 125%.
 
-Pi assumes a fixed 15% chance that you come back before each refresh, and refreshes only when that saves 5 cents. On Opus 5.5 it skips every prompt under about 96k tokens, and refreshes the rest for 30 minutes. The chance falls the longer you are away, so `cache.strategy` picks how refreshes are decided:
+Pi assumes a fixed 15% chance that you come back, which on Opus 5.5 skips every prompt under about 96k tokens and refreshes the rest for 30 minutes. `cache.strategy` decides instead:
 
 | Value     | Refreshes                                                                                    |
 | --------- | -------------------------------------------------------------------------------------------- |
 | `learned` | While the chance you come back pays for the refresh, whatever the prompt's size. The default |
 | `pi`      | As pi decides on its own                                                                     |
-| `minutes` | Every time in the first `cache.upTo` minutes after the last request, then never              |
+| `minutes` | During the first `cache.upTo` minutes after the last request                                 |
 | `off`     | Never while you are away                                                                     |
 
-`learned` measures how long you took to answer after each run, in the last 30 days of sessions of every project. It reads them once a day, in the background. Runs that ended on a question to you are counted apart, because you answer those sooner. Until it has learned, it uses the chances measured on 1,688 runs:
+`learned` reads once a day how long you took to answer after each run, over the last 30 days of sessions, apart for runs that ended on a question to you. That keeps Opus 5.5 warm for about 23 minutes and Sonnet 4.6 for about 14. A restart or `/reload` stops the refreshes, since they run inside pi.
 
-| Away for         | Chance of a message before the next refresh |
-| ---------------- | ------------------------------------------- |
-| 4.5 to 9 min     | 28%                                         |
-| 9 to 13.5 min    | 12%                                         |
-| 13.5 to 18 min   | 7.4%                                        |
-| 18 to 22.5 min   | 6%                                          |
-| 22.5 to 31.5 min | 3.5%                                        |
-| more             | 1.5%                                        |
-
-A refresh goes out when that chance times the cost of a miss is more than the cost of the refresh. That is about 23 minutes on Opus 5.5, which reads cache at 5% of its input price, and about 14 on Sonnet 4.6, which reads at 10%. The Providers tab of `Alt+S` shows what was learned and how long it keeps the current model warm.
-
-A restart or `/reload` stops the refreshes, since they run inside pi.
-
-The Prompt cache section of the Providers tab also lists this session's misses: the requests that wrote the prompt cache again instead of reading it, what that cost over reading, and why. A miss comes from a pause past the cache's life, a prune or a server clear that cut the context, a compaction, a change of model, or a change to the system prompt or the tools. A miss after a warming refresh that kept the cache alive does not count as a pause.
+The Prompt cache section of the Providers tab shows what was learned, and lists this session's misses: each request that wrote the cache again, what that cost over reading it, and why. The causes are a pause past the cache's life, a prune or a server clear, a compaction, a new model, or a changed system prompt or tool list.
 
 ## Settings
 

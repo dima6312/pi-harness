@@ -36,7 +36,7 @@
 
 ## The dialog
 
-The options sit on the left, one line each. The panel on the right shows the option under the cursor: what it means, then what it looks like. The panel is as tall as the tallest option, so the dialog keeps its size while you move. A preview longer than the panel scrolls with `shift+↑` `shift+↓` or the mouse wheel, and the panel says how many lines it hides above and below. Under 100 columns the panel moves below the options.
+The options sit on the left, one line each. The panel on the right shows the option under the cursor: what it means, then what it looks like. The panel is as tall as the tallest option, so the dialog keeps its size while you move. A preview longer than the panel scrolls with `shift+↑` `shift+↓` or the mouse wheel, with a bar on its edge that shows where you are. A preview drawn with lines or columns keeps its spacing as written, and goes below the options when it is wider than the panel. Under 100 columns the panel always sits below the options.
 
 Several questions become tabs. `●` is where you are, `✓` is a question already answered, and `submit` turns green once every one has an answer.
 
@@ -64,11 +64,11 @@ The last row, **Type something.**, opens an editor in the panel, where `shift+en
 
 ## Before it sends
 
-The review tab lists each question with what you said under it. `✓` marks an answer and `›` a note, and a note on an option you turned down names that option. It names what is still blank. `enter` sends it anyway, and the model is told which questions were left unanswered.
+The review tab lists each question with what you said under it: `✓` before a pick, `✎` before your own words, and `note` before a note, which names its option when you turned that option down. A question without an answer shows `○ not answered`. `enter` sends it anyway, and the model is told which questions were left unanswered.
 
 ## In the chat
 
-While the model writes the call, the chat lists the questions as they arrive, so you can read them before the dialog opens. Once you answer, the call keeps the same blocks as the review tab. `ctrl+o` shows the questions uncut.
+While the model writes the call, the chat shows each question as it arrives, the last one whole with its options. Once written, the call shrinks to one line with the headers, since the dialog under it shows the questions. After you answer, the call keeps the same blocks as the review tab, and `ctrl+o` shows the questions uncut.
 
 Pi draws this dialog in the flow of the screen, like the permission dialog, so a tall one scrolls with the terminal and the chat above it stays in the scrollback. Over RPC, in an editor plugin or an ACP client, the questions go one at a time through the host's own select and input dialogs, without previews or notes. With no UI at all, the model never sees the tool.
 
