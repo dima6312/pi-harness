@@ -171,7 +171,18 @@ describe("telemetry", () => {
 		time.advance(3_000);
 		telemetry.runEnded();
 		time.advance(60_000);
-		expect(telemetry.run()).toEqual({ running: false, elapsedMs: 3_000, requests: 2 });
+		expect(telemetry.run()).toEqual({ running: false, elapsedMs: 3_000, requests: 2, cost: 0 });
+	});
+
+	test("adds up what the run's answers cost", () => {
+		const telemetry = new Telemetry(clock().now);
+		telemetry.requestStarted();
+		telemetry.answerGrew("a", usage({ output: 1 }), "writing");
+		telemetry.answerEnded(usage({ output: 10, cost: 0.12 }));
+		telemetry.requestStarted();
+		telemetry.answerGrew("b", usage({ output: 1 }), "writing");
+		telemetry.answerEnded(usage({ output: 10, cost: 0.19 }));
+		expect(telemetry.run()?.cost).toBeCloseTo(0.31);
 	});
 
 	test("an answer that never wrote anything leaves no record", () => {

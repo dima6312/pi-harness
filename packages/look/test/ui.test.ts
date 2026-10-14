@@ -182,22 +182,25 @@ describe("strip and footer", () => {
 	});
 
 	test("the strip lines up with the text in the frame", () => {
-		const data = snapshot({ run: { running: false, elapsedMs: 9_000, requests: 1 } });
-		expect(new StripComponent(screen(data)).render(80).map(plain)).toEqual(["  0:09"]);
+		const data = snapshot({ run: { running: false, elapsedMs: 9_000, requests: 1, cost: 0 } });
+		expect(new StripComponent(screen(data)).render(80).map(plain)).toEqual(["  answered in 0:09"]);
 	});
 
 	test("the tasks sit on the right of the strip when there is room, and under it when not", () => {
 		const tasks = tasksOf("draw the strip");
-		const data = snapshot({ tasks, run: { running: false, elapsedMs: 9_000, requests: 1 } });
+		const data = snapshot({
+			tasks,
+			run: { running: false, elapsedMs: 9_000, requests: 1, cost: 0 },
+		});
 		const strip = new StripComponent(screen(data, { slots: { stripRight: ["tasks"] } }));
 
 		const [wide = ""] = strip.render(100).map(plain);
 		expect(strip.render(100)).toHaveLength(1);
-		expect(wide).toMatch(/^ {2}0:09 +> draw the strip$/);
+		expect(wide).toMatch(/^ {2}answered in 0:09 +> draw the strip$/);
 		expect(wide).toHaveLength(98);
 
 		// Narrower than the room kept for the strip: the tasks get their own line, on the left.
-		expect(strip.render(70).map(plain)).toEqual(["  0:09", "  > draw the strip"]);
+		expect(strip.render(70).map(plain)).toEqual(["  answered in 0:09", "  > draw the strip"]);
 	});
 
 	test("on its own line a long step uses the whole width, and its words give way before its counts", () => {
@@ -217,7 +220,7 @@ describe("strip and footer", () => {
 		const tasks = tasksOf("draw the strip", "frame");
 		const busy = snapshot({
 			tasks,
-			run: { running: true, elapsedMs: 3_600_000, requests: 40 },
+			run: { running: true, elapsedMs: 3_600_000, requests: 40, cost: 0 },
 			last: {
 				firstTokenMs: 6_600,
 				generationMs: 3_300,
@@ -235,7 +238,10 @@ describe("strip and footer", () => {
 	test("the strip's width does not move the tasks between lines", () => {
 		const tasks = tasksOf("draw the strip");
 		const idle = snapshot({ tasks });
-		const busy = snapshot({ tasks, run: { running: true, elapsedMs: 3_600_000, requests: 40 } });
+		const busy = snapshot({
+			tasks,
+			run: { running: true, elapsedMs: 3_600_000, requests: 40, cost: 0 },
+		});
 		expect(stripLines(idle)).toBe(stripLines(busy));
 	});
 
@@ -249,7 +255,7 @@ describe("strip and footer", () => {
 		const hooks = { attach: () => {}, detach: () => {} };
 
 		const framed = new FooterComponent(fakeTui(), footerData, screen(data), hooks);
-		expect(framed.render(80).map(plain)).toEqual(["  $1.500"]);
+		expect(framed.render(80).map(plain)).toEqual(["  $1.500 this session"]);
 
 		const bare = new FooterComponent(
 			fakeTui(),

@@ -236,8 +236,8 @@ describe("segments", () => {
 
 	test("the run is a stopwatch, which keeps its shape as it counts", () => {
 		const run = (elapsedMs: number, requests: number) =>
-			text(["elapsed"], snapshot({ run: { running: true, elapsedMs, requests } }));
-		expect(run(12_300, 3)).toEqual(["0:12 ×3"]);
+			text(["elapsed"], snapshot({ run: { running: true, elapsedMs, requests, cost: 0 } }));
+		expect(run(12_300, 3)).toEqual(["0:12  3 calls"]);
 		expect(run(3_725_000, 1)).toEqual(["1:02:05"]);
 	});
 
@@ -253,8 +253,8 @@ describe("segments", () => {
 			subscription: true,
 		});
 		expect(text(["average", "cost", "cache", "tokens"], data)).toEqual([
-			"avg v290 ^31k tok/s",
-			"$0.139 sub",
+			"avg out 290 in 31k tok/s",
+			"$0.139 at API prices",
 			"R 98%",
 			// Sent is the whole prompt, cache included: 2.4k fresh plus 83k read.
 			"^85k v347",
@@ -309,7 +309,7 @@ const request = (decode: number | undefined, waitMs: number | undefined, output:
 			usage: { input: 2, output, cacheRead: 80_000, cacheWrite: 0, cost: 0 },
 			estimated: false,
 		},
-		run: { running: true, elapsedMs: 9_000, requests: 1 },
+		run: { running: true, elapsedMs: 9_000, requests: 1, cost: 0 },
 	});
 
 describe("stable widths", () => {
@@ -348,15 +348,15 @@ describe("labels", () => {
 		};
 		const data = snapshot({
 			last,
-			run: { running: false, elapsedMs: 8_000, requests: 2 },
+			run: { running: false, elapsedMs: 8_000, requests: 2, cost: 0 },
 			cacheHit: 97,
 		});
 		expect(text(["elapsed", "last", "tokens", "cache", "context"], data, { labels: true })).toEqual(
 			[
-				"0:08  2 calls",
+				"answered in 0:08  2 calls",
 				"last call 1.4s wait  900ms thought  v31 tok/s",
-				"^85k in v347 out",
-				"R 97% cached",
+				"in 85k  out 347",
+				"cache 97%",
 				"ctx 43% ###----- 431k/1M",
 			],
 		);

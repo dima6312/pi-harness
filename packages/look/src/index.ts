@@ -61,6 +61,7 @@ import { registerToolFrames } from "./ui/tool-frame.ts";
 import { type Activity, describe, draftedTool } from "./ui/working.ts";
 
 export { SEGMENT_IDS, SEGMENTS, type SegmentId } from "./render/segments.ts";
+import type { SegmentId } from "./render/segments.ts";
 export { ROLE_TOKENS } from "./render/paint.ts";
 
 const STRIP_WIDGET = "pi-look:strip";
@@ -267,10 +268,17 @@ function explain(screen: Screen): string {
 	const snapshot = screen.snapshot();
 	const paint = screen.paint();
 	const lines: string[] = [paint.bold("What is on screen")];
-	for (const name of Object.keys(SLOT_TITLES) as SlotName[]) {
-		const ids = screen.slot(name);
+	const groups: [string, readonly SegmentId[]][] = [
+		...(Object.keys(SLOT_TITLES) as SlotName[]).map((name): [string, readonly SegmentId[]] => [
+			SLOT_TITLES[name],
+			screen.slot(name),
+		]),
+		// Not on screen: the timings of the last call, kept for when an answer feels slow.
+		["The last call to the model", ["last", "wait", "speed", "server", "request"]],
+	];
+	for (const [title, ids] of groups) {
 		if (ids.length === 0) continue;
-		lines.push("", paint.role("brand", SLOT_TITLES[name]));
+		lines.push("", paint.role("brand", title));
 		for (const id of ids) {
 			const [piece] = renderSegments([id], {
 				snapshot,
@@ -285,13 +293,7 @@ function explain(screen: Screen): string {
 			lines.push(`  ${shown}`, `    ${paint.dim(`${id}: ${meaning}`)}`);
 		}
 	}
-	lines.push(
-		"",
-		paint.dim("Arrows are from where you sit: ↑ in is sent to the model, ↓ out comes back."),
-		paint.dim(
-			"Slots and labels live under look. in ~/.pi/agent/extensions/pi-harness/settings.json.",
-		),
-	);
+	lines.push("", paint.dim("In is what was sent to the model, out is what came back."));
 	return lines.join("\n");
 }
 

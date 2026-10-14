@@ -74,7 +74,7 @@ function snapshot(theme: Theme): Snapshot {
 		totals: { input: 120_000, output: 106_000, cacheRead: 33_900_000, cacheWrite: 0, cost: 11.07 },
 		cacheHit: 100,
 		subscription: true,
-		run: { running: true, elapsedMs: 47_000, requests: 2 },
+		run: { running: true, elapsedMs: 47_000, requests: 2, cost: 0 },
 		last: {
 			streaming: false,
 			waiting: false,

@@ -38,6 +38,8 @@ export interface RunView {
 	running: boolean;
 	elapsedMs: number;
 	requests: number;
+	/** What the run's answers cost so far, at the provider's prices. */
+	cost: number;
 }
 
 interface Request {
@@ -56,6 +58,7 @@ interface Run {
 	startedAt: number;
 	endedAt: number | undefined;
 	requests: number;
+	cost: number;
 }
 
 interface UsageLike {
@@ -86,7 +89,7 @@ export class Telemetry {
 	}
 
 	runStarted(): void {
-		this.#run = { startedAt: this.#now(), endedAt: undefined, requests: 0 };
+		this.#run = { startedAt: this.#now(), endedAt: undefined, requests: 0, cost: 0 };
 	}
 
 	runEnded(): void {
@@ -137,6 +140,7 @@ export class Telemetry {
 		const now = this.#now();
 		request.endedAt = now;
 		request.usage = usageTotals(usage);
+		if (this.#run !== undefined) this.#run.cost += usage.cost.total;
 		if (request.usage.output === 0 && request.firstTokenAt === undefined) return undefined;
 
 		if (request.characters > 0 && request.usage.output > 0) {
@@ -172,6 +176,7 @@ export class Telemetry {
 			running,
 			elapsedMs: (run.endedAt ?? this.#now()) - run.startedAt,
 			requests: run.requests,
+			cost: run.cost,
 		};
 	}
 

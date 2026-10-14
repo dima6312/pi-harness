@@ -344,18 +344,18 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 	elapsed: {
 		priority: 65,
 		describe:
-			"how long the agent has worked on this prompt, and how many calls to the model it made",
-		render: ({ snapshot, glyphs, paint, options }) => {
+			"the run: while the agent works, how long and how many calls to the model; once it answered, the same and what it cost",
+		render: ({ snapshot, glyphs, paint }) => {
 			const run = snapshot.run;
 			if (run === undefined) return undefined;
 			const role: Role = run.running ? "running" : "done";
 			const icon = mark(run.running ? glyphs.running : glyphs.done, paint, role);
 			const time = paint.role(role, stopwatch(run.elapsedMs));
-			const calls =
-				run.requests <= 1
-					? ""
-					: paint.dim(options.labels ? `  ${run.requests} calls` : ` ×${run.requests}`);
-			return { text: `${icon}${time}${calls}`, compact: `${icon}${time}` };
+			const lead = run.running ? time : `${paint.dim("answered in ")}${time}`;
+			const calls = run.requests <= 1 ? "" : paint.dim(`  ${run.requests} calls`);
+			const cost =
+				run.running || run.cost === 0 ? "" : `  ${paint.money(run.cost, money(run.cost))}`;
+			return { text: `${icon}${lead}${calls}${cost}`, compact: `${icon}${time}` };
 		},
 	},
 	last: {
@@ -440,9 +440,10 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 			// A session that spent nothing has nothing to say yet.
 			if (amount === 0) return undefined;
 			const value = paint.money(amount, money(amount));
-			const sub = snapshot.subscription ? paint.dim(" sub") : "";
+			// On a plan nothing is billed per token: the amount is what the tokens would cost.
+			const what = paint.dim(snapshot.subscription ? " at API prices" : " this session");
 			const icon = glyphs.cost === "$" ? "" : mark(glyphs.cost, paint, "cost");
-			return { text: `${icon}${value}${sub}`, compact: `${icon}${value}` };
+			return { text: `${icon}${value}${what}`, compact: `${icon}${value}` };
 		},
 	},
 	tokens: {
@@ -453,12 +454,13 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 			const totals = snapshot.totals;
 			if (tokensOf(totals) === 0) return undefined;
 			// Everything sent, not just the uncached part: `66 in` next to a million cached reads is a lie.
-			const sent = `${paint.role("sent", glyphs.sent)}${paint.role("sent", count(promptOf(totals)))}`;
-			const got = `${paint.role("received", glyphs.received)}${paint.role("received", count(totals.output))}`;
-			if (!options.labels) return { text: `${sent} ${got}` };
+			const sent = paint.role("sent", count(promptOf(totals)));
+			const got = paint.role("received", count(totals.output));
+			const arrows = `${paint.role("sent", glyphs.sent)}${sent} ${paint.role("received", glyphs.received)}${got}`;
+			if (!options.labels) return { text: arrows };
 			return {
-				text: `${sent}${paint.dim(" in")} ${got}${paint.dim(" out")}`,
-				compact: `${sent} ${got}`,
+				text: `${paint.dim("in ")}${sent}  ${paint.dim("out ")}${got}`,
+				compact: `${paint.dim("in ")}${sent} ${paint.dim("out ")}${got}`,
 			};
 		},
 	},
@@ -476,8 +478,8 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 			const value =
 				hit >= 90 ? paint.role("done", percent(hit)) : paint.stress(100 - hit, percent(hit));
 			return {
-				text: `${icon}${value}${options.labels ? paint.dim(" cached") : ""}`,
-				compact: `${icon}${value}`,
+				text: options.labels ? `${paint.dim("cache ")}${value}` : `${icon}${value}`,
+				compact: options.labels ? `${paint.dim("cache ")}${value}` : `${icon}${value}`,
 			};
 		},
 	},
@@ -485,17 +487,13 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 		priority: 25,
 		describe:
 			"the session's average speeds: ↓ the model writing, ↑ it reading the prompt, cache included",
-		render: ({ snapshot, glyphs, paint }) => {
+		render: ({ snapshot, paint }) => {
 			const { decode, prefill } = snapshot.averages;
 			if (decode === undefined && prefill === undefined) return undefined;
 			const down =
-				decode === undefined
-					? ""
-					: `${paint.role("received", glyphs.received)}${paint.role("speed", rate(decode))}`;
+				decode === undefined ? "" : `${paint.dim("out ")}${paint.role("speed", rate(decode))}`;
 			const up =
-				prefill === undefined
-					? ""
-					: `${paint.role("sent", glyphs.sent)}${paint.role("sent", rate(prefill))}`;
+				prefill === undefined ? "" : `${paint.dim("in ")}${paint.role("sent", rate(prefill))}`;
 			const label = paint.dim("avg ");
 			const unit = paint.dim(" tok/s");
 			return {
