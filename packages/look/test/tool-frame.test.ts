@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { createApp, RULING, type RulingRequest } from "@adeildo/pi-kit";
 import { fakePi } from "@adeildo/pi-kit/testing";
 import type { AgentToolResult, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
-import { Container, Text } from "@earendil-works/pi-tui";
+import { Container, stripTerminalSequences, Text } from "@earendil-works/pi-tui";
 
 import { look } from "../src/index.ts";
 import { editLines } from "../src/render/streaming.ts";
@@ -307,7 +307,9 @@ describe("an edit or a write while the model writes it", () => {
 		});
 		const call = chain?.renderCall?.(args, theme, ctx);
 		if (call === undefined) throw new Error("no call component");
-		return { lines: call.render(72).map((line) => line.trimEnd()), asked: () => asked };
+		// Pi's highlighter paints with its global theme, which another test file may have set first.
+		const lines = call.render(72).map((line) => stripTerminalSequences(line).trimEnd());
+		return { lines, asked: () => asked };
 	}
 
 	const content = Array.from(
