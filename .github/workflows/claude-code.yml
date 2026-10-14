@@ -1,0 +1,72 @@
+# Reverse engineers the Claude Code release the harness mimics: the pin, the features it knows, the
+# betas a turn asks for, and the shape of the request it sends. A release that verifies opens a pull
+# request with the new pin; one that does not files an issue. A cron, because Anthropic publishes no
+# event, and by hand for a re-check. The steps are in scripts/claude-code.ts.
+#
+# No account is involved: the release is on a public bucket, and the turn the eval runs is answered by
+# a server of its own, so a credential would only be a way to spend money on a request nothing reads.
+#
+# GitHub stops a cron after 60 days without activity in the repository; re-enable it from the
+# Actions tab if that happens.
+name: Claude Code
+
+on:
+  schedule:
+    # Every 12 hours, offset from the hour so it does not sit on top of the other crons.
+    - cron: "17 */12 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: claude-code
+  cancel-in-progress: false
+
+jobs:
+  claude-code:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+
+      - id: compare
+        run: bun scripts/claude-code.ts compare
+
+      - if: steps.compare.outputs.test == 'true'
+        run: bun install --frozen-lockfile
+
+      # Downloads the release, runs a turn of it against a server here, and reads the feature
+      # registry out of the binary.
+      - if: steps.compare.outputs.test == 'true'
+        run: bun scripts/claude-code.ts bump
+
+      # One retry, because Bun has flaked in the runner. A second failure is worth an issue.
+      - id: verify
+        if: steps.compare.outputs.test == 'true'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          if bun run verify 2>&1 | tee verify.log; then exit 0; fi
+          echo "::warning::verify failed, retrying once"
+          bun run verify 2>&1 | tee verify.log
+
+      - if: steps.compare.outputs.test == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-code
+          path: |
+            verify.log
+            contract.md
+          retention-days: 14
+
+      - if: steps.compare.outputs.test == 'true'
+        run: bun scripts/claude-code.ts report
+        env:
+          VERIFY: ${{ steps.verify.outcome }}
+          NEWEST: ${{ steps.compare.outputs.newest }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

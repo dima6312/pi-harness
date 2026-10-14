@@ -1,0 +1,243 @@
+{
+	"version": "2.1.299",
+	"userAgent": "claude-cli/2.1.299 (external, cli)",
+	"entrypoint": "cli",
+	"identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+	"system": [
+		{
+			"length": 70,
+			"cacheControl": false
+		},
+		{
+			"length": 57,
+			"cacheControl": true
+		},
+		{
+			"length": 5923,
+			"cacheControl": true
+		}
+	],
+	"fields": [
+		"context_management",
+		"max_tokens",
+		"metadata",
+		"model",
+		"output_config",
+		"safeguards",
+		"stream",
+		"thinking",
+		"tools"
+	],
+	"features": [
+		{
+			"name": "claude_code",
+			"header": "claude-code-20250219",
+			"turn": true
+		},
+		{
+			"name": "oauth_auth",
+			"header": "oauth-2025-04-20",
+			"turn": false
+		},
+		{
+			"name": "interleaved_thinking",
+			"header": "interleaved-thinking-2025-05-14",
+			"turn": true
+		},
+		{
+			"name": "long_context",
+			"header": "context-1m-2025-08-07",
+			"turn": false
+		},
+		{
+			"name": "context_management",
+			"header": "context-management-2025-06-27",
+			"turn": true
+		},
+		{
+			"name": "structured_outputs",
+			"header": "structured-outputs-2025-12-15",
+			"turn": false
+		},
+		{
+			"name": "web_search",
+			"header": "web-search-2025-03-05",
+			"turn": false
+		},
+		{
+			"name": "tool_search",
+			"header": "advanced-tool-use-2025-11-20",
+			"turn": false
+		},
+		{
+			"name": "tool_search",
+			"header": "tool-search-tool-2025-10-19",
+			"turn": false
+		},
+		{
+			"name": "effort",
+			"header": "effort-2025-11-24",
+			"turn": true
+		},
+		{
+			"name": "task_budgets",
+			"header": "task-budgets-2026-03-13",
+			"turn": false
+		},
+		{
+			"name": "prompt_caching_scope",
+			"header": "prompt-caching-scope-2026-01-05",
+			"turn": true
+		},
+		{
+			"name": "prompt_caching_evict",
+			"header": "prompt-caching-evict-2026-05-12",
+			"turn": false
+		},
+		{
+			"name": "cache_keepalive",
+			"header": "cache-keepalive-2026-09-03",
+			"turn": false
+		},
+		{
+			"name": "extended_cache_ttl",
+			"header": "extended-cache-ttl-2025-04-11",
+			"turn": false
+		},
+		{
+			"name": "speed",
+			"header": "fast-mode-2026-02-01",
+			"turn": false
+		},
+		{
+			"name": "redact_thinking",
+			"header": "redact-thinking-2026-02-12",
+			"turn": false
+		},
+		{
+			"name": "thinking_resumption",
+			"header": "thinking-resumption-2026-07-17",
+			"turn": false
+		},
+		{
+			"name": "thinking_token_count",
+			"header": "thinking-token-count-2026-05-13",
+			"turn": true
+		},
+		{
+			"name": "afk_mode",
+			"header": "afk-mode-2026-01-31",
+			"turn": true
+		},
+		{
+			"name": "advisor_tool",
+			"header": "advisor-tool-2026-03-01",
+			"turn": false
+		},
+		{
+			"name": "cache_diagnosis",
+			"header": "cache-diagnosis-2026-04-07",
+			"turn": false
+		},
+		{
+			"name": "context_hint",
+			"header": "context-hint-2026-04-09",
+			"turn": false
+		},
+		{
+			"name": "mcp_servers",
+			"header": "mcp-servers-2025-12-04",
+			"turn": false
+		},
+		{
+			"name": "files_api",
+			"header": "files-api-2025-04-14",
+			"turn": false
+		},
+		{
+			"name": "environments",
+			"header": "environments-2025-11-01",
+			"turn": false
+		},
+		{
+			"name": "ccr_byoc",
+			"header": "ccr-byoc-2025-07-29",
+			"turn": false
+		},
+		{
+			"name": "per_message_effort",
+			"header": "per-turn-control-2026-07-01",
+			"turn": true
+		},
+		{
+			"name": "per_turn_timing",
+			"header": "timing-2026-09-09",
+			"turn": false
+		},
+		{
+			"name": "mid_conv_tool_change",
+			"header": "mid-conversation-tool-changes-2026-07-01",
+			"turn": true
+		},
+		{
+			"name": "inline_tools",
+			"header": "inline-tools-2026-09-15",
+			"turn": false
+		},
+		{
+			"name": "server_side_fallback",
+			"header": "server-side-fallback-2026-06-01",
+			"turn": false
+		},
+		{
+			"name": "server_side_fallback_category",
+			"header": "server-side-fallback-2026-07-01",
+			"turn": false
+		},
+		{
+			"name": "fallback_credit",
+			"header": "fallback-credit-2026-06-01",
+			"turn": false
+		},
+		{
+			"name": "mid_conv_cache_promotion_latch",
+			"header": "x-cc-internal-mid-conv-cache-promotion",
+			"turn": false
+		},
+		{
+			"name": "mid_conv_cache_promotion_ok_latch",
+			"header": "x-cc-internal-mid-conv-cache-promotion-ok",
+			"turn": false
+		},
+		{
+			"name": "auto_mode_classifier",
+			"header": "auto-mode-classifier-2026-07-16",
+			"turn": false
+		},
+		{
+			"name": "dangerous_tool_use",
+			"header": "dangerous-tool-use-2026-09-03",
+			"turn": true
+		},
+		{
+			"name": "thinking_display_updates",
+			"header": "thinking-display-updates-2026-08-18",
+			"turn": true
+		},
+		{
+			"name": "thinking_binding_controls",
+			"header": "thinking-binding-controls-2026-08-01",
+			"turn": false
+		},
+		{
+			"name": "message_threads",
+			"header": "message-threads-2026-08-12",
+			"turn": false
+		},
+		{
+			"name": "mid_conversation_system_clear_at",
+			"header": "mid-conversation-system-clear-at-2026-08-21",
+			"turn": false
+		}
+	]
+}
