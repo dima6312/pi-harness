@@ -8,6 +8,7 @@ import {
 	type KeyHint,
 	GLYPH,
 	LINE,
+	thumbRange,
 } from "@adeildo/pi-kit";
 // Drawn inline instead of as an overlay, so a tall dialog scrolls with the terminal.
 import { getSelectListTheme, type Theme } from "@earendil-works/pi-coding-agent";
@@ -698,13 +699,11 @@ export class QuestionDialog implements Component, Focusable {
 
 	/** The lines in view, with a bar on the right whose thumb says where they are in the whole. */
 	private withScrollBar(shown: readonly string[], width: number, total: number): string[] {
-		const view = shown.length;
-		const thumb = Math.max(1, Math.round((view * view) / total));
-		const last = Math.max(1, total - view);
-		const from = Math.round((this.panelTop / last) * (view - thumb));
+		// Only called when the panel overflows, so the range is always there.
+		const thumb = thumbRange(total, shown.length, this.panelTop) ?? { start: 0, size: 0 };
 		const room = Math.max(1, width - BAR_WIDTH);
 		return shown.map((line, index) => {
-			const on = index >= from && index < from + thumb;
+			const on = index >= thumb.start && index < thumb.start + thumb.size;
 			const bar = on ? this.theme.fg("accent", LINE.vHeavy) : this.theme.fg("borderMuted", LINE.v);
 			const cut = truncateToWidth(line, room);
 			return `${cut}${" ".repeat(Math.max(0, room - visibleWidth(cut)))} ${bar}`;
