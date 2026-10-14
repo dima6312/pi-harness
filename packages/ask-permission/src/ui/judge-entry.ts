@@ -1,4 +1,4 @@
-import { drawnByWidth, ENTRY_X, entryFrame, type FeatureScope, GLYPH } from "@adeildo/pi-kit";
+import { CUT, drawnByWidth, ENTRY_X, entryFrame, type FeatureScope, GLYPH } from "@adeildo/pi-kit";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
@@ -96,7 +96,7 @@ class JudgeEntry implements Component {
 
 		const head = `${action}${tool}`;
 		const room = width - visibleWidth(head) - visibleWidth(stats) - 1;
-		const target = truncateToWidth(flatten(record.summary), Math.max(MIN_TARGET, room), "...");
+		const target = truncateToWidth(flatten(record.summary), Math.max(MIN_TARGET, room), CUT);
 		const gap = Math.max(
 			1,
 			width - visibleWidth(head) - visibleWidth(target) - visibleWidth(stats),

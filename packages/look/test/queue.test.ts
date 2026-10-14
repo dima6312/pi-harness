@@ -26,7 +26,7 @@ describe("messages waiting to be sent", () => {
 		expect(visible(block, 36)).toEqual([
 			`\u256d\u2504 queued ${"\u2504".repeat(25)}\u256e`,
 			"\u2506 steer  also run the docs check   \u2506",
-			"\u2506 next   then push\u2026                \u2506",
+			"\u2506 next   then push...              \u2506",
 			`\u2570\u2504 alt+up to edit ${"\u2504".repeat(17)}\u256f`,
 		]);
 	});

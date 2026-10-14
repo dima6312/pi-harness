@@ -1,3 +1,4 @@
+import { CUT } from "@adeildo/pi-kit";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 export interface Piece {
@@ -55,7 +56,7 @@ export function fitRegions(
 	return joined.map((text) =>
 		text === ""
 			? ""
-			: truncateToWidth(text, Math.max(0, width - overhead), options.ellipsis ?? "..."),
+			: truncateToWidth(text, Math.max(0, width - overhead), options.ellipsis ?? CUT),
 	);
 }
 

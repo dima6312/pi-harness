@@ -38,15 +38,15 @@ import { shippingTasks } from "./tasks.ts";
 
 const WIDTH = 100;
 
-const SLOTS: Record<SlotName, SegmentId[]> = {
-	strip: strip.get(),
-	stripRight: stripRight.get(),
-	topLeft: topLeft.get(),
-	topRight: topRight.get(),
-	bottomLeft: bottomLeft.get(),
-	bottomRight: bottomRight.get(),
-	below: below.get(),
-	belowRight: belowRight.get(),
+const SLOTS: Record<SlotName, readonly SegmentId[]> = {
+	strip,
+	stripRight,
+	topLeft,
+	topRight,
+	bottomLeft,
+	bottomRight,
+	below,
+	belowRight,
 };
 
 function snapshot(theme: Theme): Snapshot {
@@ -104,9 +104,9 @@ function screen(theme: Theme): Screen {
 		paint: (frame) => themePaint(theme, frame),
 		separator: () => SEPARATOR,
 		options: () => ({
-			pathLength: pathLength.get(),
-			gaugeCells: gaugeCells.get(),
-			labels: labels.get(),
+			pathLength,
+			gaugeCells,
+			labels,
 			claimed: claimedStatuses(Object.values(SLOTS)),
 		}),
 		slot: (name) => SLOTS[name],

@@ -1,6 +1,7 @@
 // Draws every tool call in a frame of its own: the mark and the name on the top rule, the call and
 // its result inside, and how it went on the bottom rule.
 import {
+	CUT,
 	type CallRuling,
 	type FeatureScope,
 	FRAMED,
@@ -21,6 +22,7 @@ import {
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 
+import { tabs } from "../render/format.ts";
 import { type IconSet, glyphsOf } from "../render/glyphs.ts";
 import { type Stream, STREAMERS } from "../render/streaming.ts";
 import { stateMark, toolIcon, toolLabel } from "../render/tools.ts";
@@ -195,7 +197,7 @@ function callText(args: unknown, theme: Theme, expanded: boolean): string {
 		const lines = entries.map(([key, value]) => {
 			const text =
 				typeof value === "string" ? value : (JSON.stringify(value, null, 2) ?? String(value));
-			return `  ${key}: ${replaceTabs(text).split("\n").join("\n    ")}`;
+			return `  ${key}: ${tabs(text).split("\n").join("\n    ")}`;
 		});
 		return theme.fg("muted", lines.join("\n"));
 	}
@@ -233,10 +235,6 @@ function expandHint(theme: Theme): string {
 	const keys = getKeybindings().getKeys("app.tools.expand");
 	if (keys.length === 0) return theme.fg("muted", "expand");
 	return `${theme.fg("dim", keys.join("/"))}${theme.fg("muted", " to expand")}`;
-}
-
-function replaceTabs(text: string): string {
-	return text.replace(/\t/g, "   ");
 }
 
 interface FrameParts {
@@ -423,7 +421,7 @@ function inside(lines: readonly string[], width: number, theme: Theme): string[]
 	const inner = room(width);
 	return trim(lines).map((line) => {
 		// Measuring is cheap, and cutting a line that already fits is not.
-		const text = visibleWidth(line) > inner ? truncateToWidth(line, inner, "...", true) : line;
+		const text = visibleWidth(line) > inner ? truncateToWidth(line, inner, CUT, true) : line;
 		const pad = " ".repeat(Math.max(0, inner - visibleWidth(text)));
 		return `${paint(LINE.v)} ${text}${pad} ${paint(LINE.v)}`;
 	});

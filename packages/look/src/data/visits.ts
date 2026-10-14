@@ -3,6 +3,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
+import { isObject } from "@adeildo/pi-kit";
+
 import type { LastVisit } from "./start-notes.ts";
 
 type Visits = Record<string, LastVisit>;
@@ -29,7 +31,7 @@ export function visit(
 function read(file: string): Visits {
 	try {
 		const value = JSON.parse(readFileSync(file, "utf8")) as unknown;
-		return typeof value === "object" && value !== null ? (value as Visits) : {};
+		return isObject(value) ? (value as Visits) : {};
 	} catch {
 		return {};
 	}

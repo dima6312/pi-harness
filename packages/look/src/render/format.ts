@@ -107,6 +107,11 @@ export function fitWidth(text: string, width: number, ellipsis = "..."): string 
 	return truncateToWidth(text, Math.max(0, width), ellipsis);
 }
 
+/** Tabs become three spaces: a tab is as wide as the terminal says, and these lines have a width. */
+export function tabs(text: string): string {
+	return text.replace(/\t/g, "   ");
+}
+
 function underHome(cwd: string, home: string): string {
 	const rest = relative(resolve(home), resolve(cwd));
 	const inside =

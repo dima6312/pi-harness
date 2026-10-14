@@ -3,6 +3,8 @@
 // nothing when gh is missing, the network is down, or the folder is not on GitHub.
 import { execFile } from "node:child_process";
 
+import { isObject } from "@adeildo/pi-kit";
+
 /** How long one command may take before it is given up on. The card is never worth a longer wait. */
 const TIMEOUT_MS = 3000;
 /** Room for a page of pull requests with their comments. */
@@ -119,17 +121,15 @@ function hasNewComment(pr: Record<string, unknown>, since: number | undefined): 
 	const comments = pr["comments"];
 	if (!Array.isArray(comments)) return false;
 	return comments.some((comment) => {
-		const entry = record(comment);
-		if (entry === undefined) return false;
-		const at = Date.parse(field(entry, "createdAt") ?? "");
-		const login = loginOf(entry["author"]);
+		if (!isObject(comment)) return false;
+		const at = Date.parse(field(comment, "createdAt") ?? "");
+		const login = loginOf(comment["author"]);
 		return Number.isFinite(at) && at > since && login !== undefined && login !== me;
 	});
 }
 
 function loginOf(value: unknown): string | undefined {
-	const author = record(value);
-	return author === undefined ? undefined : field(author, "login");
+	return isObject(value) ? field(value, "login") : undefined;
 }
 
 /** The stdout of a question that could not be asked is no answer at all. */
@@ -149,15 +149,7 @@ function rows(out: string | undefined): Record<string, unknown>[] {
 	} catch {
 		return [];
 	}
-	return Array.isArray(value) ? value.filter(isRecord) : [];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
-}
-
-function record(value: unknown): Record<string, unknown> | undefined {
-	return isRecord(value) ? value : undefined;
+	return Array.isArray(value) ? value.filter(isObject) : [];
 }
 
 function field(row: Record<string, unknown>, key: string): string | undefined {

@@ -22,7 +22,7 @@ import {
 } from "../control.ts";
 import type { Layer } from "../settings/store.ts";
 import { frameBottom, type KeyHint } from "../ui/frame.ts";
-import { GLYPH, LINE } from "../ui/glyphs.ts";
+import { CUT, GLYPH, LINE } from "../ui/glyphs.ts";
 import { applyRow, listTabs, runRow } from "./client.ts";
 import { keyOf, type Line, type ScreenModel } from "./model.ts";
 
@@ -405,7 +405,7 @@ export class ScreenView implements Component {
 
 		const border = (text: string): string => theme.fg("border", text);
 		const frame = (text: string): string =>
-			border(LINE.v) + truncateToWidth(text, inner, "...", true) + border(LINE.v);
+			border(LINE.v) + truncateToWidth(text, inner, CUT, true) + border(LINE.v);
 
 		const left = this.#mode.kind === "text" || inner < 50 ? 0 : this.#leftWidth(inner);
 		const title = ` ${theme.fg("accent", theme.bold("Settings"))} `;
@@ -471,7 +471,7 @@ export class ScreenView implements Component {
 				out.push(main);
 				continue;
 			}
-			const side = truncateToWidth(sections[index] ?? "", left, "...", true);
+			const side = truncateToWidth(sections[index] ?? "", left, CUT, true);
 			out.push(side + this.#options.theme.fg("borderMuted", LINE.v) + main);
 		}
 		return out;
@@ -502,7 +502,7 @@ export class ScreenView implements Component {
 	#sectionLines(width: number): string[] {
 		const { theme, model } = this.#options;
 		return model.sections().map((entry) => {
-			const text = truncateToWidth(entry.title, width - 3, "...");
+			const text = truncateToWidth(entry.title, width - 3, CUT);
 			return entry.active
 				? ` ${theme.fg("accent", `\u25b8 ${theme.bold(text)}`)}`
 				: `   ${theme.fg("dim", text)}`;
@@ -549,7 +549,7 @@ export class ScreenView implements Component {
 				line === undefined ? "" : this.#line(line, at === cursor, focused[at] === true, labelWidth);
 			const mark = bar[index];
 			const edge = mark === true ? theme.fg("scrollbarThumb", LINE.vHeavy) : " ";
-			out.push(truncateToWidth(text, width - 1, "...", true) + edge);
+			out.push(truncateToWidth(text, width - 1, CUT, true) + edge);
 		}
 		return out;
 	}
@@ -562,7 +562,7 @@ export class ScreenView implements Component {
 		const indent = "  ".repeat(row.indent ?? 0);
 		const cursor = selected ? theme.fg("accent", `${GLYPH.pointer} `) : "  ";
 		const room = Math.max(1, labelWidth - 1 - visibleWidth(indent));
-		const label = truncateToWidth(row.label, room, "...");
+		const label = truncateToWidth(row.label, room, CUT);
 		const pad = " ".repeat(Math.max(1, labelWidth - visibleWidth(indent) - visibleWidth(label)));
 		if (!focused) {
 			const value = stripTerminalSequences(this.#value(row, false));
@@ -635,7 +635,7 @@ export class ScreenView implements Component {
 				const current = item.opens === undefined && sameJson(item.value, mode.current);
 				mark = current ? theme.fg("accent", `${GLYPH.dot} `) : "  ";
 			}
-			const text = truncateToWidth(item.label, labelWidth - visibleWidth(mark) - 2, "...");
+			const text = truncateToWidth(item.label, labelWidth - visibleWidth(mark) - 2, CUT);
 			const label = selected ? theme.fg("accent", theme.bold(text)) : theme.fg("text", text);
 			const pad = " ".repeat(Math.max(1, labelWidth - visibleWidth(mark) - visibleWidth(text)));
 			const description = item.description === undefined ? "" : theme.fg("dim", item.description);

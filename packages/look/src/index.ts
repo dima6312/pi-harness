@@ -43,7 +43,6 @@ import {
 	labels,
 	LOOK_SETTINGS,
 	pathLength,
-	peek,
 	SECTIONS,
 	SEPARATOR,
 	strip,
@@ -199,13 +198,13 @@ export const look = defineFeature({
 
 		scope.on("agent_start", () => {
 			telemetry.runStarted();
-			setActivity(live, scope, { kind: "waiting" });
+			setActivity(live, { kind: "waiting" });
 			startTicking(live);
 		});
 
 		scope.on("turn_start", () => {
 			telemetry.requestStarted();
-			setActivity(live, scope, { kind: "waiting" });
+			setActivity(live, { kind: "waiting" });
 		});
 
 		scope.on("message_start", (event) => {
@@ -221,12 +220,12 @@ export const look = defineFeature({
 			telemetry.answerGrew(delta, message.usage, kind);
 
 			if (update.type === "thinking_start" || update.type === "thinking_delta") {
-				setActivity(live, scope, { kind: "thinking" });
+				setActivity(live, { kind: "thinking" });
 			} else if (update.type === "text_delta" || update.type === "text_start") {
-				setActivity(live, scope, { kind: "writing" });
+				setActivity(live, { kind: "writing" });
 			} else if (update.type === "toolcall_start" || update.type === "toolcall_delta") {
 				const tool = draftedTool(message.content);
-				if (tool !== undefined) setActivity(live, scope, { kind: "drafting", tool });
+				if (tool !== undefined) setActivity(live, { kind: "drafting", tool });
 			}
 		});
 
@@ -239,7 +238,7 @@ export const look = defineFeature({
 		});
 
 		scope.on("tool_execution_start", (event) => {
-			setActivity(live, scope, { kind: "running", tool: event.toolName });
+			setActivity(live, { kind: "running", tool: event.toolName });
 		});
 
 		scope.on("tool_execution_end", () => void probeGit(live));
@@ -361,14 +360,14 @@ function createScreen(
 		paint: (border) => (live.ctx === undefined ? PLAIN : themePaint(live.ctx.ui.theme, border)),
 		separator: () => SEPARATOR,
 		options: () => ({
-			pathLength: pathLength.get(scope),
-			gaugeCells: gaugeCells.get(scope),
-			labels: labels.get(scope),
-			claimed: claimedStatuses(Object.values(slots).map((entry) => entry.get(scope))),
+			pathLength,
+			gaugeCells,
+			labels,
+			claimed: claimedStatuses(Object.values(slots)),
 		}),
-		slot: (name) => slots[name].get(scope),
+		slot: (name) => slots[name],
 		frameStyle: () => frame.get(scope),
-		cursor: () => cursor.get(scope),
+		cursor: () => cursor,
 		decorate: (line) => {
 			const theme = live.ctx?.ui.theme;
 			if (theme === undefined) return line;
@@ -402,7 +401,7 @@ function installEditor(
 	}
 	ctx.ui.setEditorComponent((tui, theme, keybindings) => {
 		live.tui = tui;
-		applyCursor(tui, cursor.get(scope));
+		applyCursor(tui, cursor);
 		return new LookEditor(tui, theme, keybindings, screen);
 	});
 }
@@ -415,7 +414,7 @@ function installHeader(
 	github: () => GithubState | undefined,
 ): void {
 	if (ctx.mode !== "tui") return;
-	if (header.get(scope) === "off") {
+	if (header === "off") {
 		ctx.ui.setHeader(undefined);
 		return;
 	}
@@ -424,7 +423,7 @@ function installHeader(
 			new HeaderComponent(
 				screen,
 				{
-					style: () => header.get(scope),
+					style: () => header,
 					counts: () => loadedCounts(scope),
 					lastVisit,
 					github,
@@ -452,8 +451,7 @@ function loadedCounts(pi: ExtensionAPI): LoadedCounts {
 	};
 }
 
-function setActivity(live: Live, scope: FeatureScope, activity: Activity): void {
-	if (!peek.get(scope)) return;
+function setActivity(live: Live, activity: Activity): void {
 	const message = describe(activity);
 	if (message === live.activity) return;
 	live.activity = message;

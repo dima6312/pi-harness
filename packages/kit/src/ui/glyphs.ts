@@ -79,6 +79,12 @@ export const SPIN = {
 } as const;
 
 /** The lines frames, rules and scroll bars are drawn with. */
+/**
+ * The mark a cut line ends with. Three dots, not the `…` glyph: every font and every icon set has
+ * them, and the terminal width of one dot is one column everywhere.
+ */
+export const CUT = "...";
+
 export const LINE = {
 	/** ─ */
 	h: "\u2500",

@@ -4,7 +4,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
-import { GLYPH, LINE } from "./glyphs.ts";
+import { CUT, GLYPH, LINE } from "./glyphs.ts";
 
 /** Columns between a side of the frame and the text. */
 export const FRAME_PAD = 2;
@@ -91,7 +91,7 @@ function fitKeys(theme: Theme, keys: readonly KeyHint[], room: number): KeyHint[
 /** A row of text, padded to the frame. A selected row gets the accent bar against the left side. */
 function row(theme: Theme, width: number, text: string, selected: boolean): string {
 	const inner = frameInner(width);
-	const clipped = truncateToWidth(text, inner, "...");
+	const clipped = truncateToWidth(text, inner, CUT);
 	const fill = " ".repeat(Math.max(0, inner - visibleWidth(clipped)));
 	const side = theme.fg("border", LINE.v);
 	const lead = selected
