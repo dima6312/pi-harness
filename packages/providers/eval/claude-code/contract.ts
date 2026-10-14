@@ -8,7 +8,7 @@
 // bun packages/providers/eval/claude-code/contract.ts [--version 2.1.299] [--channel latest]
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -510,7 +510,7 @@ function exec(command: string, args: string[]): Promise<void> {
 }
 
 async function exists(path: string): Promise<boolean> {
-	return readFile(path).then(
+	return access(path).then(
 		() => true,
 		() => false,
 	);

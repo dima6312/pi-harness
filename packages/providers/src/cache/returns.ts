@@ -1,7 +1,9 @@
 // A refresh between runs pays only if you come back before the next one, so this learns that
 // chance from the session files: how long the end of each run waited for the next request.
-import { readdir, readFile, stat } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { createInterface } from "node:readline";
 
 /** Half-minute buckets for the first hour. The last one holds longer waits and runs never answered. */
 const BUCKET_MINUTES = 0.5;
@@ -85,13 +87,33 @@ function chanceIn(counts: readonly number[], minutes: number, window: number): n
  * wait lasts until the next request; a run nothing followed waited forever.
  */
 export function waitsIn(file: string, since: number): Wait[] {
-	const requests: { timestamp: number; ends: boolean; asked: boolean }[] = [];
-	for (const line of file.split("\n")) {
-		// Most lines are tool output; this skips them without parsing.
-		if (!line.includes('"role":"assistant"')) continue;
-		const message = assistantOf(line);
-		if (message !== undefined && message.timestamp >= since) requests.push(message);
+	const requests: AgentRequest[] = [];
+	for (const line of file.split("\n")) addRequest(requests, line, since);
+	return waitsAfter(requests);
+}
+
+/** The same as `waitsIn`, read line by line, so a long session never sits in memory as one string. */
+async function waitsInFile(path: string, since: number): Promise<Wait[]> {
+	const requests: AgentRequest[] = [];
+	try {
+		const lines = createInterface({ input: createReadStream(path, "utf8"), crlfDelay: Infinity });
+		for await (const line of lines) addRequest(requests, line, since);
+	} catch {
+		return [];
 	}
+	return waitsAfter(requests);
+}
+
+type AgentRequest = { timestamp: number; ends: boolean; asked: boolean };
+
+function addRequest(requests: AgentRequest[], line: string, since: number): void {
+	// Most lines are tool output; this skips them without parsing.
+	if (!line.includes('"role":"assistant"')) return;
+	const message = assistantOf(line);
+	if (message !== undefined && message.timestamp >= since) requests.push(message);
+}
+
+function waitsAfter(requests: readonly AgentRequest[]): Wait[] {
 	return requests.flatMap((request, index) => {
 		if (!request.ends) return [];
 		const next = requests[index + 1];
@@ -112,9 +134,7 @@ interface Line {
 }
 
 /** A request the agent made, from its line. Undefined for any other line. */
-function assistantOf(
-	line: string,
-): { timestamp: number; ends: boolean; asked: boolean } | undefined {
+function assistantOf(line: string): AgentRequest | undefined {
 	const message = parse(line)?.message;
 	if (message?.role !== "assistant" || message.usage === undefined) return undefined;
 	if (typeof message.timestamp !== "number") return undefined;
@@ -144,8 +164,8 @@ export function endsOnQuestion(content: readonly Part[]): boolean {
 }
 
 /**
- * Reads every session file changed in the last `LEARN_DAYS`. One file at a time, so a month of
- * sessions is never in memory at once.
+ * Reads every session file changed in the last `LEARN_DAYS`, one file and one line at a time, so
+ * neither a month of sessions nor one long session is ever in memory at once.
  */
 export async function learnReturns(root: string, now: number): Promise<Returns> {
 	const since = now - LEARN_DAYS * 86_400_000;
@@ -163,8 +183,7 @@ export async function learnReturns(root: string, now: number): Promise<Returns> 
 			);
 			if (changed < since) continue;
 			// oxlint-disable-next-line no-await-in-loop -- as above
-			const file = await readFile(path, "utf8").catch(() => "");
-			for (const wait of waitsIn(file, since)) addWait(returns, wait);
+			for (const wait of await waitsInFile(path, since)) addWait(returns, wait);
 		}
 	}
 	return returns;
