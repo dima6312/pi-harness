@@ -1,6 +1,6 @@
 // A message from another session, drawn in the chat of the one that got it: a frame in the color of
 // the agent that wrote it, who and to whom in its top edge with the time on the right, the words inside.
-import { drawnByWidth, ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
+import { drawnByWidth, ENTRY_X, entryFrame, formatClock, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -28,7 +28,7 @@ export function messageLines(details: PeerMessageDetails, theme: Theme, width: n
 	);
 	return entryFrame(body, width, theme, {
 		top,
-		topRight: theme.fg("dim", clock(details.at)),
+		topRight: theme.fg("dim", formatClock(details.at)),
 		color,
 	});
 }
@@ -38,10 +38,4 @@ function addressed(details: PeerMessageDetails): string {
 	if (details.toYou) return `${GLYPH.right} you`;
 	if (details.takenBy === undefined) return "to everyone, taken here";
 	return `to everyone, ${details.takenBy} took it`;
-}
-
-/** Local time, hours and minutes, the same width at every hour. */
-export function clock(at: number): string {
-	const date = new Date(at);
-	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }

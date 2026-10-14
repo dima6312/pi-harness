@@ -9,6 +9,7 @@ import {
 	pointer,
 	rule,
 	spread,
+	formatClock,
 	GLYPH,
 	LINE,
 } from "@adeildo/pi-kit";
@@ -29,7 +30,6 @@ import { ANYONE_MENTION, EVERYONE_MENTION, isGroupMention, typingMention } from 
 import { byHandle, mentionedNames, mentionsIn, type Named } from "../names.ts";
 import { agentLines, inOrder, MARKS, markOf, stateOf, stateText } from "./agents.ts";
 import { feedMoving, feedView } from "./feed.ts";
-import { clock } from "./message.ts";
 import { spin } from "./motion.ts";
 
 /** The frame, and the row naming the two columns. */
@@ -230,7 +230,7 @@ export class RoomView implements Component, Focusable {
 			me: here.session,
 			names,
 			live,
-			clock: this.#options.clock ?? clock,
+			clock: this.#options.clock ?? formatClock,
 			only: this.#only,
 		});
 		this.#height = Math.max(1, height - COMPOSER_ROWS - picker.length);
