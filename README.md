@@ -61,13 +61,13 @@ There is no fork. Everything installs on top of Pi, and `pi remove` puts Pi back
 
 ## Where to read next
 
-| You want                        | Read                                                 |
-| ------------------------------- | ---------------------------------------------------- |
-| Use a piece                     | The page of the piece, linked in the table above     |
+| You want                        | Read                                                  |
+| ------------------------------- | ----------------------------------------------------- |
+| Use a piece                     | The page of the piece, linked in the table above      |
 | Look up a setting or a key      | The piece's own `docs/reference.md`, where it has one |
-| Know what is planned            | [ROADMAP.md](ROADMAP.md)                             |
-| Know what changed               | [CHANGELOG.md](CHANGELOG.md)                         |
-| Build a piece, or send a change | [CONTRIBUTING.md](CONTRIBUTING.md)                   |
+| Know what is planned            | [ROADMAP.md](ROADMAP.md)                              |
+| Know what changed               | [CHANGELOG.md](CHANGELOG.md)                          |
+| Build a piece, or send a change | [CONTRIBUTING.md](CONTRIBUTING.md)                    |
 
 ## Credit
 

@@ -88,11 +88,12 @@ it just wrote.
 
 ## Motion
 
-Something moves only to say something changed: a spinner while an agent works or writes, a lit rail
-for a few seconds on a message that just arrived, a blinking cursor where words arrive, the mark of a tool call that is writing, waiting or running:
-a pencil inking, an hourglass flowing, a clock going round, each in its own cell. A still panel redraws once a
-second; a moving one every frame. The start screen has the one move made for show, once per launch,
-and never delays typing.
+Something moves only to say something changed. A spinner turns while an agent works or writes, a mark
+moves for the phase of a tool call (a pen while it is written, an hourglass while it waits on you, a
+clock while it runs, each in its own cell), a rail lights up for a few seconds on a message that just
+arrived, and a cursor blinks where words arrive. A still panel redraws once a second; a moving one
+every frame. The start screen draws the pixel π once per launch, one row of the art at every
+`RISE_STEP_MS`, and that rise never delays typing.
 
 ## The transcript
 
@@ -129,9 +130,9 @@ on GitHub leaves them out.
 ## Settings
 
 `Alt+S` keeps one tab per package. The selected setting shows a preview of its effect under the list,
-drawn with the real theme: the frame styles draw a tool call in each.
+drawn with the active theme. Each frame style draws a tool call.
 
 ## Words
 
 Labels are plain verbs in lowercase (`move`, `pick`, `close`), and an action keeps its name wherever
-it shows. Empty states say what to do next. No dash as a pause in anything the user reads.
+it shows. Empty states say what to do next. Never use a dash as a pause in the words the user reads.
