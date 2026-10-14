@@ -4,6 +4,7 @@ import type { FrameStyle } from "./render/frame.ts";
 import type { IconMode } from "./render/glyphs.ts";
 import type { SegmentId } from "./render/segments.ts";
 import { framePreview, iconsPreview, userFramePreview } from "./ui/previews.ts";
+import type { SlotName } from "./ui/screen.ts";
 
 // The look has opinions: where each piece of information sits, the separators, the cursor and the
 // start screen are fixed. Only what depends on your terminal or your taste in lines is a setting:
@@ -32,6 +33,18 @@ export const bottomRight: readonly SegmentId[] = ["context"];
 export const below: readonly SegmentId[] = ["cost", "tokens", "cache", "average", "statuses"];
 /** The plan's quota: what each window spent, and when it resets. */
 export const belowRight: readonly SegmentId[] = ["quota"];
+
+/** Where each piece of the screen comes from. The docs fixture draws with the same map. */
+export const SLOTS: Record<SlotName, readonly SegmentId[]> = {
+	strip,
+	stripRight,
+	topLeft,
+	topRight,
+	bottomLeft,
+	bottomRight,
+	below,
+	belowRight,
+};
 
 export const SEPARATOR = "  ";
 export const cursor: CursorStyle = "bar";

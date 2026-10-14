@@ -230,7 +230,10 @@ export class HeaderComponent implements Component {
 			.join(separator);
 		const last = this.#source.lastVisit();
 		return [first, ...this.#notes(notes, paint, last, this.#screen.snapshot().now), ""].map(
-			(line) => truncateToWidth(` ${line}`, width, CUT),
+			(line) => {
+				const padded = ` ${line}`;
+				return visibleWidth(padded) > width ? truncateToWidth(padded, width, CUT) : padded;
+			},
 		);
 	}
 
@@ -295,8 +298,11 @@ function pad(text: string, width: number): string {
 }
 
 function center(text: string, width: number): string {
-	const clipped = truncateToWidth(text, width, "");
-	const room = Math.max(0, width - visibleWidth(clipped));
+	const cells = visibleWidth(text);
+	const fits = cells <= width;
+	// Measuring is cheap, and cutting a line that already fits is not.
+	const clipped = fits ? text : truncateToWidth(text, width, "");
+	const room = Math.max(0, width - (fits ? cells : visibleWidth(clipped)));
 	const before = Math.floor(room / 2);
 	return `${" ".repeat(before)}${clipped}${" ".repeat(room - before)}`;
 }

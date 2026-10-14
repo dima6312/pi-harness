@@ -31,10 +31,6 @@ import { type Glyphs, glyphsOf } from "./render/glyphs.ts";
 import { PLAIN, themePaint } from "./render/paint.ts";
 import { claimedStatuses, renderSegments, SEGMENTS } from "./render/segments.ts";
 import {
-	below,
-	belowRight,
-	bottomLeft,
-	bottomRight,
 	cursor,
 	frame,
 	gaugeCells,
@@ -45,10 +41,7 @@ import {
 	pathLength,
 	SECTIONS,
 	SEPARATOR,
-	strip,
-	stripRight,
-	topLeft,
-	topRight,
+	SLOTS,
 	userFrame,
 } from "./settings.ts";
 import { applyCursor, LookEditor } from "./ui/editor.ts";
@@ -320,17 +313,6 @@ function createScreen(
 ): Screen {
 	// What the components that keep a drawing for a moment compare: an event, a probe, a new branch.
 	let revision = 0;
-	const slots: Record<SlotName, typeof strip> = {
-		strip,
-		stripRight,
-		topLeft,
-		topRight,
-		bottomLeft,
-		bottomRight,
-		below,
-		belowRight,
-	};
-
 	return {
 		snapshot() {
 			const ctx = live.ctx;
@@ -363,9 +345,9 @@ function createScreen(
 			pathLength,
 			gaugeCells,
 			labels,
-			claimed: claimedStatuses(Object.values(slots)),
+			claimed: claimedStatuses(Object.values(SLOTS)),
 		}),
-		slot: (name) => slots[name],
+		slot: (name) => SLOTS[name],
 		frameStyle: () => frame.get(scope),
 		cursor: () => cursor,
 		decorate: (line) => {

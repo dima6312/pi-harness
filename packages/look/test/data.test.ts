@@ -288,6 +288,11 @@ describe("totals", () => {
 	});
 });
 
+/** A runner for a folder that is not a repository. */
+async function refuses(): Promise<string> {
+	throw new Error("not a repository");
+}
+
 describe("the git state, read through a runner", () => {
 	test("parses what the command answers", async () => {
 		const state = await readGit("/repo", async () => "# branch.ab +2 -1\n1 M. N... a.ts\n");
@@ -295,9 +300,6 @@ describe("the git state, read through a runner", () => {
 	});
 
 	test("a command that fails is a card with no git line, not a crash", async () => {
-		const failing = async (): Promise<string> => {
-			throw new Error("not a repository");
-		};
-		expect(await readGit("/repo", failing)).toBeUndefined();
+		expect(await readGit("/repo", refuses)).toBeUndefined();
 	});
 });
