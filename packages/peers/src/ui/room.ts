@@ -1,4 +1,6 @@
 import {
+	ENTRY_X,
+	entryFrame,
 	FRAME_X,
 	FRAME_Y,
 	type FrameLine,
@@ -31,8 +33,8 @@ import { spin } from "./motion.ts";
 
 /** The frame, and the row naming the two columns. */
 const CHROME_Y = FRAME_Y + 1;
-/** The rule over the line you write in, and that line. */
-const COMPOSER_ROWS = 2;
+/** The rule over the line you write in, and the frame of that line. */
+const COMPOSER_ROWS = 4;
 const BESIDE = 90;
 const AGENTS_MIN = 30;
 const AGENTS_MAX = 44;
@@ -230,7 +232,7 @@ export class RoomView implements Component, Focusable {
 		if (head !== undefined && head < this.#offset) shown[0] = feed.lines[head] ?? "";
 		// Like a chat: the newest line sits right over the line you write in.
 		while (shown.length < this.#height) shown.unshift("");
-		return [...shown, this.#rule(width), ...picker, this.#composerLine(width, names)];
+		return [...shown, this.#rule(width), ...picker, ...this.#composerFrame(width, names)];
 	}
 
 	#label(pane: Pane, text: string): string {
@@ -297,18 +299,23 @@ export class RoomView implements Component, Focusable {
 		});
 	}
 
-	/** The line you write in. Where it goes shows on the right, only once you write. */
-	#composerLine(width: number, names: ReadonlyMap<string, Named>): string {
+	/** The line you write in, in the dashed frame of something that has not been sent yet. */
+	#composerFrame(width: number, names: ReadonlyMap<string, Named>): string[] {
 		const { theme } = this.#options;
 		const prompt = pointer(theme, true, this.#pane === "room");
 		const value = this.#composer.getValue();
 		const writing = value.trim() === "" || this.#candidates().length > 0;
-		const to = writing ? "" : this.#destination(value, names);
-		const room = Math.max(1, width - 2 - (to === "" ? 0 : visibleWidth(to) + 2));
+		const to = writing ? theme.fg("dim", "everyone") : this.#destination(value, names);
+		const room = Math.max(1, width - ENTRY_X - 2);
 		const [drawn = ""] = this.#composer.render(room);
-		return to === "" ? `${prompt}${drawn}` : spread(`${prompt}${drawn}`, to, width);
+		return entryFrame([`${prompt}${drawn}`], width, theme, {
+			top: `${theme.fg("accent", theme.bold("you"))}${theme.fg("dim", ` ${GLYPH.right} `)}${to}`,
+			color: "borderMuted",
+			dashed: true,
+		});
 	}
 
+	/** Who the words are for, in the frame's top edge. Bare, because the arrow already says it. */
 	#destination(text: string, names: ReadonlyMap<string, Named>): string {
 		const { theme } = this.#options;
 		const mentioned = [...text.matchAll(/(?<![\w@])@([a-z][a-z0-9-]*)(?=\s|$|[.,:;!?])/gi)].map(
@@ -325,10 +332,10 @@ export class RoomView implements Component, Focusable {
 		const writing = MENTION_TAIL.exec(text)?.[1];
 		const wrong = unknown.filter((name) => name !== writing);
 		if (wrong.length > 0) return theme.fg("warning", `no agent ${wrong[0]}`);
-		if (found.length === 0) return theme.fg("dim", "to everyone");
-		return `${theme.fg("dim", "to ")}${found
-			.map((named) => theme.fg(named.color as ThemeColor, named.handle))
-			.join(theme.fg("dim", ", "))}`;
+		if (found.length === 0) return theme.fg("dim", "everyone");
+		return found
+			.map((named) => theme.fg(named.color as ThemeColor, `@${named.handle}`))
+			.join(theme.fg("dim", ", "));
 	}
 
 	#keys(live: readonly Peer[], names: ReadonlyMap<string, Named>): KeyHint[] {

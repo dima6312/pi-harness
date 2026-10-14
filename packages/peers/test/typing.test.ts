@@ -18,27 +18,30 @@ const names = new Map<string, Named>([
 const source = { session: "c", names: () => names };
 
 describe("someone writing to the room", () => {
-	test("says who writes to whom, a message to this session reads to you", () => {
-		const [line] = typingLines(
+	test("a draft wears the dashed frame, who writes to whom on top", () => {
+		const lines = typingLines(
 			[{ session: "a", to: "@docs, @migration", text: "", at: 0 }],
 			source,
 			plain,
 			80,
 			0,
 		);
-		expect(line).toBe("\u280b oauth is writing to you, migration.  ");
+		expect(lines[0]?.startsWith("╭┄")).toBe(true);
+		expect(lines[0]).toContain("@oauth → you, @migration");
+		expect(lines.join("\n")).toContain("writing");
+		expect(lines.at(-1)?.startsWith("╰┄")).toBe(true);
 	});
 
-	test("a long draft keeps its newest words", () => {
+	test("a long draft keeps its newest words, inside the frame", () => {
 		const text = `${"old words ".repeat(20)}the newest part`;
-		const [line] = typingLines(
+		const lines = typingLines(
 			[{ session: "b", to: "everyone", text, at: 0 }],
 			source,
 			plain,
 			70,
 			0,
 		);
-		expect(line?.endsWith("the newest part")).toBe(true);
-		expect(line?.length).toBeLessThanOrEqual(70);
+		expect(lines.join("\n")).toContain("the newest part");
+		expect(lines.every((line) => line.length <= 70)).toBe(true);
 	});
 });

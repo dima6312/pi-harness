@@ -1,6 +1,8 @@
-// Over the editor, while another agent writes to the room: who, to whom, and the words as they arrive.
+// Over the editor, while another agent writes to the room: who, to whom, and the words as they
+// arrive. A draft has not happened yet, so it wears the dashed frame the send queue wears.
+import { ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
-import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { type Component } from "@earendil-works/pi-tui";
 
 import type { Typing } from "../here.ts";
 import { byHandle, type Named } from "../names.ts";
@@ -24,17 +26,22 @@ export function typingLines(
 	const names = source.names();
 	// A message to this session reads "to you".
 	const me = source.session === undefined ? undefined : names.get(source.session)?.handle;
-	return typing.map((one) => {
+	return typing.flatMap((one) => {
 		const named = names.get(one.session);
 		const color = (named?.color ?? "muted") as ThemeColor;
-		const head = `${theme.fg(color, spin(now))} ${theme.fg(color, theme.bold(named?.handle ?? "an agent"))} ${theme.fg("dim", "is writing to")} ${typingRecipients(one.to, names, theme, me)}${theme.fg("dim", dots(now))}`;
-		const words = one.text.replaceAll(/\s+/g, " ").trim();
-		if (words === "") return truncateToWidth(head, width, "...");
-		const room = width - visibleWidth(head) - 3;
-		if (room < 12) return truncateToWidth(head, width, "...");
 		// The newest words matter most while they arrive, so a long draft keeps its end.
-		const shown = words.length > room ? `...${words.slice(words.length - room + 3)}` : words;
-		return `${head}   ${theme.fg("muted", shown)}`;
+		const words = one.text.replaceAll(/\s+/g, " ").trim();
+		const room = Math.max(1, width - ENTRY_X - 4);
+		const body =
+			words === ""
+				? []
+				: [theme.fg("muted", words.length > room ? `...${words.slice(-room)}` : words)];
+		return entryFrame(body, width, theme, {
+			top: `${theme.fg(color, theme.bold(`@${named?.handle ?? "an agent"}`))}${theme.fg("dim", ` ${GLYPH.right} `)}${typingRecipients(one.to, names, theme, me)}`,
+			topRight: `${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`,
+			color,
+			dashed: true,
+		});
 	});
 }
 
@@ -76,7 +83,7 @@ export function typingRecipients(
 		.map((handle) => {
 			if (handle === me) return theme.fg("accent", "you");
 			const named = byHandle(names, handle);
-			return theme.fg((named?.color ?? "muted") as ThemeColor, handle);
+			return theme.fg((named?.color ?? "muted") as ThemeColor, `@${handle}`);
 		})
 		.join(theme.fg("dim", ", "));
 }

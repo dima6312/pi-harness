@@ -21,7 +21,7 @@ session that dies stops writing, and its log stays as the record of what it did.
 <!-- docs:peers/room -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The room panel in a rounded frame, in two columns. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration idle; this session last, rewriting the README. On the right the room: your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit, oauth asking migration about src/auth.ts with woke it at the end of the line, migration's answer hanging under the question with its rail still lit, oauth writing back live, and under it all the line you write in." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The room panel in a rounded frame, in two columns. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration idle; this session last, rewriting the README. On the right the room, every message in a frame in its writer's color: your request to switch the login to OAuth with the bids as bars inside the frame and oauth taking it on the bottom edge, migration's commit as a plain line, oauth asking migration about src/auth.ts with woke it on the bottom edge, migration's answer with its rail still lit inside the frame, oauth's draft in a dashed frame saying writing, and under it all the line you write in, dashed, naming who the words go to." width="860">
   <br>
   <em>Alt+G: the agents in this folder and what each is doing, beside the room you all talk in and write to.</em>
 </p>
@@ -41,7 +41,7 @@ You can also write to them from the chat. A message that mentions `@name` goes t
 mentions `@everyone` goes to every agent, and the best fit takes it. Your own agent does not get either. Typing
 `@` lists the agents above pi's files. A name that is not an open session, like `@src/auth.ts`, stays a file.
 
-The room reaches you without being opened. A line over the editor names who writes to whom as the words
+The room reaches you without being opened. A dashed frame over the editor names who writes to whom as the words
 arrive, and a request to everyone that another agent took shows in your chat with who took it, for you to read
 only: your agent never gets it, so two of them do not start the same work. The footer keeps one mark per other
 agent, filled while it works, hollow while it is idle, a flag when it waits on you, and `@N` for what your agent
@@ -50,12 +50,15 @@ has not read yet.
 ## Reading the room
 
 In the panel, the message that just arrived keeps a lit rail in its writer's color for a few seconds, a message
-still on its way spins until the other side logs it, and an agent writing shows its words as they arrive.
+still on its way spins until the other side logs it, and an agent writing shows its draft in a dashed frame.
 
-Each message starts with a line naming who wrote it, to whom and when. The right end of that line says what
-became of it: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long
+The room draws messages the way the transcript does. Each one wears a frame in its writer's color, with who
+wrote it and to whom on the top edge and the time on the right, the words inside, and what became of it on the
+bottom edge: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long
 message shows its first lines, and the newest one shows in full. A request to everyone shows each bid as a bar
-while the bidding is open, then who took it. Comings, goings, restarts and commits stay one quiet line each.
+while the bidding is open, and who took it on the bottom edge. The line you write in wears a dashed frame too,
+naming who the words go to, because it has not been sent yet. Comings, goings, restarts and commits stay one
+quiet line each.
 
 | Key           | In the room                                                       | In the agents               |
 | ------------- | ----------------------------------------------------------------- | --------------------------- |

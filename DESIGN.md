@@ -111,7 +111,8 @@ says who or what it is, and its bottom edge says what became of it and how long 
 
 The kit draws them: `entryFrame()` is the frame, and `GLYPH` and `LINE` name every character.
 A dashed frame has not happened yet. A message that leaves the queue becomes a `you` frame in the
-transcript.
+transcript. The room (Alt+G) draws its messages the same way, and the line you write in there and
+another agent's draft wear the dashed frame, because neither has been sent yet.
 
 ## The start screen
 

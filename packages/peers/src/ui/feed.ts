@@ -1,4 +1,4 @@
-import { type Delivery, spread, GLYPH } from "@adeildo/pi-kit";
+import { type Delivery, ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -88,7 +88,7 @@ export function feedView(
 		const answered = replies.get(item.message.id);
 		const quoted = answered !== undefined && answered !== lastMessage ? answered : undefined;
 		const full = item === newest || options.only !== undefined;
-		add(messageLines(item.message, quoted, full, options), quoted === undefined ? 0 : 1);
+		add(messageLines(item.message, quoted, full, options), 0);
 		lastMessage = item.message;
 	}
 	const writing =
@@ -107,8 +107,9 @@ export function feedView(
 }
 
 /**
- * Like a chat: who wrote it to whom and when on one line, what became of it on the right, the words
- * under it. An answer first quotes the line it answers.
+ * A message wears the frame of a transcript entry: who wrote it to whom on the top edge with the time
+ * on the right, the words inside, and what became of it on the bottom edge. An answer first quotes the
+ * line it answers. See DESIGN.md, "The transcript".
  */
 function messageLines(
 	message: Posted,
@@ -119,21 +120,13 @@ function messageLines(
 	const { theme, now, width } = options;
 	const color = speakerColor(message, options);
 	const fresh = isFresh(message.at, now);
-	const lines: string[] = [];
-	if (answered !== undefined) lines.push(quoteLine(answered, options));
+	const room = Math.max(8, width - ENTRY_X - INDENT);
+	const body: string[] = [];
+	if (answered !== undefined) body.push(` ${quoteLine(answered, options)}`);
 
-	let head = `${speaker(message, options)}${theme.fg("dim", ` ${GLYPH.right} `)}${recipients(message, options)}`;
-	head += `  ${theme.fg(fresh ? color : "dim", options.clock(message.at))}`;
-	if (message.urgent) head += theme.fg("warning", "  urgent");
-	// One addressee's receipt fits on the header line; several, or the bids, go under the words.
-	const receipts = receiptLines(message, options);
-	const inline = message.to !== "all" && message.to.length === 1 ? receipts.shift() : undefined;
-	lines.push(header(head, inline ?? "", width));
-
-	// Only a message that just arrived gets a rail, lit in its writer's color; the rest sit indented.
+	// Only a message that just arrived keeps its rail lit, in its writer's color.
 	const lead = fresh ? `${theme.fg(color, "\u258e")} ` : "  ";
-	const body = message.text.trim();
-	let wrapped = wrapTextWithAnsi(body, Math.max(8, width - INDENT));
+	let wrapped = wrapTextWithAnsi(message.text.trim(), room);
 	if (!full) {
 		// A preview skips blank lines, so its few lines carry words.
 		const words = wrapped.filter((line) => line.trim() !== "");
@@ -143,28 +136,35 @@ function messageLines(
 				theme.fg("dim", `${words.length - BODY_SHOWN + 1} more lines, ctrl+f to read`),
 			];
 	}
-	for (const line of wrapped) lines.push(`${lead}${theme.fg("text", line)}`);
-	for (const line of receipts) lines.push(truncateToWidth(`  ${line}`, width, "..."));
-	return lines;
+	for (const line of wrapped) body.push(`${lead}${theme.fg("text", line)}`);
+
+	const receipts = receiptLines(message, options, room);
+	for (const line of receipts.inside) body.push(`  ${line}`);
+	return entryFrame(body, width, theme, {
+		top: `${speaker(message, options)}${theme.fg("dim", ` ${GLYPH.right} `)}${recipients(message, options)}${message.urgent ? theme.fg("warning", `  ${GLYPH.flag} urgent`) : ""}`,
+		topRight: theme.fg(fresh ? color : "dim", options.clock(message.at)),
+		bottom: receipts.bottom,
+		color,
+	});
 }
 
 /** The first line of the message an answer answers, quoted above it. */
 function quoteLine(question: Posted, options: FeedOptions): string {
-	const { theme, width } = options;
+	const { theme } = options;
 	const first = question.text.split("\n")[0] ?? "";
-	const line = `${theme.fg("dim", "\u21b1")} ${speaker(question, options, false)} ${theme.fg("dim", first)}`;
-	return truncateToWidth(line, width, "...");
+	return `${theme.fg("dim", "\u21b1")} ${speaker(question, options, false)} ${theme.fg("dim", first)}`;
 }
 
-function header(left: string, right: string, width: number): string {
-	if (right === "") return truncateToWidth(left, width, "...");
-	const room = Math.max(8, width - visibleWidth(right) - 2);
-	return spread(truncateToWidth(left, room, "..."), right, width);
+interface Receipts {
+	/** What the message became, for the frame's bottom edge. */
+	bottom: string | undefined;
+	/** What needs lines of its own inside the frame: the bids of a request for everyone. */
+	inside: readonly string[];
 }
 
-function receiptLines(message: Posted, options: FeedOptions): string[] {
+function receiptLines(message: Posted, options: FeedOptions, room: number): Receipts {
 	const { theme, now, live } = options;
-	if (message.to === "all") return requestLines(message, options);
+	if (message.to === "all") return requestLines(message, options, room);
 	const many = message.to.length > 1;
 	const parts = message.to.map((session) => {
 		const who = many ? ` ${name(session, options)}` : "";
@@ -179,10 +179,10 @@ function receiptLines(message: Posted, options: FeedOptions): string[] {
 			? `${theme.fg("dim", spin(now))}${who} ${theme.fg("dim", "sending")}`
 			: `${theme.fg("dim", GLYPH.check)}${who} ${theme.fg("dim", "sent")}`;
 	});
-	return [parts.join("   ")];
+	return { bottom: parts.join("   "), inside: [] };
 }
 
-function requestLines(message: Posted, options: FeedOptions): string[] {
+function requestLines(message: Posted, options: FeedOptions, room: number): Receipts {
 	const { theme, now, live } = options;
 	const ranking = award(message, live, now);
 	const parts = [...message.bids]
@@ -194,39 +194,39 @@ function requestLines(message: Posted, options: FeedOptions): string[] {
 			const color = (options.names.get(session)?.color ?? "muted") as ThemeColor;
 			return `${who} ${bar(bid.fit, color, theme)} ${theme.fg("dim", fit(bid.fit))}`;
 		});
-	const bids = fitting(
-		parts,
-		options.width - INDENT - (ranking.kind === "bidding" ? 14 : 0),
-		theme,
-	);
+	const bids = fitting(parts, room, theme);
+	const inside = bids === "" ? [] : [bids];
 	switch (ranking.kind) {
 		case "taken":
-			return [
-				...(bids === "" ? [] : [bids]),
-				`${theme.fg("success", `${GLYPH.check}${GLYPH.check}`)} ${name(ranking.by, options)} ${theme.fg("muted", "took it")}`,
-			];
+			return {
+				bottom: `${theme.fg("success", `${GLYPH.check}${GLYPH.check}`)} ${name(ranking.by, options)} ${theme.fg("muted", "took it")}`,
+				inside,
+			};
 		case "bidding": {
 			const left = Math.max(1, Math.ceil((ranking.until - now) / 1_000));
-			const state = `${theme.fg("accent", spin(now))} ${theme.fg("muted", `bidding ${left}s`)}`;
-			return [bids === "" ? state : `${state}   ${bids}`];
+			return {
+				bottom: `${theme.fg("accent", spin(now))} ${theme.fg("muted", `bidding ${left}s`)}`,
+				inside,
+			};
 		}
 		case "waiting":
-			return [
-				...(bids === "" ? [] : [bids]),
-				`${theme.fg("warning", GLYPH.flag)} ${theme.fg("muted", "everyone is busy, the first to finish takes it")}`,
-			];
+			return {
+				bottom: `${theme.fg("warning", GLYPH.flag)} ${theme.fg("muted", "everyone is busy, the first to finish takes it")}`,
+				inside,
+			};
 		case "ranked": {
 			const first = ranking.order.find((session) => {
 				const at = turnToTake(ranking, session);
 				return at !== undefined && at + TAKE_MS > now;
 			});
 			const next = first ?? ranking.order[0];
-			return [
-				bids,
-				next === undefined
-					? theme.fg("dim", "nobody in line")
-					: `${theme.fg("accent", spin(now))} ${name(next, options)} ${theme.fg("muted", "is taking it")}`,
-			];
+			return {
+				bottom:
+					next === undefined
+						? theme.fg("dim", "nobody in line")
+						: `${theme.fg("accent", spin(now))} ${name(next, options)} ${theme.fg("muted", "is taking it")}`,
+				inside,
+			};
 		}
 	}
 }
@@ -235,18 +235,20 @@ function typingLines(typing: Typing, options: FeedOptions): string[] {
 	const { theme, now, width } = options;
 	const named = options.names.get(typing.session);
 	const color = (named?.color ?? "muted") as ThemeColor;
-	const to = typingRecipients(typing.to, options.names, theme);
-	const head = `${theme.fg(color, theme.bold(named?.handle ?? "an agent"))}${theme.fg("dim", ` ${GLYPH.right} `)}${to}  ${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`;
-	const lines = [truncateToWidth(head, width, "...")];
-	const room = Math.max(8, width - INDENT - 1);
+	const room = Math.max(8, width - ENTRY_X - INDENT);
 	const cursor = blink(now) ? theme.fg(color, GLYPH.bar) : " ";
 	const wrapped = wrapTextWithAnsi(typing.text, room).slice(-2);
 	if (wrapped.length === 0) wrapped.push("");
-	for (const [index, line] of wrapped.entries()) {
-		const last = index === wrapped.length - 1;
-		lines.push(`  ${theme.fg("muted", line)}${last ? cursor : ""}`);
-	}
-	return lines;
+	const body = wrapped.map(
+		(line, index) => `  ${theme.fg("muted", line)}${index === wrapped.length - 1 ? cursor : ""}`,
+	);
+	// A draft has not happened yet, so it wears the dashed frame the send queue wears.
+	return entryFrame(body, width, theme, {
+		top: `${theme.fg(color, theme.bold(`@${named?.handle ?? "an agent"}`))}${theme.fg("dim", ` ${GLYPH.right} `)}${typingRecipients(typing.to, options.names, theme)}`,
+		topRight: `${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`,
+		color,
+		dashed: true,
+	});
 }
 
 function happeningLine(group: readonly Happening[], options: FeedOptions): string {
@@ -348,7 +350,7 @@ function involves(item: RoomItem, session: string): boolean {
 
 function speaker(message: Posted, options: FeedOptions, bold = true): string {
 	const { theme } = options;
-	const who = message.from === "you" ? "you" : handle(message.session, options);
+	const who = message.from === "you" ? "you" : `@${handle(message.session, options)}`;
 	return theme.fg(speakerColor(message, options), bold ? theme.bold(who) : who);
 }
 
@@ -360,7 +362,12 @@ function speakerColor(message: Posted, options: FeedOptions): ThemeColor {
 function recipients(message: Posted, options: FeedOptions): string {
 	const { theme } = options;
 	if (message.to === "all") return theme.fg("muted", "everyone");
-	return message.to.map((session) => name(session, options)).join(theme.fg("dim", ", "));
+	return message.to
+		.map((session) => {
+			const color = (options.names.get(session)?.color ?? "muted") as ThemeColor;
+			return theme.fg(color, `@${handle(session, options)}`);
+		})
+		.join(theme.fg("dim", ", "));
 }
 
 function name(session: string, options: FeedOptions): string {

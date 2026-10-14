@@ -71,14 +71,14 @@ function draw(room: RoomItem[], only?: string): string[] {
 }
 
 describe("the room", () => {
-	test("an answer right under its question shows just its words, indented under the header", () => {
+	test("an answer right under its question shows just its words inside its frame", () => {
 		const lines = draw([
 			said("1", "a", ["b"], "Are you touching src/auth.ts?", 1_000),
 			said("2", "b", ["a"], "Not anymore.", 2_000),
 		]);
-		const at = lines.findIndex((line) => line.startsWith("migration \u2192 oauth  12:00"));
+		const at = lines.findIndex((line) => line.startsWith("╭─ @migration → @oauth"));
 		expect(lines[at - 1]).toBe("");
-		expect(lines[at + 1]).toBe("  Not anymore.");
+		expect(lines[at + 1]).toContain("Not anymore.");
 	});
 
 	test("an answer with other messages in between quotes the first line it answers", () => {
@@ -87,21 +87,20 @@ describe("the room", () => {
 			said("2", "c", ["a"], "Unrelated.", 1_500),
 			said("3", "b", ["a"], "Not anymore.", 2_000),
 		]);
-		const at = lines.findIndex((line) => line.startsWith("migration \u2192 oauth  12:00"));
-		expect(lines[at - 1]).toBe("\u21b1 oauth Are you touching src/auth.ts?");
+		const at = lines.findIndex((line) => line.startsWith("╭─ @migration → @oauth"));
+		expect(lines[at + 1]).toContain("\u21b1 @oauth Are you touching src/auth.ts?");
 	});
 
 	test("a long preview skips blank lines and says how many more there are", () => {
 		const text = "\nfirst\n\nsecond\n\nthird\nfourth\nfifth";
 		const room = [said("1", "a", ["b"], text, 1_000), said("2", "b", ["a"], "ok", 2_000)];
 		const lines = draw(room);
-		const at = lines.findIndex((line) => line.startsWith("oauth \u2192 migration"));
-		expect(lines.slice(at + 1, at + 5)).toEqual([
-			"  first",
-			"  second",
-			"  third",
-			"  2 more lines, ctrl+f to read",
-		]);
+		const at = lines.findIndex((line) => line.startsWith("╭─ @oauth → @migration"));
+		const body = lines.slice(at + 1, at + 5).join("\n");
+		expect(body).toContain("first");
+		expect(body).toContain("second");
+		expect(body).toContain("third");
+		expect(body).toContain("2 more lines, ctrl+f to read");
 	});
 
 	test("joins close together read as one line, with the time after it", () => {
@@ -110,11 +109,19 @@ describe("the room", () => {
 		]);
 	});
 
-	test("what became of a message to one agent sits on its header line", () => {
+	test("what became of a message sits on the frame's bottom edge", () => {
 		const room = [said("1", "a", ["b"], "hi", 1_000)];
 		const message = room[0]?.kind === "message" ? room[0].message : undefined;
 		message?.read.add("b");
-		expect(draw(room)[0]).toMatch(/^oauth \u2192 migration  12:00 +\u2713\u2713 read$/);
+		const lines = draw(room);
+		expect(lines[0]).toContain("╭─ @oauth → @migration");
+		expect(lines[0]).toContain("12:00");
+		expect(lines.at(-1)).toContain("✓✓ read");
+	});
+
+	test("a message that just arrived keeps its rail, inside the frame", () => {
+		expect(draw([said("1", "a", ["b"], "hi", 1_000_000 - 1)])[1]).toContain("\u258e");
+		expect(draw([said("1", "a", ["b"], "hi", 1_000)])[1]).not.toContain("\u258e");
 	});
 
 	test("a long message shows its first lines, unless it is the newest or the room is narrowed", () => {
