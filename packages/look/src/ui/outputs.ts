@@ -1,7 +1,7 @@
 // Alt+O: a tool call's whole output in a frame you scroll, newest call first. Pi only shows a long
 // output cut in the transcript, and Ctrl+O opens every call at once; here one call opens at a time,
 // and the arrows move between calls.
-import { CUT, frame, frameInner, FRAME_Y, GLYPH, type KeyHint } from "@adeildo/pi-kit";
+import { callTarget, CUT, frame, frameInner, FRAME_Y, GLYPH, type KeyHint } from "@adeildo/pi-kit";
 import type { SessionEntry, Theme } from "@earendil-works/pi-coding-agent";
 import {
 	type Component,
@@ -20,8 +20,6 @@ export interface Output {
 	failed: boolean;
 }
 
-const TARGET_FIELDS = ["path", "file_path", "command", "query", "url", "pattern"] as const;
-
 /** Every tool call on the branch that printed something, oldest first. */
 export function outputsOf(branch: readonly SessionEntry[]): Output[] {
 	const calls = new Map<string, { tool: string; target: string }>();
@@ -32,7 +30,7 @@ export function outputsOf(branch: readonly SessionEntry[]): Output[] {
 		if (message.role === "assistant") {
 			for (const part of message.content)
 				if (part.type === "toolCall")
-					calls.set(part.id, { tool: part.name, target: targetOf(part.arguments) });
+					calls.set(part.id, { tool: part.name, target: callTarget(part.arguments) });
 		}
 		if (message.role !== "toolResult") continue;
 		const call = calls.get(message.toolCallId);
@@ -51,14 +49,6 @@ export function outputsOf(branch: readonly SessionEntry[]): Output[] {
 	return outputs;
 }
 
-function targetOf(args: Record<string, unknown>): string {
-	for (const field of TARGET_FIELDS) {
-		const value = args[field];
-		if (typeof value === "string" && value.trim() !== "") return value.split("\n")[0] ?? "";
-	}
-	return "";
-}
-
 export interface OutputViewOptions {
 	theme: Theme;
 	outputs: readonly Output[];
@@ -75,6 +65,10 @@ export class OutputView implements Component {
 	#width = 80;
 	/** The wrapped lines of what is on screen, wrapped again only when it or the width changes. */
 	#wrapped: { output: Output; inner: number; lines: string[] } | undefined;
+	/** The last drawing of the frame, drawn again only when a key moved something. */
+	#drawn:
+		| { output: Output; width: number; scroll: number; page: number; lines: string[] }
+		| undefined;
 
 	constructor(options: OutputViewOptions) {
 		this.#options = options;
@@ -105,6 +99,16 @@ export class OutputView implements Component {
 		const lines = this.#lines(output);
 		const page = this.#page();
 		this.#scroll = Math.min(this.#scroll, Math.max(0, lines.length - page));
+		const known = this.#drawn;
+		if (
+			known !== undefined &&
+			known.output === output &&
+			known.width === width &&
+			known.scroll === this.#scroll &&
+			known.page === page
+		)
+			return known.lines;
+
 		const shown = lines
 			.slice(this.#scroll, this.#scroll + page)
 			.map((line) => theme.fg("toolOutput", line));
@@ -114,16 +118,19 @@ export class OutputView implements Component {
 			["←→", "calls"],
 			["esc", "close"],
 		];
-		return frame(theme, width, shown, {
+		const drawn = frame(theme, width, shown, {
 			title: this.#title(output),
 			status: theme.fg("muted", `${this.#index + 1} of ${outputs.length}`),
 			keys,
 			footnote: theme.fg("muted", `lines ${this.#scroll + 1}-${last} of ${lines.length}`),
 		});
+		this.#drawn = { output, width, scroll: this.#scroll, page, lines: drawn };
+		return drawn;
 	}
 
 	invalidate(): void {
 		this.#wrapped = undefined;
+		this.#drawn = undefined;
 	}
 
 	/** The mark, the tool and what it pointed at, cut so the count beside it still fits. */

@@ -49,3 +49,19 @@ export function callsFramed(events: Events): boolean {
 	events.emit(FRAMED, probe);
 	return probe.framed;
 }
+
+/** The fields of a call's arguments that name what it acted on, in the order they are worth trying. */
+export const TARGET_FIELDS = ["path", "file_path", "command", "query", "url", "pattern"] as const;
+
+/**
+ * What the call pointed at: the path, the command, the query, cut to its first line. Empty when the
+ * arguments name nothing, which is what a call about the session itself looks like.
+ */
+export function callTarget(args: unknown): string {
+	const fields = typeof args === "object" && args !== null ? (args as Record<string, unknown>) : {};
+	for (const field of TARGET_FIELDS) {
+		const value = fields[field];
+		if (typeof value === "string" && value.trim() !== "") return value.split("\n")[0] ?? "";
+	}
+	return "";
+}

@@ -1,5 +1,6 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
 
+import { formatCost, formatTokens } from "@adeildo/pi-kit";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 export const CELL = {
@@ -17,14 +18,8 @@ export function cell(text: string, width: number): string {
 
 export const UNKNOWN = "–";
 
-export function count(value: number): string {
-	const n = Math.max(0, Math.round(value));
-	if (n < 1000) return String(n);
-	if (n < 10_000) return `${trim((n / 1000).toFixed(1))}k`;
-	if (n < 1_000_000) return `${Math.round(n / 1000)}k`;
-	if (n < 10_000_000) return `${trim((n / 1_000_000).toFixed(1))}M`;
-	return `${Math.round(n / 1_000_000)}M`;
-}
+/** The look's word for the kit's format, which is where the shape was decided. */
+export const count = formatTokens;
 
 export function rate(perSecond: number): string {
 	if (perSecond < 10) return trim(perSecond.toFixed(1));
@@ -55,10 +50,7 @@ export function latency(milliseconds: number): string {
 	return duration(milliseconds);
 }
 
-export function money(amount: number): string {
-	if (amount === 0) return "$0.00";
-	return amount >= 10 ? `$${amount.toFixed(2)}` : `$${amount.toFixed(3)}`;
-}
+export const money = formatCost;
 
 export function percent(value: number): string {
 	return value >= 10 || value === 0 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
