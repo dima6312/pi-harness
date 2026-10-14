@@ -47,6 +47,8 @@ The border around the editor carries the branch with its distance and changes, t
 
 The spinner names the state instead of saying "Working": `waiting` for the first token, `thinking`, `writing`, `drafting bash` while the model writes the call, `running bash` while it runs.
 
+While the model writes an `edit` or a `write`, its frame shows the end of what has arrived, with a cursor where the model is writing. A write shows its last 8 lines with their numbers, and says whether it makes a new file or how many lines it replaces. An edit shows the lines it takes out and puts in. The lines it repeats around the change stay as context. The bottom rule counts the lines and the size, or the edits and the lines changed. Once the call is written, pi's own view takes over, with the diff read from the file.
+
 The footer is the session: the cost, the tokens sent and received, the cache of the last prompt, the average speeds, and last what other packages report, because that changes the most.
 
 ## It holds still

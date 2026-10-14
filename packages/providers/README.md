@@ -32,7 +32,7 @@ Pi warns about extra usage in every Anthropic OAuth session. Once the plan pays,
 { "warnings": { "anthropicExtraUsage": false } }
 ```
 
-Anthropic answers `400 claude_code_version_too_old` when it considers the version too old for a newer model, so the version Pi reports is pinned in `src/subscription/claude-code.ts`, and the workflow that reverse engineers Claude Code moves it when a release lands. That file also holds the features Claude Code asks for in `anthropic-beta`, and the settings pick which of them go out.
+Anthropic answers `400 claude_code_version_too_old` when it considers the version too old for a newer model, so the version Pi reports is pinned in `src/subscription/claude-code.ts`, and the workflow that reverse engineers Claude Code moves it when a release lands. The settings show it read only, and the same file lists the features Claude Code asks for in `anthropic-beta` for the settings to pick from.
 
 ## Accounts
 
@@ -98,13 +98,14 @@ A restart or `/reload` stops the refreshes, since they run inside pi.
 
 In `~/.pi/agent/extensions/pi-harness/settings.json`:
 
-| Key                      | Default            | Does                                                                                           |
-| ------------------------ | ------------------ | ---------------------------------------------------------------------------------------------- |
-| `subscription.betas`     | Claude Code's turn | The `anthropic-beta` headers an OAuth request asks for, beside the ones pi works out itself    |
-| `accounts.onLimit`       | `"ask"`            | What a quota or a rate limit does when another account exists: `"ask"`, `"switch"` or `"stop"` |
-| `accounts.onAuthFailure` | `"ask"`            | What a refused credential does: `"ask"` (sign in again or switch), `"switch"` or `"stop"`      |
-| `cache.strategy`         | `"learned"`        | How refreshes between runs are decided: `"learned"`, `"pi"`, `"minutes"` or `"off"`            |
-| `cache.upTo`             | `20`               | Minutes `"minutes"` keeps refreshing after the last request                                    |
+| Key                              | Default            | Does                                                                                           |
+| -------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------- |
+| `subscription.claudeCodeVersion` | the released pin   | Read only. The Claude Code release Pi reports to Anthropic, written by the eval below          |
+| `subscription.betas`             | Claude Code's turn | The `anthropic-beta` headers an OAuth request asks for, beside the ones pi works out itself    |
+| `accounts.onLimit`               | `"ask"`            | What a quota or a rate limit does when another account exists: `"ask"`, `"switch"` or `"stop"` |
+| `accounts.onAuthFailure`         | `"ask"`            | What a refused credential does: `"ask"` (sign in again or switch), `"switch"` or `"stop"`      |
+| `cache.strategy`                 | `"learned"`        | How refreshes between runs are decided: `"learned"`, `"pi"`, `"minutes"` or `"off"`            |
+| `cache.upTo`                     | `20`               | Minutes `"minutes"` keeps refreshing after the last request                                    |
 
 The Claude plan billing comes from [pi-claude-max](https://github.com/bradennss/pi-claude-max) by Braden Lamb, MIT. This is a rewrite: it pins the version, carries pi's cache breakpoints over instead of dropping the one-hour TTL, moves every system block after the identity instead of only the second, carries the betas Claude Code carries, and checks for an OAuth token instead of the provider name.
 

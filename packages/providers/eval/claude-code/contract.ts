@@ -30,6 +30,133 @@ export interface Feature {
 	header: string;
 	/** Whether a turn of the TUI asks for it. */
 	turn: boolean;
+	/** What enabling it changes, from the binary and from the turn captured here. */
+	description: string;
+}
+
+/**
+ * What each feature does, in the words of the request it travels with.
+ *
+ * Claude Code carries no description of its own: the `.describe()` strings in the binary belong to
+ * telemetry events, and a build only pairs a name with a header. What the notes below come from is
+ * the field each feature is pushed beside, the endpoint it belongs to, and the docs the binary ships.
+ */
+const NOTES: Record<string, string> = {
+	"claude-code-20250219":
+		"marks the request as Claude Code's, which is where Anthropic reads the plan from",
+	"oauth-2025-04-20": "goes beside an OAuth token, so dropping it moves the request off that path",
+	"interleaved-thinking-2025-05-14":
+		"thinking carries on between tool calls instead of stopping at each one",
+	"context-1m-2025-08-07": "the million token context window, on the models that have it",
+	"context-management-2025-06-27":
+		"travels with `context_management`, the edits that clear old tool results",
+	"structured-outputs-2025-12-15": "travels with `output_config.format`, which pi never sends",
+	"web-search-2025-03-05": "Vertex and Foundry only, where the server runs the search",
+	"advanced-tool-use-2025-11-20": "tools load on demand instead of all at once",
+	"tool-search-tool-2025-10-19": "the earlier name of that same tool search",
+	"effort-2025-11-24": "travels with `output_config.effort`",
+	"task-budgets-2026-03-13": "travels with `task_budget`, which pi never sends",
+	"prompt-caching-scope-2026-01-05":
+		"changes what the cache covers, and nothing in the request itself",
+	"prompt-caching-evict-2026-05-12": "travels with `evict_on_complete`, which pi never sends",
+	"cache-keepalive-2026-09-03":
+		"used on the call that keeps a cached conversation alive, not on a request for a reply",
+	"extended-cache-ttl-2025-04-11": "a one hour `cache_control.ttl` is only honoured with it",
+	"fast-mode-2026-02-01": 'travels with `speed: "fast"`, which pi never sends',
+	"redact-thinking-2026-02-12": "hides the thinking of earlier turns from the model",
+	"thinking-resumption-2026-07-17": "thinking picks up where an earlier request left it",
+	"thinking-token-count-2026-05-13": "adds thinking counts to the usage the reply reports",
+	"afk-mode-2026-01-31": "the server acts on it, and nothing in the request changes",
+	"advisor-tool-2026-03-01": "the advisor tool, which asks a second model for advice",
+	"cache-diagnosis-2026-04-07":
+		"the reply says what the cache did; Claude Code drops this one when the API refuses it",
+	"context-hint-2026-04-09": "the server acts on it, and nothing in the request changes",
+	"mcp-servers-2025-12-04": "only used on the MCP server endpoints, so a reply is unaffected",
+	"files-api-2025-04-14": "only used on the Files endpoints, so a reply is unaffected",
+	"environments-2025-11-01": "only used on the environments endpoints, so a reply is unaffected",
+	"ccr-byoc-2025-07-29": "only used on the code runner endpoints, so a reply is unaffected",
+	"per-turn-control-2026-07-01": "travels with the per turn control fields",
+	"timing-2026-09-09": "asks the reply to say how long the request took",
+	"mid-conversation-tool-changes-2026-07-01":
+		"lets the tool list change in the middle of a conversation",
+	"inline-tools-2026-09-15":
+		"tool definitions travel inside the messages instead of the `tools` field",
+	"server-side-fallback-2026-06-01": "travels with `fallbacks`",
+	"server-side-fallback-2026-07-01": "travels with `fallbacks`, by category",
+	"fallback-credit-2026-06-01": "counts a fallback against a credit",
+	"auto-mode-classifier-2026-07-16": "the classifier that decides the auto mode",
+	"dangerous-tool-use-2026-09-03": "travels with `safeguards`",
+	"thinking-display-updates-2026-08-18": "streams updates to how thinking is displayed",
+	"message-threads-2026-08-12": "only used on the thread endpoints, so a reply is unaffected",
+	"thinking-binding-controls-2026-08-01": "travels with `thinking.block_binding`",
+	"mid-conversation-system-clear-at-2026-08-21": "lets a system block be cleared mid conversation",
+};
+
+/** The ones pi asks for by itself, which the settings therefore cannot take away. */
+const PI_ASKS = new Set([
+	"claude-code-20250219",
+	"oauth-2025-04-20",
+	"interleaved-thinking-2025-05-14",
+	"server-side-fallback-2026-07-01",
+	"thinking-binding-controls-2026-08-01",
+	"inline-tools-2026-09-15",
+]);
+
+/**
+ * The gate each feature sits behind, from the `{beta, when}` table a build keeps beside the registry.
+ *
+ * The predicate itself is minified, but the names it tests are not, so the class comes from the
+ * keywords rather than from reading the expression. A window with no keyword known here is skipped
+ * instead of guessed at.
+ */
+const GATES: readonly (readonly [string, string])[] = [
+	["firstPartyOnlyBetas", "Anthropic's own API only."],
+	["firstPartyCapabilityBetas", "Only when the account has the capability."],
+	["experimentalBetasOff", "Off once experimental betas are disabled."],
+	['provider==="vertex"', "Vertex and Foundry only."],
+	['provider==="bedrock"', "Bedrock and Mantle only."],
+	["perTurnTiming", "Only when per turn timing is on."],
+	["interleavedThinking", "Only while thinking is on."],
+	['canonical.includes("haiku")', "Not sent for Haiku."],
+];
+
+/** The class of gate each header sits behind, when the build states one. */
+function gates(source: string): Map<string, string> {
+	const byVariable = new Map<string, string>();
+	const declared =
+		/([A-Za-z_$][\w$]*)=z\("([a-z][a-z0-9_]*)",\s*("[a-z0-9][a-z0-9.-]*"|[A-Za-z_$][\w$]*)\)/g;
+	for (const match of source.matchAll(declared)) {
+		const variable = match[1];
+		const spelled = match[3];
+		if (variable === undefined || spelled === undefined) continue;
+		const header = spelled.startsWith('"') ? spelled.slice(1, -1) : constant(source, spelled);
+		if (header !== undefined) byVariable.set(variable, header);
+	}
+
+	const found = new Map<string, string>();
+	for (const match of source.matchAll(/\{beta:([A-Za-z_$][\w$]*),when:/g)) {
+		const header = byVariable.get(match[1] ?? "");
+		if (header === undefined || match.index === undefined) continue;
+		// The predicate ends at the object's own brace, and reaching past it reads the next feature's
+		// gate instead of this one.
+		const close = source.indexOf("}", match.index);
+		const window = new Set(source.slice(match.index, close === -1 ? match.index + 200 : close));
+		for (const [keyword, phrase] of GATES)
+			if (window.has(keyword)) {
+				found.set(header, phrase);
+				break;
+			}
+	}
+	return found;
+}
+
+function describe(header: string, gate: string | undefined): string {
+	const note = NOTES[header] ?? "nothing in this build says what it does";
+	const sentence = `${note.charAt(0).toUpperCase()}${note.slice(1)}.`;
+	const parts = [gate, sentence].filter((part) => part !== undefined);
+	if (PI_ASKS.has(header))
+		parts.push("Pi already asks for this one, so this switch cannot turn it off.");
+	return parts.join(" ");
 }
 
 export interface Contract {
@@ -60,11 +187,15 @@ export async function capture(version: string, workdir: string): Promise<Contrac
 
 	const system = blocks(turn.body.system);
 	const betas = new Set(betasOf(turn.headers, "anthropic-beta"));
-	for (const feature of features) feature.turn = betas.has(feature.header);
+	const gated = gates((await readFile(binary)).toString("latin1"));
+	for (const feature of features) {
+		feature.turn = betas.has(feature.header);
+		feature.description = describe(feature.header, gated.get(feature.header));
+	}
 
 	return {
 		version,
-		userAgent: header(turn.headers, "user-agent"),
+		userAgent: headerOf(turn.headers, "user-agent"),
 		entrypoint: (billing(system)?.match(/cc_entrypoint=([^;]+)/) ?? [])[1] ?? "",
 		identity: system[1]?.text ?? "",
 		system: system.map((block) => ({
@@ -151,7 +282,9 @@ async function registry(binary: string): Promise<Feature[]> {
 		const found = match[2];
 		if (name === undefined || found === undefined) continue;
 		const resolved = found.startsWith('"') ? found.slice(1, -1) : constant(source, found);
-		if (resolved !== undefined) features.push({ name, header: resolved, turn: false });
+		// `x-cc-internal-` headers are latches between Claude Code's own processes, not features.
+		if (resolved !== undefined && !resolved.startsWith("x-cc-internal-"))
+			features.push({ name, header: resolved, turn: false, description: "" });
 	}
 	if (features.length < 20)
 		throw new Error(`${binary} yielded ${features.length} features, which is too few to trust`);
@@ -327,14 +460,14 @@ function redact(headers: Record<string, string | string[] | undefined>): Record<
 	return keep;
 }
 
-function header(headers: Record<string, string>, name: string): string {
+function headerOf(headers: Record<string, string>, name: string): string {
 	const value = headers[name];
 	if (value === undefined) throw new Error(`the turn sent no ${name}`);
 	return value;
 }
 
 function betasOf(headers: Record<string, string>, name: string): string[] {
-	return header(headers, name)
+	return headerOf(headers, name)
 		.split(",")
 		.map((entry) => entry.trim())
 		.filter((entry) => entry !== "");

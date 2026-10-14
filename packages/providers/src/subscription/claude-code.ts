@@ -7,63 +7,259 @@
 export const CLAUDE_CODE_VERSION = "2.1.299";
 
 export const CLAUDE_CODE_FEATURES = [
-	{ name: "claude_code", header: "claude-code-20250219", turn: true },
-	{ name: "oauth_auth", header: "oauth-2025-04-20", turn: false },
-	{ name: "interleaved_thinking", header: "interleaved-thinking-2025-05-14", turn: true },
-	{ name: "long_context", header: "context-1m-2025-08-07", turn: false },
-	{ name: "context_management", header: "context-management-2025-06-27", turn: true },
-	{ name: "structured_outputs", header: "structured-outputs-2025-12-15", turn: false },
-	{ name: "web_search", header: "web-search-2025-03-05", turn: false },
-	{ name: "tool_search", header: "advanced-tool-use-2025-11-20", turn: false },
-	{ name: "tool_search", header: "tool-search-tool-2025-10-19", turn: false },
-	{ name: "effort", header: "effort-2025-11-24", turn: true },
-	{ name: "task_budgets", header: "task-budgets-2026-03-13", turn: false },
-	{ name: "prompt_caching_scope", header: "prompt-caching-scope-2026-01-05", turn: true },
-	{ name: "prompt_caching_evict", header: "prompt-caching-evict-2026-05-12", turn: false },
-	{ name: "cache_keepalive", header: "cache-keepalive-2026-09-03", turn: false },
-	{ name: "extended_cache_ttl", header: "extended-cache-ttl-2025-04-11", turn: false },
-	{ name: "speed", header: "fast-mode-2026-02-01", turn: false },
-	{ name: "redact_thinking", header: "redact-thinking-2026-02-12", turn: false },
-	{ name: "thinking_resumption", header: "thinking-resumption-2026-07-17", turn: false },
-	{ name: "thinking_token_count", header: "thinking-token-count-2026-05-13", turn: true },
-	{ name: "afk_mode", header: "afk-mode-2026-01-31", turn: true },
-	{ name: "advisor_tool", header: "advisor-tool-2026-03-01", turn: false },
-	{ name: "cache_diagnosis", header: "cache-diagnosis-2026-04-07", turn: false },
-	{ name: "context_hint", header: "context-hint-2026-04-09", turn: false },
-	{ name: "mcp_servers", header: "mcp-servers-2025-12-04", turn: false },
-	{ name: "files_api", header: "files-api-2025-04-14", turn: false },
-	{ name: "environments", header: "environments-2025-11-01", turn: false },
-	{ name: "ccr_byoc", header: "ccr-byoc-2025-07-29", turn: false },
-	{ name: "per_message_effort", header: "per-turn-control-2026-07-01", turn: true },
-	{ name: "per_turn_timing", header: "timing-2026-09-09", turn: false },
-	{ name: "mid_conv_tool_change", header: "mid-conversation-tool-changes-2026-07-01", turn: true },
-	{ name: "inline_tools", header: "inline-tools-2026-09-15", turn: false },
-	{ name: "server_side_fallback", header: "server-side-fallback-2026-06-01", turn: false },
-	{ name: "server_side_fallback_category", header: "server-side-fallback-2026-07-01", turn: false },
-	{ name: "fallback_credit", header: "fallback-credit-2026-06-01", turn: false },
 	{
-		name: "mid_conv_cache_promotion_latch",
-		header: "x-cc-internal-mid-conv-cache-promotion",
-		turn: false,
+		name: "claude_code",
+		header: "claude-code-20250219",
+		turn: true,
+		description:
+			"Not sent for Haiku. Marks the request as Claude Code's, which is where Anthropic reads the plan from. Pi already asks for this one, so this switch cannot turn it off.",
 	},
 	{
-		name: "mid_conv_cache_promotion_ok_latch",
-		header: "x-cc-internal-mid-conv-cache-promotion-ok",
+		name: "oauth_auth",
+		header: "oauth-2025-04-20",
 		turn: false,
+		description:
+			"Goes beside an OAuth token, so dropping it moves the request off that path. Pi already asks for this one, so this switch cannot turn it off.",
 	},
-	{ name: "auto_mode_classifier", header: "auto-mode-classifier-2026-07-16", turn: false },
-	{ name: "dangerous_tool_use", header: "dangerous-tool-use-2026-09-03", turn: true },
-	{ name: "thinking_display_updates", header: "thinking-display-updates-2026-08-18", turn: true },
+	{
+		name: "interleaved_thinking",
+		header: "interleaved-thinking-2025-05-14",
+		turn: true,
+		description:
+			"Only while thinking is on. Thinking carries on between tool calls instead of stopping at each one. Pi already asks for this one, so this switch cannot turn it off.",
+	},
+	{
+		name: "long_context",
+		header: "context-1m-2025-08-07",
+		turn: false,
+		description: "The million token context window, on the models that have it.",
+	},
+	{
+		name: "context_management",
+		header: "context-management-2025-06-27",
+		turn: true,
+		description:
+			"Only when the account has the capability. Travels with `context_management`, the edits that clear old tool results.",
+	},
+	{
+		name: "structured_outputs",
+		header: "structured-outputs-2025-12-15",
+		turn: false,
+		description:
+			"Only when the account has the capability. Travels with `output_config.format`, which pi never sends.",
+	},
+	{
+		name: "web_search",
+		header: "web-search-2025-03-05",
+		turn: false,
+		description:
+			"Vertex and Foundry only. Vertex and Foundry only, where the server runs the search.",
+	},
+	{
+		name: "tool_search",
+		header: "advanced-tool-use-2025-11-20",
+		turn: false,
+		description: "Tools load on demand instead of all at once.",
+	},
+	{
+		name: "tool_search",
+		header: "tool-search-tool-2025-10-19",
+		turn: false,
+		description: "The earlier name of that same tool search.",
+	},
+	{
+		name: "effort",
+		header: "effort-2025-11-24",
+		turn: true,
+		description: "Travels with `output_config.effort`.",
+	},
+	{
+		name: "task_budgets",
+		header: "task-budgets-2026-03-13",
+		turn: false,
+		description: "Travels with `task_budget`, which pi never sends.",
+	},
+	{
+		name: "prompt_caching_scope",
+		header: "prompt-caching-scope-2026-01-05",
+		turn: true,
+		description:
+			"Anthropic's own API only. Changes what the cache covers, and nothing in the request itself.",
+	},
+	{
+		name: "prompt_caching_evict",
+		header: "prompt-caching-evict-2026-05-12",
+		turn: false,
+		description: "Travels with `evict_on_complete`, which pi never sends.",
+	},
+	{
+		name: "cache_keepalive",
+		header: "cache-keepalive-2026-09-03",
+		turn: false,
+		description:
+			"Used on the call that keeps a cached conversation alive, not on a request for a reply.",
+	},
+	{
+		name: "extended_cache_ttl",
+		header: "extended-cache-ttl-2025-04-11",
+		turn: false,
+		description: "A one hour `cache_control.ttl` is only honoured with it.",
+	},
+	{
+		name: "speed",
+		header: "fast-mode-2026-02-01",
+		turn: false,
+		description: 'Travels with `speed: "fast"`, which pi never sends.',
+	},
+	{
+		name: "redact_thinking",
+		header: "redact-thinking-2026-02-12",
+		turn: false,
+		description: "Anthropic's own API only. Hides the thinking of earlier turns from the model.",
+	},
+	{
+		name: "thinking_resumption",
+		header: "thinking-resumption-2026-07-17",
+		turn: false,
+		description: "Thinking picks up where an earlier request left it.",
+	},
+	{
+		name: "thinking_token_count",
+		header: "thinking-token-count-2026-05-13",
+		turn: true,
+		description:
+			"Off once experimental betas are disabled. Adds thinking counts to the usage the reply reports.",
+	},
+	{
+		name: "afk_mode",
+		header: "afk-mode-2026-01-31",
+		turn: true,
+		description: "The server acts on it, and nothing in the request changes.",
+	},
+	{
+		name: "advisor_tool",
+		header: "advisor-tool-2026-03-01",
+		turn: false,
+		description: "The advisor tool, which asks a second model for advice.",
+	},
+	{
+		name: "cache_diagnosis",
+		header: "cache-diagnosis-2026-04-07",
+		turn: false,
+		description:
+			"The reply says what the cache did; Claude Code drops this one when the API refuses it.",
+	},
+	{
+		name: "context_hint",
+		header: "context-hint-2026-04-09",
+		turn: false,
+		description: "The server acts on it, and nothing in the request changes.",
+	},
+	{
+		name: "mcp_servers",
+		header: "mcp-servers-2025-12-04",
+		turn: false,
+		description: "Only used on the MCP server endpoints, so a reply is unaffected.",
+	},
+	{
+		name: "files_api",
+		header: "files-api-2025-04-14",
+		turn: false,
+		description: "Only used on the Files endpoints, so a reply is unaffected.",
+	},
+	{
+		name: "environments",
+		header: "environments-2025-11-01",
+		turn: false,
+		description: "Only used on the environments endpoints, so a reply is unaffected.",
+	},
+	{
+		name: "ccr_byoc",
+		header: "ccr-byoc-2025-07-29",
+		turn: false,
+		description: "Only used on the code runner endpoints, so a reply is unaffected.",
+	},
+	{
+		name: "per_message_effort",
+		header: "per-turn-control-2026-07-01",
+		turn: true,
+		description: "Only when per turn timing is on. Travels with the per turn control fields.",
+	},
+	{
+		name: "per_turn_timing",
+		header: "timing-2026-09-09",
+		turn: false,
+		description:
+			"Only when per turn timing is on. Asks the reply to say how long the request took.",
+	},
+	{
+		name: "mid_conv_tool_change",
+		header: "mid-conversation-tool-changes-2026-07-01",
+		turn: true,
+		description: "Lets the tool list change in the middle of a conversation.",
+	},
+	{
+		name: "inline_tools",
+		header: "inline-tools-2026-09-15",
+		turn: false,
+		description:
+			"Tool definitions travel inside the messages instead of the `tools` field. Pi already asks for this one, so this switch cannot turn it off.",
+	},
+	{
+		name: "server_side_fallback",
+		header: "server-side-fallback-2026-06-01",
+		turn: false,
+		description: "Travels with `fallbacks`.",
+	},
+	{
+		name: "server_side_fallback_category",
+		header: "server-side-fallback-2026-07-01",
+		turn: false,
+		description:
+			"Travels with `fallbacks`, by category. Pi already asks for this one, so this switch cannot turn it off.",
+	},
+	{
+		name: "fallback_credit",
+		header: "fallback-credit-2026-06-01",
+		turn: false,
+		description: "Counts a fallback against a credit.",
+	},
+	{
+		name: "auto_mode_classifier",
+		header: "auto-mode-classifier-2026-07-16",
+		turn: false,
+		description: "The classifier that decides the auto mode.",
+	},
+	{
+		name: "dangerous_tool_use",
+		header: "dangerous-tool-use-2026-09-03",
+		turn: true,
+		description: "Travels with `safeguards`.",
+	},
+	{
+		name: "thinking_display_updates",
+		header: "thinking-display-updates-2026-08-18",
+		turn: true,
+		description: "Streams updates to how thinking is displayed.",
+	},
 	{
 		name: "thinking_binding_controls",
 		header: "thinking-binding-controls-2026-08-01",
 		turn: false,
+		description:
+			"Travels with `thinking.block_binding`. Pi already asks for this one, so this switch cannot turn it off.",
 	},
-	{ name: "message_threads", header: "message-threads-2026-08-12", turn: false },
+	{
+		name: "message_threads",
+		header: "message-threads-2026-08-12",
+		turn: false,
+		description: "Only used on the thread endpoints, so a reply is unaffected.",
+	},
 	{
 		name: "mid_conversation_system_clear_at",
 		header: "mid-conversation-system-clear-at-2026-08-21",
 		turn: false,
+		description: "Lets a system block be cleared mid conversation.",
 	},
 ] as const;
 

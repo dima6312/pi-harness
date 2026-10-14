@@ -49,7 +49,7 @@ function render(contract: Contract): string {
 	const features = contract.features
 		.map(
 			(feature) =>
-				`\t{ name: ${JSON.stringify(feature.name)}, header: ${JSON.stringify(feature.header)}, turn: ${String(feature.turn)} },`,
+				`\t{ name: ${JSON.stringify(feature.name)}, header: ${JSON.stringify(feature.header)}, turn: ${String(feature.turn)}, description: ${JSON.stringify(feature.description)} },`,
 		)
 		.join("\n");
 
