@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { createApp, RULING, type RulingRequest } from "@adeildo/pi-kit";
 import { fakePi } from "@adeildo/pi-kit/testing";
@@ -6,6 +9,7 @@ import type { AgentToolResult, Theme, ToolRenderers } from "@earendil-works/pi-c
 import { Container, Text } from "@earendil-works/pi-tui";
 
 import { look } from "../src/index.ts";
+import { editLines } from "../src/render/streaming.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
@@ -276,5 +280,129 @@ describe("the frame around a tool call", () => {
 		const lines = result === undefined ? [] : plain(result);
 		expect(lines[0]).toMatch(/^\u251c\u2500+\u2524$/);
 		expect(lines.at(-1)).toMatch(/^\u2570\u2500 \S+ done \u2500+\u256f$/);
+	});
+});
+
+describe("an edit or a write while the model writes it", () => {
+	function streaming(toolName: string, args: unknown, overrides: Record<string, unknown> = {}) {
+		const fake = fakePi();
+		createApp(fake.pi, { name: "look" }).use(look).build();
+		let asked = 0;
+		const own: ToolRenderers = {
+			renderCall: () => {
+				asked++;
+				// Pi's write shows the first lines of the file under its path, and its edit only the
+				// path until it has read the file.
+				const body =
+					toolName === "write" ? `${toolName} pi's own\nconst line1 = 1;` : `${toolName} pi's own`;
+				return new Text(body, 0, 0);
+			},
+		};
+		const chain = resolve(fake, own, toolName);
+		const ctx = context({
+			argsComplete: false,
+			executionStarted: false,
+			state: { writingAt: Date.now() },
+			...overrides,
+		});
+		const call = chain?.renderCall?.(args, theme, ctx);
+		if (call === undefined) throw new Error("no call component");
+		return { lines: call.render(72).map((line) => line.trimEnd()), asked: () => asked };
+	}
+
+	const content = Array.from(
+		{ length: 12 },
+		(_, index) => `const line${index + 1} = ${index + 1};`,
+	).join("\n");
+
+	test("a write shows its last lines, a cursor, and how much is written", () => {
+		const { lines, asked } = streaming("write", { path: "/repo/new.ts", content });
+		expect(lines.slice(1, -1)).toEqual([
+			"│ write /repo/new.ts  new file                                         │",
+			"│  ⋮  4 lines above                                                    │",
+			"│  5  const line5 = 5;                                                 │",
+			"│  6  const line6 = 6;                                                 │",
+			"│  7  const line7 = 7;                                                 │",
+			"│  8  const line8 = 8;                                                 │",
+			"│  9  const line9 = 9;                                                 │",
+			"│ 10  const line10 = 10;                                               │",
+			"│ 11  const line11 = 11;                                               │",
+			"│ 12  const line12 = 12;▍                                              │",
+		]);
+		expect(lines.at(-1)).toMatch(/writing {2}\d+\.\ds {2}12 lines {2}209 B/);
+		expect(asked()).toBe(0);
+	});
+
+	test("a write says how many lines of the file it replaces", () => {
+		const dir = mkdtempSync(join(tmpdir(), "look-write-"));
+		try {
+			writeFileSync(join(dir, "old.ts"), "a\nb\nc\n");
+			const { lines } = streaming("write", { path: "old.ts", content: "a" }, { cwd: dir });
+			expect(lines[1]).toContain("write old.ts  replaces 3 lines");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	test("an edit shows the lines it takes out and puts in, as they arrive", () => {
+		const args = {
+			path: "/repo/a.ts",
+			edits: [
+				{ oldText: "const MAX = 240;", newText: "const MAX_TEXT = 240;" },
+				{ oldText: "a\nb", newText: "c" },
+			],
+		};
+		const { lines } = streaming("edit", args);
+		expect(lines.slice(1, -1)).toEqual([
+			"│ edit /repo/a.ts                                                      │",
+			"│ -const MAX = 240;                                                    │",
+			"│ +const MAX_TEXT = 240;                                               │",
+			"│ ⋯                                                                    │",
+			"│ -a                                                                   │",
+			"│ -b                                                                   │",
+			"│ +c▍                                                                  │",
+		]);
+		expect(lines.at(-1)).toMatch(/writing {2}\d+\.\ds {2}edit 2 {2}-3 \+2/);
+	});
+
+	test("pi takes over once the call is written, and the stream waits for pi's diff", () => {
+		const args = { path: "/repo/a.ts", edits: [{ oldText: "x", newText: "y" }] };
+		const done = streaming("edit", args, { argsComplete: true });
+		expect(done.asked()).toBe(1);
+		// Pi's edit shows only its first line until it has read the file.
+		expect(done.lines[1]).toContain("edit /repo/a.ts");
+		expect(done.lines[2]).toContain("-x");
+		const write = streaming("write", { path: "/repo/new.ts", content }, { argsComplete: true });
+		expect(write.lines[1]).toContain("write pi's own");
+	});
+
+	test("other tools keep pi's renderer while they are written", () => {
+		const { lines, asked } = streaming("bash", { command: "ls" });
+		expect(asked()).toBe(1);
+		expect(lines[1]).toContain("bash pi's own");
+	});
+});
+
+describe("the lines an edit changes", () => {
+	const edit = { oldText: "a\nb\nc\nd", newText: "a\nB\nc\nd" };
+
+	test("the lines both texts start and end with are context", () => {
+		expect(editLines(edit, true)).toEqual({
+			before: ["a"],
+			out: ["b"],
+			in: ["B"],
+			after: ["c", "d"],
+		});
+	});
+
+	test("while the new text arrives, the lines it has not repeated yet count as taken out", () => {
+		expect(editLines({ oldText: edit.oldText, newText: "a\nB\nc" }, false)).toEqual({
+			before: ["a"],
+			out: ["b", "c", "d"],
+			in: ["B", "c"],
+			after: [],
+		});
+		// The line still arriving may be cut short, so it is never context yet.
+		expect(editLines({ oldText: "a\nb", newText: "a" }, false).before).toEqual([]);
 	});
 });

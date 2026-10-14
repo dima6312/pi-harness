@@ -20,6 +20,7 @@ import {
 } from "@earendil-works/pi-tui";
 
 import { type IconSet, resolveIcons } from "../render/glyphs.ts";
+import { type Stream, STREAMERS } from "../render/streaming.ts";
 import { stateMark, toolIcon, toolLabel } from "../render/tools.ts";
 import { icons } from "../settings.ts";
 
@@ -73,10 +74,12 @@ function framed(
 	const result = base?.renderResult ?? genericResult;
 
 	// A renderer of pi's own mutates the component it returned last time, which sits inside the
-	// frame, so it gets that one back instead of the frame.
-	const inner = new WeakMap<Component, Component>();
+	// frame, so it gets that one back instead of the frame. A frame that showed the stream instead
+	// holds no component of pi's.
+	const inner = new WeakMap<Component, Component | undefined>();
 	const passed = (last: Component | undefined): Component | undefined =>
-		last === undefined ? undefined : (inner.get(last) ?? last);
+		last === undefined || !inner.has(last) ? last : inner.get(last);
+	const streamer = STREAMERS[frame.name];
 
 	return {
 		...base,
@@ -89,7 +92,17 @@ function framed(
 			clock.writingAt ??= now;
 			if (context.argsComplete) clock.writtenAt ??= now;
 			if (context.executionStarted) clock.startedAt ??= now;
-			const body = call(args, theme, { ...context, lastComponent: passed(context.lastComponent) });
+			const stream = streamer?.(args, theme, {
+				cwd: context.cwd,
+				expanded: context.expanded,
+				state: context.state as object,
+			});
+			const writing = stream !== undefined && !context.argsComplete;
+			// While the model writes, pi's renderer has nothing new to show, so it is not asked.
+			const own = writing
+				? undefined
+				: call(args, theme, { ...context, lastComponent: passed(context.lastComponent) });
+			const body = own === undefined ? drawnBody(stream?.lines ?? []) : orStream(own, stream);
 
 			const box = new CallFrame({
 				theme,
@@ -102,8 +115,9 @@ function framed(
 				mark: stateMark,
 				set: frame.set,
 				elapsed: elapsedOf(clock, context),
+				progress: writing ? stream.progress : undefined,
 			});
-			inner.set(box, body);
+			inner.set(box, own);
 			return box;
 		},
 		renderResult(shown, options, theme, context) {
@@ -231,7 +245,8 @@ class CallFrame implements Component {
 	render(width: number): string[] {
 		const { theme, icon, label, ruling, expanded, phase } = this.parts;
 		const body = this.parts.body.render(room(width));
-		const drawn = { width, body, rest: [ruling, expanded, phase, this.parts.elapsed] };
+		const progress = this.parts.progress?.join("\u0000");
+		const drawn = { width, body, rest: [ruling, expanded, phase, this.parts.elapsed, progress] };
 		if (unchanged(this.#drawn, drawn)) return this.#drawn.lines;
 
 		const title = `${theme.fg("toolTitle", icon)} ${theme.fg("toolTitle", theme.bold(label))}`;
@@ -242,7 +257,7 @@ class CallFrame implements Component {
 		// The call has nothing else to show yet, so the frame closes with what it is doing.
 		if (phase !== undefined) {
 			const mark = this.parts.mark(phase, this.parts.set());
-			const times = [this.parts.elapsed];
+			const times = [this.parts.elapsed, ...(this.parts.progress ?? [])];
 			lines.push(
 				rule("bottom", phaseLabel(theme, mark, phase, times), width, theme, PHASE_COLORS[phase]),
 			);
@@ -261,6 +276,28 @@ interface CallParts {
 	mark: (phase: Phase, set: IconSet) => string;
 	set: () => IconSet;
 	elapsed?: string;
+	/** What the model has written so far, while it writes. */
+	progress?: readonly string[];
+}
+
+/** Lines that are already drawn. The frame cuts the ones too wide for it. */
+function drawnBody(drawn: readonly string[]): Component {
+	return { render: () => [...drawn], invalidate: () => {} };
+}
+
+/**
+ * Pi's own body, or the stream while pi's body is only its first line, as when an edit's diff is
+ * still being read from the file after the model finished writing.
+ */
+function orStream(own: Component, stream: Stream | undefined): Component {
+	if (stream === undefined) return own;
+	return {
+		render(width) {
+			const drawn = own.render(width);
+			return withoutBlanks(drawn).length > 1 ? drawn : [...stream.lines];
+		},
+		invalidate: () => own.invalidate(),
+	};
 }
 
 /** The result, behind a cut, and the bottom rule with how it went and how long it took. */
