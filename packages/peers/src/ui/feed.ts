@@ -1,4 +1,4 @@
-import { type Delivery, ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
+import { type Delivery, CUT, ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -48,9 +48,9 @@ export function feedView(
 		options.only === undefined ? room : room.filter((item) => involves(item, options.only ?? ""));
 	const lines: string[] = [];
 	const heads: (number | undefined)[] = [];
-	/** A block of lines; `head` is the line that says who wrote it, kept in view when it scrolls. */
-	const add = (block: readonly string[], head?: number) => {
-		const at = head === undefined ? undefined : lines.length + head;
+	/** A block of lines; `head` says its first line names who wrote it, kept in view when it scrolls. */
+	const add = (block: readonly string[], head = false) => {
+		const at = head ? lines.length : undefined;
 		for (const line of block) {
 			heads.push(at);
 			lines.push(line);
@@ -88,14 +88,14 @@ export function feedView(
 		const answered = replies.get(item.message.id);
 		const quoted = answered !== undefined && answered !== lastMessage ? answered : undefined;
 		const full = item === newest || options.only !== undefined;
-		add(messageLines(item.message, quoted, full, options), 0);
+		add(messageLines(item.message, quoted, full, options), true);
 		lastMessage = item.message;
 	}
 	const writing =
 		options.only === undefined ? typing : typing.filter((one) => one.session === options.only);
 	for (const one of writing) {
 		if (lines.length > 0) gap();
-		add(typingLines(one, options), 0);
+		add(typingLines(one, options), true);
 	}
 	if (lines.length > 0) return { lines, heads };
 	const narrowed = options.only === undefined ? undefined : options.names.get(options.only)?.handle;
@@ -308,7 +308,7 @@ function happeningLine(group: readonly Happening[], options: FeedOptions): strin
 function stamped(line: string, at: number, options: FeedOptions): string {
 	const time = `  ${options.theme.fg("dim", options.clock(at))}`;
 	const room = Math.max(8, options.width - visibleWidth(time));
-	return `${truncateToWidth(line, room, "...")}${time}`;
+	return `${truncateToWidth(line, room, CUT)}${time}`;
 }
 
 /** Left and came back within a minute: the session was reloaded. */

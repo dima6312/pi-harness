@@ -3,9 +3,9 @@
 import { tasksWith } from "@adeildo/pi-kit";
 
 import type { Folder, Peer, Posted } from "./folder.ts";
+import type { Named } from "./names.ts";
 
 const AUDIENCE = { all: "everyone", any: "anyone" } as const;
-import type { Named } from "./names.ts";
 
 const RECENT_FILES = 8;
 const ROOM_LINES = 12;

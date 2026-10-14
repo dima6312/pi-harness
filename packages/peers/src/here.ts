@@ -409,7 +409,6 @@ export class Here {
 		);
 	}
 
-	/** Delivers what is due, takes what is this session's turn, and waits for the next deadline. */
 	/** Taking a request logs it, and logging reads the folder and evaluates again: that waits. */
 	#evaluating = false;
 	#evaluateAgain = false;
@@ -436,6 +435,7 @@ export class Here {
 		this.#evaluate();
 	}
 
+	/** Delivers what is due, takes what is this session's turn, and waits for the next deadline. */
 	#evaluateOnce(): void {
 		if (this.#timer !== undefined) clearTimeout(this.#timer);
 		this.#timer = undefined;
@@ -522,7 +522,6 @@ export class Here {
 		if (mode !== "next-turn") this.#depth = Math.max(...messages.map(runDepth));
 	}
 
-	/** This session won the request: say so first, so nobody else takes it, then start on it. */
 	/** Claims the request, and says whether this session got it: another one may have been first. */
 	#take(message: Posted): boolean {
 		const me = this.session;

@@ -1,4 +1,4 @@
-import { pointer, spread, type Task, tasksWith, GLYPH } from "@adeildo/pi-kit";
+import { pointer, CUT, spread, type Task, tasksWith, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -113,7 +113,7 @@ function details(peer: Peer, theme: Theme, width: number, selected: boolean): st
 	}
 	const edited = [...peer.edited.keys()].slice(-EDITED_SHOWN).map(base);
 	if (edited.length > 0)
-		lines.push(theme.fg("dim", truncateToWidth(`edited ${edited.join(", ")}`, width, "...")));
+		lines.push(theme.fg("dim", truncateToWidth(`edited ${edited.join(", ")}`, width, CUT)));
 	if (selected && lines.length === 0) lines.push(theme.fg("dim", "nothing in progress"));
 	return lines;
 }
@@ -132,7 +132,7 @@ function task(
 	if (lines.length > most)
 		lines = [
 			...lines.slice(0, most - 1),
-			truncateToWidth(lines.slice(most - 1).join(" "), width, "..."),
+			truncateToWidth(lines.slice(most - 1).join(" "), width, CUT),
 		];
 	const out = lines.map((line) => theme.fg(tone, line));
 	if (tasks.length > 1) out.push(theme.fg("dim", `and ${tasks.length - 1} more`));

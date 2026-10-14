@@ -14,6 +14,11 @@ import { mentionedNames, mentionsIn, type Named } from "./names.ts";
 export const EVERYONE_MENTION = "everyone";
 export const ANYONE_MENTION = "anyone";
 
+/** Whether a name is one of the group mentions, so it names no single session. */
+export function isGroupMention(name: string): boolean {
+	return name === EVERYONE_MENTION || name === ANYONE_MENTION;
+}
+
 /** What each group mention does, under its name in the list. */
 const GROUPS: Record<string, string> = {
 	[EVERYONE_MENTION]: "every agent here gets it",
@@ -22,6 +27,13 @@ const GROUPS: Record<string, string> = {
 
 /** An `@` and the start of a name, right before the cursor. */
 const TYPING_PATTERN = /(?:^|[\s([{<`])(@[a-z0-9-]*)$/i;
+
+/**
+ * The name being typed after an `@` right before the cursor, in lower case, or undefined when none is.
+ */
+export function typingMention(text: string): string | undefined {
+	return TYPING_PATTERN.exec(text)?.[1]?.slice(1).toLowerCase();
+}
 
 /**
  * The agents a message goes to: "all" for `@everyone`, "any" for `@anyone`. Undefined when it
@@ -45,7 +57,7 @@ export function completeMentions(
 	others: () => readonly Named[],
 ): AutocompleteProvider {
 	function isMention(item: AutocompleteItem): boolean {
-		if (item.value === `@${EVERYONE_MENTION}` || item.value === `@${ANYONE_MENTION}`) return true;
+		if (isGroupMention(item.value.slice(1))) return true;
 		return others().some((named) => item.value === `@${named.handle}`);
 	}
 

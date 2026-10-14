@@ -1,6 +1,6 @@
 // The peers tool in the chat of the agent that calls it: the message as the model writes it, then a
 // tick per recipient that turns into two when it arrives and lights up when it is read.
-import { GLYPH } from "@adeildo/pi-kit";
+import { CUT, GLYPH } from "@adeildo/pi-kit";
 import type { Delivery } from "@adeildo/pi-kit";
 import type { AgentToolResult, Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
@@ -109,7 +109,7 @@ function resultLines(
 	if (details === undefined) {
 		const lines = text.split("\n");
 		return (expanded ? lines : lines.slice(0, 1)).map((line) =>
-			truncateToWidth(theme.fg("muted", line), width, "..."),
+			truncateToWidth(theme.fg("muted", line), width, CUT),
 		);
 	}
 	const message = here.folder.messages.get(details.id);
@@ -138,7 +138,7 @@ function resultLines(
 			);
 		else if (award(message, here.live(), Date.now()).kind === "waiting")
 			lines.push(theme.fg("warning", "everyone is busy: the first to finish takes it"));
-		return lines.map((line) => truncateToWidth(line, width, "..."));
+		return lines.map((line) => truncateToWidth(line, width, CUT));
 	}
 
 	return addressees(message, here.live()).map((session) => {

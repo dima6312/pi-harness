@@ -25,7 +25,8 @@ import {
 
 import type { Peer } from "../folder.ts";
 import type { Here } from "../here.ts";
-import { byHandle, type Named } from "../names.ts";
+import { ANYONE_MENTION, EVERYONE_MENTION, isGroupMention, typingMention } from "../mention.ts";
+import { byHandle, mentionedNames, mentionsIn, type Named } from "../names.ts";
 import { agentLines, inOrder, MARKS, markOf, stateOf, stateText } from "./agents.ts";
 import { feedMoving, feedView } from "./feed.ts";
 import { clock } from "./message.ts";
@@ -39,7 +40,6 @@ const BESIDE = 90;
 const AGENTS_MIN = 30;
 const AGENTS_MAX = 44;
 const PICKER_ROWS = 4;
-const MENTION_TAIL = /(?:^|\s)@([a-z0-9-]*)$/i;
 
 type Pane = "room" | "agents";
 
@@ -315,23 +315,23 @@ export class RoomView implements Component, Focusable {
 		});
 	}
 
-	/** Who the words are for, in the frame's top edge. Bare, because the arrow already says it. */
+	/**
+	 * Who the words are for, in the frame's top edge. Bare, because the arrow already says it. Reads the
+	 * mentions the way the send path does, so a group mention is not drawn as a mistake and a file after
+	 * the `@` is not read as an agent.
+	 */
 	#destination(text: string, names: ReadonlyMap<string, Named>): string {
 		const { theme } = this.#options;
-		const mentioned = [...text.matchAll(/(?<![\w@])@([a-z][a-z0-9-]*)(?=\s|$|[.,:;!?])/gi)].map(
-			(match) => match[1] ?? "",
-		);
-		const found: Named[] = [];
-		const unknown: string[] = [];
-		for (const name of mentioned) {
-			const named = byHandle(names, name);
-			if (named === undefined) unknown.push(name);
-			else found.push(named);
-		}
+		const mentioned = mentionedNames(text);
 		// A name still being written is not a mistake yet.
-		const writing = MENTION_TAIL.exec(text)?.[1];
-		const wrong = unknown.filter((name) => name !== writing);
+		const writing = typingMention(text);
+		const wrong = mentioned.filter(
+			(name) => name !== writing && !isGroupMention(name) && byHandle(names, name) === undefined,
+		);
 		if (wrong.length > 0) return theme.fg("warning", `no agent ${wrong[0]}`);
+		if (mentioned.includes(EVERYONE_MENTION)) return theme.fg("muted", EVERYONE_MENTION);
+		if (mentioned.includes(ANYONE_MENTION)) return theme.fg("muted", ANYONE_MENTION);
+		const found = mentionsIn(names, text);
 		if (found.length === 0) return theme.fg("dim", "everyone");
 		return found
 			.map((named) => theme.fg(named.color as ThemeColor, `@${named.handle}`))
@@ -400,20 +400,23 @@ export class RoomView implements Component, Focusable {
 		if (this.#pane !== "room") return [];
 		const value = this.#composer.getValue();
 		if (value === this.#dismissed) return [];
-		const match = MENTION_TAIL.exec(value);
-		if (match === null) return [];
-		const prefix = (match[1] ?? "").toLowerCase();
+		const prefix = typingMention(value);
+		if (prefix === undefined) return [];
 		const { here } = this.#options;
 		const others = [...here.names().values()].filter((named) => named.session !== here.session);
-		if (others.some((named) => named.handle === prefix)) return [];
-		return others.filter((named) => named.handle.startsWith(prefix));
+		if (isGroupMention(prefix) || others.some((named) => named.handle === prefix)) return [];
+		return [
+			...others.filter((named) => named.handle.startsWith(prefix)),
+			...[EVERYONE_MENTION, ANYONE_MENTION]
+				.filter((name) => name.startsWith(prefix))
+				.map((name): Named => ({ session: `@${name}`, handle: name, color: "muted" })),
+		];
 	}
 
 	#complete(named: Named | undefined): void {
 		if (named === undefined) return;
 		const value = this.#composer.getValue();
-		const match = MENTION_TAIL.exec(value);
-		const prefix = match?.[1] ?? "";
+		const prefix = typingMention(value) ?? "";
 		this.#composer.setValue(`${value.slice(0, value.length - prefix.length)}${named.handle} `);
 		this.#pick = 0;
 		this.#options.requestRender();
