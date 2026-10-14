@@ -2,7 +2,7 @@
 // The steps of `.github/workflows/claude-code.yml`: `compare` says whether the release moved, `bump`
 // re-runs the eval against it and rewrites the pin, and `report` opens the pull request or an issue.
 // No Anthropic account is involved, since the release is public and the turn is answered locally.
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,6 +14,7 @@ import {
 	capture,
 	channelVersion,
 } from "../packages/providers/eval/claude-code/contract.ts";
+import { closeIssues, details, fileIssue, openPullRequest, setOutputs } from "./github.ts";
 
 const LABEL = "claude-code";
 const BRANCH = "claude-code";
@@ -22,13 +23,6 @@ const WEB = "https://github.com/anthropics/claude-code";
 const GENERATED = "packages/providers/src/subscription/claude-code.ts";
 const GOLDEN = "packages/providers/eval/claude-code/golden.json";
 const NOTES = "contract.md";
-
-function setOutputs(values: Record<string, string>): void {
-	const file = process.env.GITHUB_OUTPUT;
-	const lines = Object.entries(values).map(([key, value]) => `${key}=${value}`);
-	if (file) appendFileSync(file, `${lines.join("\n")}\n`);
-	else console.log(lines.join("\n"));
-}
 
 /** The version the harness reports, as the generated file pins it. */
 function pinned(): string {
@@ -138,41 +132,6 @@ async function bump(): Promise<void> {
 	await $`bunx oxfmt ${GENERATED} ${GOLDEN}`;
 }
 
-function details(summary: string, body: string): string[] {
-	return [`<details><summary>${summary}</summary>`, "", body, "", "</details>"];
-}
-
-async function openIssues(): Promise<number[]> {
-	const json = await $`gh issue list --label ${LABEL} --state open --json number`.text();
-	return (JSON.parse(json) as { number: number }[]).map((issue) => issue.number);
-}
-
-async function fileIssue(version: string, body: string[]): Promise<void> {
-	writeFileSync("body.md", `${body.join("\n")}\n`);
-	const title = `Claude Code ${version} does not run green`;
-	await $`gh label create ${LABEL} --description ${"Follows the Claude Code release"} --color c5def5 --force`;
-	const open = (await openIssues())[0];
-	if (open === undefined) {
-		await $`gh issue create --title ${title} --label ${LABEL} --body-file body.md`;
-		return;
-	}
-	await $`gh issue edit ${open} --title ${title}`;
-	await $`gh issue comment ${open} --body-file body.md`;
-}
-
-async function openPullRequest(version: string, body: string[]): Promise<void> {
-	writeFileSync("body.md", `${body.join("\n")}\n`);
-	const title = `chore: report Claude Code ${version}`;
-	await $`git checkout -B ${BRANCH}`;
-	await $`git add ${GENERATED} ${GOLDEN}`;
-	await $`git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m ${title}`;
-	await $`git push --force-with-lease origin ${BRANCH}`;
-	const open =
-		await $`gh pr list --head ${BRANCH} --state open --json number --jq ${".[0].number // empty"}`.text();
-	if (open.trim()) await $`gh pr edit ${open.trim()} --title ${title} --body-file body.md`;
-	else await $`gh pr create --title ${title} --body-file body.md --head ${BRANCH} --base main`;
-}
-
 async function report(): Promise<void> {
 	const passed = process.env.VERIFY === "success";
 	const version = process.env.NEWEST ?? pinned();
@@ -182,35 +141,50 @@ async function report(): Promise<void> {
 
 	if (!passed) {
 		const log = readFileSync("verify.log", "utf-8").split("\n").slice(-120).join("\n");
-		await fileIssue(version, [
-			`Claude Code \`${version}\` moved, and either the eval reads a contract the harness does not reproduce or \`bun run verify\` fails against it. The pin did not move, so what the harness sends is unchanged.`,
-			"",
-			...links,
-			"",
-			...details("Tail of the log", `\`\`\`text\n${log}\n\`\`\``),
-			"",
-			...changed,
-		]);
+		await fileIssue(
+			{
+				label: LABEL,
+				description: "Follows the Claude Code release",
+				color: "c5def5",
+				title: `Claude Code ${version} does not run green`,
+				trailingNewline: true,
+			},
+			[
+				`Claude Code \`${version}\` moved, and either the eval reads a contract the harness does not reproduce or \`bun run verify\` fails against it. The pin did not move, so what the harness sends is unchanged.`,
+				"",
+				...links,
+				"",
+				...details("Tail of the log", `\`\`\`text\n${log}\n\`\`\``),
+				"",
+				...changed,
+			],
+		);
 		return;
 	}
 
 	const moved = (await $`git diff --quiet -- ${GENERATED} ${GOLDEN}`.nothrow()).exitCode !== 0;
 	if (moved) {
-		await openPullRequest(version, [
-			`Claude Code released \`${version}\`, and the whole suite passes against what it sends. The pin and the feature list in \`${GENERATED}\` come from a turn of that release.`,
-			"",
-			...links,
-			"",
-			...changed,
-			"",
-			"The `CI` run on this pull request waits in `action_required` until a maintainer approves it, which is how GitHub treats a pull request opened by `github-actions[bot]`.",
-		]);
+		await openPullRequest(
+			{
+				branch: BRANCH,
+				title: `chore: report Claude Code ${version}`,
+				files: [GENERATED, GOLDEN],
+				trailingNewline: true,
+				pushArgs: ["--force-with-lease"],
+			},
+			[
+				`Claude Code released \`${version}\`, and the whole suite passes against what it sends. The pin and the feature list in \`${GENERATED}\` come from a turn of that release.`,
+				"",
+				...links,
+				"",
+				...changed,
+				"",
+				"The `CI` run on this pull request waits in `action_required` until a maintainer approves it, which is how GitHub treats a pull request opened by `github-actions[bot]`.",
+			],
+		);
 	}
 
-	const green = `\`${version}\` runs green again: ${run}`;
-	await Promise.all(
-		(await openIssues()).map((number) => $`gh issue close ${number} --comment ${green}`),
-	);
+	await closeIssues(LABEL, `\`${version}\` runs green again: ${run}`);
 }
 
 const step = process.argv[2];

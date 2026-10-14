@@ -1,21 +1,23 @@
 #!/usr/bin/env bun
 // The steps of `.github/workflows/newest-pi.yml`. `compare` says whether to test the newest pi, and
 // `report` opens a bump PR when verify passed, or an issue when it failed.
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 import { $ } from "bun";
+
+import {
+	closeIssues,
+	details,
+	fileIssue,
+	openIssues,
+	openPullRequest,
+	setOutputs,
+} from "./github.ts";
 
 const PACKAGES = ["pi-ai", "pi-coding-agent", "pi-tui"];
 const LABEL = "newest-pi";
 const BRANCH = "newest-pi";
 const PI = "https://github.com/earendil-works/pi";
-
-function setOutputs(values: Record<string, string>): void {
-	const file = process.env.GITHUB_OUTPUT;
-	const lines = Object.entries(values).map(([key, value]) => `${key}=${value}`);
-	if (file) appendFileSync(file, `${lines.join("\n")}\n`);
-	else console.log(lines.join("\n"));
-}
 
 const manifest = JSON.parse(readFileSync("package.json", "utf-8")) as {
 	devDependencies: Record<string, string>;
@@ -30,18 +32,13 @@ async function newest(name: string): Promise<string> {
 	return ((await response.json()) as { version: string }).version;
 }
 
-async function openIssues(): Promise<number[]> {
-	const json = await $`gh issue list --label ${LABEL} --state open --json number`.text();
-	return (JSON.parse(json) as { number: number }[]).map((issue) => issue.number);
-}
-
 // A run tests when a pin moved, when someone asked for a check by hand, or when an issue is still
 // open so the day it turns green closes it.
 async function compare(): Promise<void> {
 	const versions = await Promise.all(PACKAGES.map(newest));
 	const moved = PACKAGES.some((name, index) => pinned(name) !== versions[index]);
 	const event = process.env.GITHUB_EVENT_NAME;
-	const open = (await openIssues()).length > 0;
+	const open = (await openIssues(LABEL)).length > 0;
 	setOutputs({
 		test: String(moved || event === "workflow_dispatch" || (event === "schedule" && open)),
 		pinned: pinned("pi-coding-agent"),
@@ -54,10 +51,6 @@ async function releaseNotes(version: string): Promise<string> {
 		.quiet()
 		.nothrow();
 	return result.exitCode === 0 ? result.stdout.toString().trim() : "";
-}
-
-function details(summary: string, body: string): string[] {
-	return [`<details><summary>${summary}</summary>`, "", body, "", "</details>"];
 }
 
 async function report(): Promise<void> {
@@ -83,68 +76,50 @@ async function report(): Promise<void> {
 			pinnedVersion === version
 				? `\`bun run verify\` failed twice in a row against \`${version}\`, the version already pinned here. The pin did not move, so this is the check running red on its own, not a release that arrived. The two runs are in the history of this issue.`
 				: `The newest \`@earendil-works/pi-coding-agent\` is \`${version}\`, and \`bun run verify\` fails against it. A type or test failure is an API change. A \`pi:defaults\` failure is a default the harness's settings were chosen against.`;
-		await fileIssue(version, [
-			lead,
-			"",
-			...links,
-			"",
-			...details("Tail of the log", `\`\`\`text\n${log}\n\`\`\``),
-			"",
-			...changes,
-		]);
+		await fileIssue(
+			{
+				label: LABEL,
+				description: "Fails against the latest pi SDK",
+				color: "f9d0c4",
+				title: `pi SDK ${version} fails the suite`,
+				trailingNewline: false,
+				skipWhenMentions: `\`${version}\``,
+			},
+			[
+				lead,
+				"",
+				...links,
+				"",
+				...details("Tail of the log", `\`\`\`text\n${log}\n\`\`\``),
+				"",
+				...changes,
+			],
+		);
 		return;
 	}
 
 	const bumped = (await $`git diff --quiet -- package.json`.nothrow()).exitCode !== 0;
 	if (bumped) {
-		await openPullRequest(version, [
-			`pi released \`${version}\`, and the whole suite passes against it, the API and the defaults included.`,
-			"",
-			...links,
-			"",
-			...changes,
-			"",
-			"The `CI` run on this PR waits in `action_required` until a maintainer approves it, which is how GitHub treats a pull request opened by `github-actions[bot]`.",
-		]);
+		await openPullRequest(
+			{
+				branch: BRANCH,
+				title: `chore(deps): bump the pi SDK to ${version}`,
+				files: ["package.json", "bun.lock"],
+				trailingNewline: false,
+				pushArgs: ["--force"],
+			},
+			[
+				`pi released \`${version}\`, and the whole suite passes against it, the API and the defaults included.`,
+				"",
+				...links,
+				"",
+				...changes,
+				"",
+				"The `CI` run on this PR waits in `action_required` until a maintainer approves it, which is how GitHub treats a pull request opened by `github-actions[bot]`.",
+			],
+		);
 	}
-	const green = `\`${version}\` runs green again: ${run}`;
-	await Promise.all(
-		(await openIssues()).map((number) => $`gh issue close ${number} --comment ${green}`),
-	);
-}
-
-// One open issue at a time, and a version already reported is not repeated.
-async function fileIssue(version: string, body: string[]): Promise<void> {
-	const title = `pi SDK ${version} fails the suite`;
-	writeFileSync("body.md", body.join("\n"));
-	await $`gh label create ${LABEL} --description ${"Fails against the latest pi SDK"} --color f9d0c4 --force`;
-
-	const [number] = await openIssues();
-	if (number === undefined) {
-		await $`gh issue create --title ${title} --label ${LABEL} --body-file body.md`;
-		return;
-	}
-	const thread =
-		await $`gh issue view ${number} --json body,comments --jq ${'.body + ([.comments[].body] | join("\n"))'}`.text();
-	if (thread.includes(`\`${version}\``)) return;
-	await $`gh issue edit ${number} --title ${title}`;
-	await $`gh issue comment ${number} --body-file body.md`;
-}
-
-async function openPullRequest(version: string, body: string[]): Promise<void> {
-	const title = `chore(deps): bump the pi SDK to ${version}`;
-	writeFileSync("body.md", body.join("\n"));
-	await $`git config user.name ${"github-actions[bot]"}`;
-	await $`git config user.email ${"41898282+github-actions[bot]@users.noreply.github.com"}`;
-	await $`git checkout -B ${BRANCH}`;
-	await $`git add package.json bun.lock`;
-	await $`git commit -m ${title}`;
-	await $`git push --force origin ${BRANCH}`;
-
-	const open =
-		await $`gh pr list --head ${BRANCH} --state open --json number --jq ${".[0].number // empty"}`.text();
-	if (open.trim()) await $`gh pr edit ${open.trim()} --title ${title} --body-file body.md`;
-	else await $`gh pr create --title ${title} --body-file body.md --head ${BRANCH} --base main`;
+	await closeIssues(LABEL, `\`${version}\` runs green again: ${run}`);
 }
 
 const command = process.argv[2];
