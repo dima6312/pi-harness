@@ -34,6 +34,8 @@ jobs:
   # of the workspace packages, and `bun pm pack` writes the dependency version from the lockfile.
   # This commits the refreshed lockfile onto the release PR's branch. A push made with GITHUB_TOKEN
   # triggers no workflow, and release-please rewrites the branch on its next run, so this runs again.
+  # The docs pictures show the harness version too, so the same commit redraws them; otherwise
+  # `docs:check` fails on the release commit and nothing gets published.
   lockfile:
     needs: release
     if: ${{ needs.release.outputs.pr != '' }}
@@ -47,12 +49,24 @@ jobs:
 
       - run: bun install
 
-      - name: Commit bun.lock
+      # `bun run docs` draws with rsvg-convert and the font CONTRIBUTING.md names.
+      - name: Install the renderer and the font
         run: |
-          git diff --quiet bun.lock && exit 0
+          sudo apt-get update -q && sudo apt-get install -yq librsvg2-bin
+          mkdir -p ~/.local/share/fonts
+          curl -fsSL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz \
+            | tar -xJ -C ~/.local/share/fonts
+          fc-cache -f
+
+      - run: bun run docs
+
+      - name: Commit bun.lock and the pictures
+        run: |
+          git add bun.lock 'packages/*/assets/*.png' '*.md'
+          git diff --cached --quiet && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: refresh bun.lock" bun.lock
+          git commit -m "chore: refresh bun.lock and the docs pictures"
           git push
 
   verify:

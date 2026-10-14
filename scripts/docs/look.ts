@@ -181,8 +181,6 @@ function screenParts(theme: Theme, draft: string): LookParts {
 		style: () => "card",
 		counts: () => ({ tools: 4, skills: 6, prompts: 0, extensions: 4 }),
 		lastVisit: () => undefined,
-		// Pinned, so a release bumping the package version does not make the picture stale.
-		version: () => "5.10.0",
 		// Pinned, so the picture shows the two lines GitHub answers with: a failed run and a review.
 		github: () => ({
 			ci: { branch: "main", sha: "b8e20ba", name: "Release" },
