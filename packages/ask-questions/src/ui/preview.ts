@@ -54,7 +54,7 @@ export class PreviewCache {
 
 	private drawing(text: string, width: number): string[] {
 		return drawingLines(text).map((line) =>
-			this.theme.codeBlock(truncateToWidth(line, Math.max(1, width), "...")),
+			this.theme.codeBlock(truncateToWidth(line, Math.max(1, width))),
 		);
 	}
 

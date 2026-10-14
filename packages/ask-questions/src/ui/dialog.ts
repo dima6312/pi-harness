@@ -1,6 +1,7 @@
 import {
 	type AskAnswer,
 	type AskResult,
+	CUT,
 	frame,
 	frameInner,
 	isAnswered,
@@ -44,7 +45,6 @@ import { PreviewCache } from "./preview.ts";
 const POINTER = `${GLYPH.pointer} `;
 const RAIL = "\u258e ";
 const CHECK = ` ${GLYPH.check}`;
-const ELLIPSIS = "...";
 /** The name of the focused row in the panel, and the blank line under it. */
 const TITLE_ROWS = 2;
 /** The pointer, the number and the gap before a label, in columns. */
@@ -478,7 +478,7 @@ export class QuestionDialog implements Component, Focusable {
 			wrapped.length > cap
 				? [
 						...wrapped.slice(0, cap - 1),
-						this.theme.fg("dim", `${ELLIPSIS} ${wrapped.length - cap + 1} more lines`),
+						this.theme.fg("dim", `${CUT} ${wrapped.length - cap + 1} more lines`),
 					]
 				: wrapped;
 		return shown.map((line) => rail + this.theme.fg("text", line));
@@ -578,7 +578,7 @@ export class QuestionDialog implements Component, Focusable {
 
 		const mark = done ? CHECK.length : 0;
 		const labelRoom = Math.max(6, width - prefix - mark - (hasNote ? NOTE_MARK.length + 1 : 0));
-		const text = truncateToWidth(label, Math.max(1, labelRoom), ELLIPSIS);
+		const text = truncateToWidth(label, Math.max(1, labelRoom));
 		const styled = active
 			? this.theme.bold(this.theme.fg("text", text))
 			: this.theme.fg("text", text);
@@ -657,9 +657,7 @@ export class QuestionDialog implements Component, Focusable {
 		titled: boolean,
 	): string[] {
 		const title = question.options[this.row]?.label ?? TYPED_LABEL;
-		const out = titled
-			? [this.theme.bold(truncateToWidth(title, Math.max(1, width), ELLIPSIS)), ""]
-			: [];
+		const out = titled ? [this.theme.bold(truncateToWidth(title, Math.max(1, width))), ""] : [];
 		const pinned = this.noting && !this.onTypedRow ? this.noteEditor(draft, width) : [];
 		const room = Math.max(1, rows - out.length - pinned.length);
 		this.panelRoom = room;

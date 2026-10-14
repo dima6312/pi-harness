@@ -34,7 +34,7 @@ export function answerBlock(
 	const lines = [truncateToWidth(count + theme.fg("accent", theme.bold(asked.header)), width)];
 	const question = theme.fg("muted", asked.question);
 	if (whole) lines.push(...hanging(INDENT, question, width));
-	else lines.push(truncateToWidth(INDENT + question, width, "..."));
+	else lines.push(truncateToWidth(INDENT + question, width));
 
 	const notes = answer?.notes ?? [];
 	const picked = answer?.picked ?? [];
