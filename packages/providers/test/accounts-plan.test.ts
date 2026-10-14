@@ -29,6 +29,7 @@ afterEach(() => restore());
 function watch(): Watch {
 	return {
 		limited: new Map(),
+		declined: new Map(),
 		usage: new Map(),
 		quota: new Quota({ anthropic: anthropicQuota(() => "2.1.280") }),
 	};

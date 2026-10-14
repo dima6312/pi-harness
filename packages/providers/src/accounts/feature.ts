@@ -34,6 +34,7 @@ export const accounts = defineFeature({
 		const pins: Pins = new Map();
 		const watch: Watch = {
 			limited: new Map(),
+			declined: new Map(),
 			usage: new Map(),
 			quota: new Quota({
 				anthropic: anthropicQuota(() => CLAUDE_CODE_VERSION),
@@ -75,6 +76,7 @@ export const accounts = defineFeature({
 			for (const warning of store.reload()) scope.warn(warning);
 			pins.clear();
 			watch.limited.clear();
+			watch.declined.clear();
 			watch.usage.clear();
 			for (const [provider, account] of replay(ctx.sessionManager.getBranch())) {
 				pins.set(provider, account);

@@ -21,6 +21,8 @@ import type { Account } from "./types.ts";
 /** What the session learns while it runs. */
 export interface Watch {
 	limited: Map<string, Set<string>>;
+	/** The accounts you chose to stop on at a limit, which are not asked about again. */
+	declined: Map<string, Set<string>>;
 	usage: UsageMap;
 	quota: Quota;
 }
@@ -74,6 +76,7 @@ export function sessionFor(
 		save: (id, credential) => void store.setCredential(providerId, id, credential),
 		served: (id) => {
 			watch.limited.get(providerId)?.delete(id);
+			watch.declined.get(providerId)?.delete(id);
 			store.clearError(providerId, id);
 			store.markLimited(providerId, id, undefined);
 		},
@@ -97,6 +100,7 @@ export function sessionFor(
 					currentId,
 					withReset(detail, reading),
 					watch.limited,
+					watch.declined,
 				);
 			}),
 		afterAuthFailure: (currentId, detail) =>

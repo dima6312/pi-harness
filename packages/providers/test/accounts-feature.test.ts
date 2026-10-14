@@ -298,6 +298,44 @@ test("asking always turns the policy into switch", async () => {
 	expect(pins.get("anthropic")).toBe(work.id);
 });
 
+test("after you stop on an account at its limit, its next limits fail without asking again", async () => {
+	const store = new AccountStore();
+	store.add("anthropic", "personal", OAUTH);
+	store.add("anthropic", "work", OTHER);
+	const [personal] = store.accounts("anthropic");
+	if (personal === undefined) throw new Error("no accounts");
+	const pins: Pins = new Map([["anthropic", personal.id]]);
+	const limited = new Map<string, Set<string>>();
+	const declined = new Map<string, Set<string>>();
+	const scope = fakeScope({ pi: fakePi() });
+	scope.settings.register([onLimit]);
+	let asked = 0;
+	const ctx = fakeContext([], true, {
+		model: { provider: "anthropic" },
+		ui: {
+			setStatus: () => {},
+			notify: () => {},
+			select: async (_title: string, options: string[]) => {
+				asked += 1;
+				return options.at(-1);
+			},
+		},
+	});
+	const limit = () =>
+		afterLimit(scope, store, pins, ctx, "anthropic", personal.id, "429", limited, declined);
+
+	expect(await limit()).toBeUndefined();
+	expect(await limit()).toBeUndefined();
+	expect(asked).toBe(1);
+	expect(pins.get("anthropic")).toBe(personal.id);
+
+	// Answering again forgets the choice, and the next limit asks once more.
+	declined.get("anthropic")?.delete(personal.id);
+	limited.get("anthropic")?.delete(personal.id);
+	await limit();
+	expect(asked).toBe(2);
+});
+
 test("a second account that refuses in the same session is not asked about again", async () => {
 	const store = new AccountStore();
 	store.add("anthropic", "personal", OAUTH);
@@ -471,6 +509,7 @@ test("the account picker shows what each account has left", async () => {
 	const scope = fakeScope({ pi: fakePi() });
 	const watch: Watch = {
 		limited: new Map(),
+		declined: new Map(),
 		usage: new Map(),
 		quota: new Quota({ anthropic: anthropicQuota(() => "2.1.280") }),
 	};
@@ -601,6 +640,7 @@ test("the picker says when an account needs a sign-in", async () => {
 	const scope = fakeScope({ pi: fakePi() });
 	const watch: Watch = {
 		limited: new Map(),
+		declined: new Map(),
 		usage: new Map(),
 		// No reader here: this test reads the labels, and a background plan read from it
 		// would still be in the air when the next test counts fetches.
@@ -633,6 +673,7 @@ test("the picker lists the accounts and never pi's own login", async () => {
 	const scope = fakeScope({ pi: fakePi() });
 	const watch: Watch = {
 		limited: new Map(),
+		declined: new Map(),
 		usage: new Map(),
 		// No reader here, for the same reason.
 		quota: new Quota({}),
@@ -784,7 +825,12 @@ test("requests that hit a limit at once share one dialog and its answer", async 
 			},
 		},
 	});
-	const watch: Watch = { limited: new Map(), usage: new Map(), quota: new Quota({}) };
+	const watch: Watch = {
+		limited: new Map(),
+		declined: new Map(),
+		usage: new Map(),
+		quota: new Quota({}),
+	};
 	const session = sessionFor(scope, store, pins, watch, ctx, "anthropic");
 
 	// The turn and the tasks' call, both on the account that just ran out.

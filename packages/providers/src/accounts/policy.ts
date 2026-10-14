@@ -29,7 +29,12 @@ export function usageLimitLine(
 	return `${message.provider} · ${label}: usage limit reached${when} (quota exceeded)`;
 }
 
-/** Follows the `accounts.onLimit` policy: ask, switch, or stop, and pins the account it moves to. */
+/**
+ * Follows the `accounts.onLimit` policy: ask, switch, or stop, and pins the account it moves to.
+ * Once you stop on an account, its next limits in this session fail without asking again: the next
+ * turn, and the calls other packages make in the background, would open the same dialog over and
+ * over. `declined` forgets the account when it answers again.
+ */
 export async function afterLimit(
 	scope: FeatureScope,
 	store: AccountStore,
@@ -39,10 +44,12 @@ export async function afterLimit(
 	currentId: string,
 	detail: string,
 	limited: Map<string, Set<string>> = new Map(),
+	declined: Map<string, Set<string>> = new Map(),
 ): Promise<{ id: string; credential: Credential } | undefined> {
 	const refused = markLimited(limited, providerId, currentId);
 	const mode = onLimit.get(scope);
 	if (mode === "stop") return undefined;
+	if (declined.get(providerId)?.has(currentId)) return undefined;
 
 	const candidates = limitCandidates(store.accounts(providerId), currentId, refused);
 	const [first] = candidates;
@@ -62,7 +69,10 @@ export async function afterLimit(
 		return switchTo(scope, store, pins, ctx, providerId, first, detail);
 	}
 	const chosen = picked === undefined ? undefined : choices.get(picked);
-	if (chosen === undefined) return undefined;
+	if (chosen === undefined) {
+		markLimited(declined, providerId, currentId);
+		return undefined;
+	}
 	return switchTo(scope, store, pins, ctx, providerId, chosen, detail);
 }
 
