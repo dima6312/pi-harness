@@ -391,7 +391,8 @@ export function rule(
 	const fill = Math.max(1, width - BODY_PAD - visibleWidth(cell));
 	const line =
 		paint(`${start}${LINE.h}`) + cell + paint(LINE.h.repeat(fill)) + paint(`${LINE.h}${end}`);
-	return truncateToWidth(line, width, "");
+	// A rule with room to fill is the width already; only a label that filled the row needs cutting.
+	return fill === 1 ? truncateToWidth(line, width, "") : line;
 }
 
 /** The line that ends the call and starts what it printed. */
@@ -399,7 +400,8 @@ function cut(width: number, theme: Theme): string {
 	const paint = (text: string) => theme.fg("border", text);
 	const fill = Math.max(1, width - BODY_PAD);
 	const line = `${paint(LINE.teeLeft)}${paint(LINE.h.repeat(fill + 2))}${paint(LINE.teeRight)}`;
-	return truncateToWidth(line, width, "");
+	// Room for the fill means the cut is the width already.
+	return fill === 1 ? truncateToWidth(line, width, "") : line;
 }
 
 /** The bottom rule: what the call is doing, how long it ran, and how long the model took to write it. */

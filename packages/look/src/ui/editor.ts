@@ -162,7 +162,10 @@ export class LookEditor extends CustomEditor {
 			}
 		}
 
-		return result.map((line) => truncateToWidth(line, width, ""));
+		// Every line here is drawn to the width already, and measuring is cheaper than cutting.
+		return result.map((line) =>
+			visibleWidth(line) > width ? truncateToWidth(line, width, "") : line,
+		);
 	}
 
 	#lead(budget: number): string | undefined {

@@ -49,15 +49,20 @@ export function entryFrame(
 		const label = left ? ` ${truncateToWidth(left, room, "...")} ` : "";
 		const start = paint(corners[0] + lines.h) + label;
 		const fill = Math.max(0, width - visibleWidth(start) - visibleWidth(end));
-		return truncateToWidth(start + paint(lines.h.repeat(fill)) + end, width, "");
+		const rule = start + paint(lines.h.repeat(fill)) + end;
+		// A rule with fill in it is the width already; only a label that left no room needs cutting.
+		return fill === 0 ? truncateToWidth(rule, width, "") : rule;
 	};
 	const side = paint(lines.v);
 	return [
 		edge([LINE.topLeft, LINE.topRight], frame.top, frame.topRight),
 		...body.map((line) => {
 			if (line === ENTRY_CUT) return paint(LINE.teeLeft + LINE.h.repeat(width - 2) + LINE.teeRight);
-			const cut = truncateToWidth(line, inner, "");
-			return `${side}${pad}${cut}${" ".repeat(Math.max(0, inner - visibleWidth(cut)))}${pad}${side}`;
+			// The line is measured to pad it anyway, so it is only cut when it does not fit.
+			const cells = visibleWidth(line);
+			const cut = cells > inner ? truncateToWidth(line, inner, "") : line;
+			const shown = cells > inner ? visibleWidth(cut) : cells;
+			return `${side}${pad}${cut}${" ".repeat(Math.max(0, inner - shown))}${pad}${side}`;
 		}),
 		edge([LINE.bottomLeft, LINE.bottomRight], frame.bottom, frame.bottomRight),
 	];
