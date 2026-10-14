@@ -176,6 +176,7 @@ function screenParts(theme: Theme, draft: string): LookParts {
 	const header = new HeaderComponent(view, {
 		style: () => "card",
 		counts: () => ({ tools: 4, skills: 6, prompts: 0, extensions: 4 }),
+		lastVisit: () => undefined,
 	}).render(WIDTH);
 
 	const editor = new LookEditor(

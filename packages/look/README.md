@@ -49,6 +49,8 @@ The spinner names the state instead of saying "Working": `waiting` for the first
 
 Your messages sit in a frame like the tool calls', in the accent colour and named `you`, without pi's background or the blank rows above and below the text. `look.userFrame` turns it off.
 
+The start card shows the π, the folder, the branch and the model, and under them only what changed or waits on you since your last session in the folder: an account that needs a sign-in, files in conflict, a branch behind its remote, other agents working there, a plan past 70%, a new harness version. On a quiet day it says nothing is new, and its bottom edge reads `ready when you are`. The π rises from its feet once per launch. With pi's `quietStartup` on `header`, which the harness sets, pi's list of everything it loaded stays out of the way.
+
 While a call runs, a lighter stretch moves along its bottom edge, and stops when the call ends.
 
 Pi's own entries sit in the same frame as the tool calls: compactions and branch summaries under `π`, skills, `!` commands with a cut between the command and what it printed, and the messages of extensions that bring no renderer of their own. The messages you send while the agent works wait above the editor in a dashed frame, each marked `steer` (between the agent's calls) or `next` (after its run), with the key that takes them back to the editor in the bottom edge.

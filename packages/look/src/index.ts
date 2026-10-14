@@ -1,3 +1,5 @@
+import { dirname, join } from "node:path";
+
 import {
 	accountStateOf,
 	createApp,
@@ -18,9 +20,11 @@ import type { TUI } from "@earendil-works/pi-tui";
 
 import { type GitState, readGit } from "./data/git.ts";
 import { emptySnapshot, type LiveInputs, type Snapshot, SnapshotReader } from "./data/snapshot.ts";
+import type { LastVisit } from "./data/start-notes.ts";
 import { Telemetry } from "./data/telemetry.ts";
 import type { DeltaKind } from "./data/telemetry.ts";
 import { REQUEST_ENTRY, type RequestRecord } from "./data/totals.ts";
+import { visit } from "./data/visits.ts";
 import { resolveIcons } from "./render/glyphs.ts";
 import { PLAIN, themePaint } from "./render/paint.ts";
 import { claimedStatuses, renderSegments, SEGMENTS } from "./render/segments.ts";
@@ -49,7 +53,7 @@ import {
 } from "./settings.ts";
 import { applyCursor, LookEditor } from "./ui/editor.ts";
 import { FooterComponent, StripComponent } from "./ui/footer.ts";
-import { HeaderComponent, type LoadedCounts } from "./ui/header.ts";
+import { HARNESS_VERSION, HeaderComponent, type LoadedCounts } from "./ui/header.ts";
 import { framePiEntries } from "./ui/pi-entries.ts";
 import { frameQueue } from "./ui/queue.ts";
 import type { Screen, SlotName } from "./ui/screen.ts";
@@ -107,7 +111,10 @@ export const look = defineFeature({
 
 		for (const entry of LOOK_SETTINGS) entry.listen(scope, repaint);
 		frame.listen(scope, () => live.ctx && installEditor(live.ctx, screen, live, scope));
-		header.listen(scope, () => live.ctx && installHeader(live.ctx, screen, scope));
+		const visitsFile = join(dirname(scope.settings.globalPath), "look-visits.json");
+		let visited = false;
+		let lastVisit: LastVisit | undefined;
+		header.listen(scope, () => live.ctx && installHeader(live.ctx, screen, scope, () => lastVisit));
 		cursor.listen(scope, (style) => live.tui && applyCursor(live.tui, style));
 		peek.listen(scope, (on) => !on && live.ctx?.ui.setWorkingMessage());
 
@@ -134,7 +141,12 @@ export const look = defineFeature({
 				placement: "aboveEditor",
 			});
 			installEditor(ctx, screen, live, scope);
-			installHeader(ctx, screen, scope);
+			// Once per launch: a new session in the same pi is not a return to the folder.
+			if (!visited) {
+				visited = true;
+				lastVisit = visit(visitsFile, ctx.cwd, HARNESS_VERSION, Date.now());
+			}
+			installHeader(ctx, screen, scope, () => lastVisit);
 		});
 
 		scope.onShutdown(() => {
@@ -359,18 +371,24 @@ function installEditor(
 	});
 }
 
-function installHeader(ctx: ExtensionContext, screen: Screen, scope: FeatureScope): void {
+function installHeader(
+	ctx: ExtensionContext,
+	screen: Screen,
+	scope: FeatureScope,
+	lastVisit: () => LastVisit | undefined,
+): void {
 	if (ctx.mode !== "tui") return;
 	if (header.get(scope) === "off") {
 		ctx.ui.setHeader(undefined);
 		return;
 	}
 	ctx.ui.setHeader(
-		() =>
-			new HeaderComponent(screen, {
-				style: () => header.get(scope),
-				counts: () => loadedCounts(scope),
-			}),
+		(tui) =>
+			new HeaderComponent(
+				screen,
+				{ style: () => header.get(scope), counts: () => loadedCounts(scope), lastVisit },
+				tui,
+			),
 	);
 }
 

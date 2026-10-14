@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
+
+import { GLYPH } from "@adeildo/pi-kit";
 import { keyText } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
+import { type LastVisit, since, type StartNote, startNotes } from "../data/start-notes.ts";
 import { BOXES, border } from "../render/frame.ts";
 import { EFFORT_LEVELS, type Paint } from "../render/paint.ts";
 import { renderSegments, type SegmentId } from "../render/segments.ts";
@@ -35,6 +39,8 @@ export interface LoadedCounts {
 export interface HeaderSource {
 	style(): HeaderStyle;
 	counts(): LoadedCounts;
+	/** The last session in this folder, undefined for the first one. */
+	lastVisit(): LastVisit | undefined;
 }
 
 interface Hint {
@@ -42,13 +48,29 @@ interface Hint {
 	does: string;
 }
 
+/** The π rises from its feet once per launch, one row of the art every step. */
+const RISE_STEP_MS = 70;
+const NOTES = 6;
+/** The harness's version, read once from the package that ships it. */
+export const HARNESS_VERSION = harnessVersion();
+
+/**
+ * The start screen: the π, the folder and the model, and under them only what changed or waits on
+ * you since the last session here. See DESIGN.md.
+ */
 export class HeaderComponent implements Component {
 	readonly #screen: Screen;
 	readonly #source: HeaderSource;
+	/** When the π started rising. Without a terminal to redraw it, it stands from the start. */
+	readonly #born: number;
 
-	constructor(screen: Screen, source: HeaderSource) {
+	constructor(screen: Screen, source: HeaderSource, tui?: { requestRender(): void }) {
 		this.#screen = screen;
 		this.#source = source;
+		this.#born = tui === undefined ? 0 : Date.now();
+		if (tui === undefined) return;
+		for (let row = 1; row <= LOGO.length; row++)
+			setTimeout(() => tui.requestRender(), row * RISE_STEP_MS).unref?.();
 	}
 
 	render(width: number): string[] {
@@ -63,42 +85,110 @@ export class HeaderComponent implements Component {
 		const paint = screen.paint();
 		const box = BOXES.rounded;
 		const frame = paint.frame;
-		const title = this.#title(paint);
 		const inner = width - 4;
-		const withLogo = inner - LOGO_COLUMN - 3 >= MIN_RIGHT;
-		const rightWidth = withLogo ? inner - LOGO_COLUMN - 3 : inner;
+		const withLogo = inner - LOGO_COLUMN - 2 >= MIN_RIGHT;
+		const rightWidth = withLogo ? inner - LOGO_COLUMN - 2 : inner;
+		const snapshot = screen.snapshot();
+		const last = this.#source.lastVisit();
+		const notes = startNotes(snapshot, HARNESS_VERSION, last);
 
 		const right = [
-			this.#segments(["model", "effort"], paint),
-			this.#segments(["path", "branch"], paint),
-			this.#loaded(paint),
-			paint.dim("─".repeat(Math.max(0, rightWidth))),
-			...this.#hints(paint, rightWidth),
-		];
-		const left = [
-			...LOGO.map((row, index) => paint.effort(LOGO_RAMP[index] ?? "max", row)),
 			"",
-			paint.italic(paint.dim("ready when you are")),
+			this.#segments(["path", "branch"], paint),
+			this.#segments(["model", "effort"], paint),
+			"",
+			...this.#notes(notes, paint, last, snapshot.now),
 		];
+		const left = ["", ...this.#logo(paint), ""];
 
 		const rows = Math.max(left.length, right.length);
 		const lines = [
-			border(width, [{ text: title, priority: 1 }], [], {
-				box,
-				edge: "top",
-				paint: frame,
-				separator: " ",
-			}),
+			border(
+				width,
+				[{ text: this.#title(paint), priority: 1 }],
+				[{ text: paint.dim(`pi ${snapshot.version}`), priority: 2 }],
+				{ box, edge: "top", paint: frame, separator: " " },
+			),
 		];
 		for (let row = 0; row < rows; row++) {
 			const content = withLogo
-				? `${center(left[row] ?? "", LOGO_COLUMN)} ${frame("│")} ${pad(right[row] ?? "", rightWidth)}`
+				? `${center(left[row] ?? "", LOGO_COLUMN)}  ${pad(right[row] ?? "", rightWidth)}`
 				: pad(right[row] ?? "", rightWidth);
 			lines.push(`${frame(box.vertical)} ${content} ${frame(box.vertical)}`);
 		}
-		lines.push(border(width, [], [], { box, edge: "bottom", paint: frame, separator: " " }));
+		lines.push(
+			border(
+				width,
+				[
+					{ text: this.#closing(notes, paint, last, snapshot.now), priority: 1 },
+					...this.#hintPieces(paint),
+				],
+				[],
+				{
+					box,
+					edge: "bottom",
+					paint: frame,
+					separator: "   ",
+				},
+			),
+		);
 		lines.push("");
 		return lines.map((line) => truncateToWidth(line, width, ""));
+	}
+
+	/** The art, its rows lit from the feet up while it rises. */
+	#logo(paint: Paint): string[] {
+		const risen = Math.floor((Date.now() - this.#born) / RISE_STEP_MS) + 1;
+		return LOGO.map((row, index) =>
+			LOGO.length - index > risen
+				? " ".repeat(row.length)
+				: paint.effort(LOGO_RAMP[index] ?? "max", row),
+		);
+	}
+
+	#notes(
+		notes: readonly StartNote[],
+		paint: Paint,
+		last: LastVisit | undefined,
+		now: number,
+	): string[] {
+		if (notes.length === 0)
+			return [
+				paint.muted(
+					last === undefined
+						? "First session in this folder."
+						: `Nothing new since ${since(last.at, now)}.`,
+				),
+			];
+		const shown = notes.slice(0, NOTES).map((note) => {
+			const detail = note.detail === undefined ? "" : `  ${paint.dim(note.detail)}`;
+			return `${paint.raw(note.color, note.mark)} ${paint.text(note.text)}${detail}`;
+		});
+		if (notes.length > NOTES) shown.push(paint.dim(`and ${notes.length - NOTES} more`));
+		return shown;
+	}
+
+	#closing(
+		notes: readonly StartNote[],
+		paint: Paint,
+		last: LastVisit | undefined,
+		now: number,
+	): string {
+		if (notes.length === 0) return paint.italic(paint.dim("ready when you are"));
+		const things = `${notes.length} thing${notes.length === 1 ? "" : "s"}`;
+		return paint.raw(
+			"warning",
+			last === undefined ? things : `${things} since ${since(last.at, now)}`,
+		);
+	}
+
+	#hintPieces(paint: Paint): { text: string; priority: number }[] {
+		return HINTS()
+			.slice(0, 4)
+			.map((hint, index) => ({
+				text: `${paint.role("brand", hint.key)} ${paint.dim(hint.does)}`,
+				priority: 3 + index,
+			}));
 	}
 
 	#compact(width: number): string[] {
@@ -107,15 +197,19 @@ export class HeaderComponent implements Component {
 		const first = [this.#title(paint), this.#segments(["model", "effort", "path", "branch"], paint)]
 			.filter((part) => part !== "")
 			.join(separator);
-		const hints = HINTS()
-			.map((hint) => `${paint.role("brand", hint.key)} ${paint.dim(hint.does)}`)
-			.join(separator);
-		return [first, hints, ""].map((line) => truncateToWidth(` ${line}`, width, "..."));
+		const last = this.#source.lastVisit();
+		const notes = this.#notes(
+			startNotes(this.#screen.snapshot(), HARNESS_VERSION, last),
+			paint,
+			last,
+			this.#screen.snapshot().now,
+		);
+		return [first, ...notes, ""].map((line) => truncateToWidth(` ${line}`, width, "..."));
 	}
 
 	#title(paint: Paint): string {
-		const glyph = paint.bold(paint.role("brand", "π"));
-		return `${glyph} ${paint.bold("pi")} ${paint.dim(`v${this.#screen.snapshot().version}`)}`;
+		const glyph = paint.bold(paint.role("brand", GLYPH.pi));
+		return `${glyph}${paint.bold("-harness")} ${paint.dim(HARNESS_VERSION)}`;
 	}
 
 	#segments(ids: readonly SegmentId[], paint: Paint): string {
@@ -127,50 +221,24 @@ export class HeaderComponent implements Component {
 		});
 		return pieces.map((piece) => piece.text).join(paint.dim(this.#screen.separator()));
 	}
+}
 
-	#loaded(paint: Paint): string {
-		const counts = this.#source.counts();
-		const parts = [
-			this.#segments(["host"], paint),
-			...[
-				[counts.tools, "tools"],
-				[counts.skills, "skills"],
-				[counts.prompts, "prompts"],
-				[counts.extensions, "extensions"],
-			]
-				.filter(([value]) => (value as number) > 0)
-				.map(([value, label]) => `${paint.text(String(value))} ${paint.dim(String(label))}`),
-		];
-		return parts.filter((part) => part !== "").join(paint.dim(this.#screen.separator()));
-	}
-
-	#hints(paint: Paint, width: number): string[] {
-		const hints = HINTS();
-		const keyWidth = Math.max(...hints.map((hint) => visibleWidth(hint.key)));
-		const cell = (hint: Hint) =>
-			`${paint.role("brand", hint.key.padEnd(keyWidth))} ${paint.dim(hint.does)}`;
-		const cellWidth = keyWidth + 1 + Math.max(...hints.map((hint) => visibleWidth(hint.does)));
-		if (width < cellWidth * 2 + 3) return hints.slice(0, 3).map(cell);
-		const rows: string[] = [];
-		for (let index = 0; index < hints.length; index += 2) {
-			const first = hints[index];
-			const second = hints[index + 1];
-			if (first === undefined) break;
-			rows.push(
-				second === undefined ? cell(first) : `${pad(cell(first), cellWidth)}   ${cell(second)}`,
-			);
-		}
-		return rows;
+function harnessVersion(): string {
+	try {
+		const file = new URL("../../package.json", import.meta.url);
+		return (JSON.parse(readFileSync(file, "utf8")) as { version?: string }).version ?? "";
+	} catch {
+		return "";
 	}
 }
 
 function HINTS(): Hint[] {
 	return [
+		{ key: "/", does: "commands" },
 		{ key: keyText("app.model.select") || "/model", does: "model" },
 		{ key: keyText("app.thinking.cycle") || "/thinking", does: "effort" },
-		{ key: "/", does: "commands" },
+		{ key: "alt+s", does: "settings" },
 		{ key: "!", does: "shell" },
-		{ key: keyText("app.editor.external") || "/editor", does: "external editor" },
 		{ key: "/tree", does: "session history" },
 	];
 }

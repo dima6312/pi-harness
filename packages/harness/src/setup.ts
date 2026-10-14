@@ -50,6 +50,13 @@ export const PI_SETTINGS: readonly PiSetting[] = [
 		read: (settings) => settings.getShowCacheMissNotices(),
 	},
 	{
+		key: "quietStartup",
+		value: "header",
+		piDefault: false,
+		why: "the start screen says what changed since the last session, and pi's list of every skill, prompt and extension loaded buries it",
+		read: (settings) => settings.getQuietStartup(),
+	},
+	{
 		key: "cacheWarming",
 		value: "idle",
 		piDefault: "streaming",

@@ -268,14 +268,35 @@ describe("header", () => {
 	const source = {
 		style: () => "card" as const,
 		counts: () => ({ tools: 14, skills: 9, prompts: 0, extensions: 7 }),
+		lastVisit: () => undefined,
 	};
 
-	test("draws the card with the logo when there is room", () => {
+	test("draws the π, the folder and the model, and says when nothing waits on you", () => {
 		const lines = new HeaderComponent(screen(), source).render(100).map(plain);
-		expect(lines[0]).toMatch(/^╭─ π pi v\S+ ─+╮$/);
+		expect(lines[0]).toMatch(/^╭─ π-harness \S+ ─+ pi \S+ ─╮$/);
 		expect(lines.some((line) => line.includes("▀▀▀██▀▀▀▀██▀▀▀"))).toBe(true);
-		expect(lines.some((line) => line.includes("14 tools · 9 skills · 7 extensions"))).toBe(true);
+		expect(lines.some((line) => line.includes("Anthropic/Opus 5.5"))).toBe(true);
+		expect(lines.some((line) => line.includes("First session in this folder."))).toBe(true);
+		expect(lines.filter(Boolean).at(-1)).toMatch(/^╰─ ready when you are +\/ commands/);
 		expect(widths(lines.filter(Boolean)).every((width) => width === 100)).toBe(true);
+	});
+
+	test("lists what changed since the last session, and counts it in the bottom edge", () => {
+		const last = { at: Date.now() - 60_000, version: "0.0.1" };
+		const lines = new HeaderComponent(screen(), { ...source, lastVisit: () => last })
+			.render(100)
+			.map(plain);
+		expect(lines.some((line) => /π-harness \S+ is new +was 0\.0\.1/.test(line))).toBe(true);
+		expect(lines.filter(Boolean).at(-1)).toMatch(/^╰─ 1 thing since .+ \/ commands/);
+	});
+
+	test("the π rises from its feet once, when there is a terminal to redraw it", () => {
+		const frames: number[] = [];
+		const header = new HeaderComponent(screen(), source, { requestRender: () => frames.push(1) });
+		const lines = header.render(100).map(plain);
+		// Only the feet are lit right away.
+		expect(lines.some((line) => line.includes("▀▀▀██▀▀▀▀██▀▀▀"))).toBe(false);
+		expect(lines.some((line) => line.includes("██"))).toBe(true);
 	});
 
 	test("drops the logo before the information", () => {
@@ -284,10 +305,10 @@ describe("header", () => {
 		expect(lines.some((line) => line.includes("Anthropic/Opus 5.5"))).toBe(true);
 	});
 
-	test("two plain lines when compact", () => {
+	test("plain lines when compact", () => {
 		const lines = new HeaderComponent(screen(), { ...source, style: () => "compact" }).render(120);
-		expect(lines).toHaveLength(3);
-		expect(plain(lines[0] ?? "")).toContain("π pi");
+		expect(plain(lines[0] ?? "")).toContain("π-harness");
+		expect(plain(lines[1] ?? "")).toContain("First session in this folder.");
 	});
 
 	test("the logo is drawn from pixels, two per row", () => {
