@@ -181,6 +181,11 @@ function screenParts(theme: Theme, draft: string): LookParts {
 		style: () => "card",
 		counts: () => ({ tools: 4, skills: 6, prompts: 0, extensions: 4 }),
 		lastVisit: () => undefined,
+		// Pinned, so the picture shows the two lines GitHub answers with: a failed run and a review.
+		github: () => ({
+			ci: { branch: "main", sha: "b8e20ba", name: "Release" },
+			pr: { number: 52, title: "Move the accounts to OAuth", waits: "changes requested" },
+		}),
 	}).render(WIDTH);
 
 	const editor = new LookEditor(
