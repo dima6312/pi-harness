@@ -3,9 +3,8 @@
 import { tasksWith } from "@adeildo/pi-kit";
 
 import type { Folder, Peer, Posted } from "./folder.ts";
+import { audienceLabel } from "./mention.ts";
 import type { Named } from "./names.ts";
-
-const AUDIENCE = { all: "everyone", any: "anyone" } as const;
 
 const RECENT_FILES = 8;
 const ROOM_LINES = 12;
@@ -71,7 +70,7 @@ function roomLine(
 			: `@${names.get(session)?.handle ?? folder.peers.get(session)?.handle ?? "gone"}`;
 	const from = message.from === "you" ? "the operator" : name(message.session);
 	const to =
-		typeof message.to === "string" ? AUDIENCE[message.to] : message.to.map(name).join(", ");
+		typeof message.to === "string" ? audienceLabel(message.to) : message.to.map(name).join(", ");
 	const taken = message.takenBy === undefined ? "" : ` (taken by ${name(message.takenBy)})`;
 	return `- ${from} to ${to}${taken}: ${message.text}`;
 }

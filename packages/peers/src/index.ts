@@ -40,8 +40,8 @@ import { PEERS_TYPING, TypingWidget } from "./ui/typing.ts";
 export { Here, PEER_MESSAGE } from "./here.ts";
 
 const TOOL = "peers";
-const EVERYONE = new Set(["everyone", "all", "room"]);
-const ANYONE = new Set(["anyone", "any"]);
+const EVERYONE = new Set([EVERYONE_MENTION, "all", "room"]);
+const ANYONE = new Set([ANYONE_MENTION, "any"]);
 
 const PARAMETERS = Type.Object({
 	action: Type.Union([Type.Literal("board"), Type.Literal("send")], {

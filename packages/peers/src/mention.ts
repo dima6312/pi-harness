@@ -19,6 +19,11 @@ export function isGroupMention(name: string): boolean {
 	return name === EVERYONE_MENTION || name === ANYONE_MENTION;
 }
 
+/** The word the room writes for the audience a message went to. */
+export function audienceLabel(to: "all" | "any"): string {
+	return to === "all" ? EVERYONE_MENTION : ANYONE_MENTION;
+}
+
 /** What each group mention does, under its name in the list. */
 const GROUPS: Record<string, string> = {
 	[EVERYONE_MENTION]: "every agent here gets it",

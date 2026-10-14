@@ -4,6 +4,7 @@ import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works
 
 import { addressees, type Happening, type Peer, type Posted, type RoomItem } from "../folder.ts";
 import type { Typing } from "../here.ts";
+import { audienceLabel } from "../mention.ts";
 import type { Named } from "../names.ts";
 import { award, TAKE_MS, turnToTake } from "../rules.ts";
 import { blink, dots, isFresh, spin } from "./motion.ts";
@@ -386,8 +387,8 @@ function speakerColor(message: Posted, options: FeedOptions): ThemeColor {
 
 function recipients(message: Posted, options: FeedOptions): string {
 	const { theme } = options;
-	if (message.to === "all") return theme.fg("muted", "everyone");
-	if (message.to === "any") return theme.fg("muted", "anyone");
+	if (message.to === "all" || message.to === "any")
+		return theme.fg("muted", audienceLabel(message.to));
 	return message.to
 		.map((session) => {
 			const color = (options.names.get(session)?.color ?? "muted") as ThemeColor;
