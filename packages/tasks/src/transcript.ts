@@ -1,6 +1,6 @@
 // Tool output never reaches the model, since it could carry instructions. Your answers to the
 // agent's questions are the one exception: they are your words.
-import { describeAnswers, isAnswered, isAskResult } from "@adeildo/pi-kit";
+import { describeAnswers, isAnswered, isAskResult, TARGET_FIELDS } from "@adeildo/pi-kit";
 
 const MAX_RUN = 9000;
 const MAX_SAID = 500;
@@ -105,7 +105,8 @@ function failedCalls(read: readonly Entry[]): Set<unknown> {
 
 function callOf(name: string, args: unknown): string {
 	const fields = typeof args === "object" && args !== null ? (args as Record<string, unknown>) : {};
-	const target = [fields.path, fields.command, fields.query, fields.url].find(
+	// The same fields the look and the compact read, in the same order.
+	const target = TARGET_FIELDS.map((field) => fields[field]).find(
 		(value): value is string => typeof value === "string" && value.trim() !== "",
 	);
 	const shown = target === undefined ? JSON.stringify(fields) : (target.split("\n")[0] ?? "");

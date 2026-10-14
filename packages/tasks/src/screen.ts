@@ -7,6 +7,7 @@ import {
 	tasksFromEntries,
 	tasksSpent,
 	tasksWith,
+	formatCost,
 	GLYPH,
 } from "@adeildo/pi-kit";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -182,7 +183,7 @@ function linesOf(text: string): string[] {
 
 function spentText(spent: ReturnType<typeof tasksSpent>): string {
 	if (spent.calls === 0) return "nothing yet";
-	return `$${spent.cost.toFixed(3)}, ${spent.calls === 1 ? "1 call" : `${spent.calls} calls`}`;
+	return `${formatCost(spent.cost)}, ${spent.calls === 1 ? "1 call" : `${spent.calls} calls`}`;
 }
 
 function count(size: number): string {

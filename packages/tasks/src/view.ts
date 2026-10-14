@@ -14,6 +14,7 @@ import {
 	type TaskOp,
 	type TaskStatus,
 	tasksWith,
+	formatCost,
 	GLYPH,
 	LINE,
 } from "@adeildo/pi-kit";
@@ -384,7 +385,7 @@ export class TasksView implements Component {
 
 	#spent(): string {
 		const { cost, calls } = this.#options.spent();
-		return calls === 0 ? "" : this.#options.theme.fg("dim", `$${cost.toFixed(3)}, ${calls} calls`);
+		return calls === 0 ? "" : this.#options.theme.fg("dim", `${formatCost(cost)}, ${calls} calls`);
 	}
 
 	#scrollHint(total: number, room: number): string {
