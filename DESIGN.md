@@ -1,4 +1,9 @@
-# How the harness draws its dialogs
+# How the harness draws
+
+The harness has opinions about how it looks, so it has few appearance settings: the icon set, which
+depends on the terminal's font, the frame's line style, and whether your messages are framed. Colors
+come from the active pi theme, which follows the terminal by default. The look is in the shapes, not
+in a palette.
 
 Every dialog the harness opens wears the same frame and follows the same rules, whatever its size or
 place. The parts live in `@adeildo/pi-kit` (`packages/kit/src/ui/frame.ts`); a package draws its
@@ -84,8 +89,39 @@ it just wrote.
 ## Motion
 
 Something moves only to say something changed: a spinner while an agent works or writes, a lit rail
-for a few seconds on a message that just arrived, a blinking cursor where words arrive. A still panel
-redraws once a second; a moving one every frame.
+for a few seconds on a message that just arrived, a blinking cursor where words arrive, a brighter
+stretch that runs along the bottom edge of a tool call while it runs. A still panel redraws once a
+second; a moving one every frame. The start screen has the one move made for show, once per launch,
+and never delays typing.
+
+## The transcript
+
+The model speaks without a frame. Everything else in the transcript has one: the frame's top edge
+says who or what it is, and its bottom edge says what became of it and how long it took.
+
+| Entry                       | Top edge               | Bottom edge                | Color         |
+| --------------------------- | ---------------------- | -------------------------- | ------------- |
+| Your message                | `you`                  | nothing                    | `accent`      |
+| A tool call                 | its mark and name      | phase, time, what it wrote | the phase     |
+| A message from an agent     | `@name → you`          | how it arrived             | the agent's   |
+| Pi's own (compaction, `!`)  | `π pi` and what it did | nothing                    | `borderMuted` |
+| Messages waiting to be sent | `queued`, dashed       | the key that edits them    | `borderMuted` |
+
+A dashed frame has not happened yet. A message that leaves the queue becomes a `you` frame in the
+transcript.
+
+## The start screen
+
+The start screen shows the pixel π, the folder, the branch and the model, and under them only what
+changed or waits on you since the last session: a failed CI run, a review on an open pull request,
+another agent working in the folder, a plan close to its limit, a new harness version. On a quiet day
+it says so in one line. Pi's own list of loaded skills, prompts and extensions is hidden. The top edge
+reads `π-harness` and its version, with pi's version on the right.
+
+## Settings
+
+`Alt+S` keeps one tab per package. The selected setting shows a preview of its effect under the list,
+drawn with the real theme: the frame styles draw a tool call in each.
 
 ## Words
 
