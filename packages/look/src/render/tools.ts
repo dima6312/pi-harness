@@ -1,6 +1,6 @@
 // The mark and the name a tool call is drawn with. The mark follows the icon set in the look's
 // settings, like every other glyph on the screen.
-import { GLYPH } from "@adeildo/pi-kit";
+import { GLYPH, SPIN } from "@adeildo/pi-kit";
 
 import type { IconSet } from "./glyphs.ts";
 
@@ -79,8 +79,38 @@ const MARKS: Record<IconSet, Record<CallPhase, string>> = {
 	ascii: { writing: "~", waiting: ":", running: "...", done: "ok", failed: "!" },
 };
 
-export function stateMark(phase: CallPhase, set: IconSet): string {
-	return MARKS[set][phase];
+/** A mark that moves while its phase lasts: frames, and how long each stays. */
+interface Motion {
+	frames: readonly string[];
+	stepMs: number;
+}
+
+/** A clock outline for every hour, from twelve round to eleven. */
+const CLOCK = [0xf1456, ...Array.from({ length: 11 }, (_, hour) => 0xf144b + hour)].map((code) =>
+	String.fromCodePoint(code),
+);
+
+const MOTIONS: Record<IconSet, Partial<Record<CallPhase, Motion>>> = {
+	nerd: {
+		writing: { frames: SPIN.scribble.map((ink) => `\u{f044}${ink}`), stepMs: 140 }, // nf-fa-pencil_square_o
+		waiting: { frames: ["\u{f251}", "\u{f252}", "\u{f253}"], stepMs: 400 }, // nf-fa-hourglass_start..end
+		running: { frames: CLOCK, stepMs: 110 }, // nf-md-clock_time_*_outline
+	},
+	unicode: {
+		writing: { frames: SPIN.scribble.map((ink) => `${GLYPH.pencil}${ink}`), stepMs: 140 },
+		waiting: { frames: SPIN.hourglass, stepMs: 500 },
+		running: { frames: SPIN.quadrants, stepMs: 150 },
+	},
+	ascii: {
+		running: { frames: SPIN.ascii, stepMs: 150 },
+	},
+};
+
+/** The mark of a phase. A phase that lasts moves, so a call that is still going looks alive. */
+export function stateMark(phase: CallPhase, set: IconSet, now: number = Date.now()): string {
+	const motion = MOTIONS[set][phase];
+	if (motion === undefined) return MARKS[set][phase];
+	return motion.frames[Math.floor(now / motion.stepMs) % motion.frames.length] ?? MARKS[set][phase];
 }
 
 export function toolIcon(toolName: string, set: IconSet): string {

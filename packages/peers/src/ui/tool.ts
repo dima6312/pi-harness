@@ -39,10 +39,21 @@ export function toolRenderers(here: Here, rows: Set<() => void>) {
 		rows.add(row.invalidate);
 	};
 	return {
-		renderCall: (args: Args, theme: Theme, row: Row): Component => ({
-			render: (width) => callLines(here, args, theme, width, !row.argsComplete),
-			invalidate() {},
-		}),
+		renderCall: (args: Args, theme: Theme, row: Row): Component => {
+			// Drawn again only when the width changes or the arguments finish arriving.
+			let drawn: { key: string; lines: string[] } | undefined;
+			return {
+				render(width) {
+					const key = `${width}\u0000${row.argsComplete}`;
+					if (drawn?.key !== key)
+						drawn = { key, lines: callLines(here, args, theme, width, !row.argsComplete) };
+					return drawn.lines;
+				},
+				invalidate() {
+					drawn = undefined;
+				},
+			};
+		},
 		renderResult: (
 			result: AgentToolResult<SentDetails | undefined>,
 			options: { expanded: boolean },

@@ -51,6 +51,8 @@ interface Hint {
 /** The π rises from its feet once per launch, one row of the art every step. */
 const RISE_STEP_MS = 70;
 const NOTES = 6;
+/** How long a drawing of the card stands before it is drawn again. */
+const REDRAW_MS = 1000;
 /** The harness's version, read once from the package that ships it. */
 export const HARNESS_VERSION = harnessVersion();
 
@@ -73,12 +75,25 @@ export class HeaderComponent implements Component {
 			setTimeout(() => tui.requestRender(), row * RISE_STEP_MS).unref?.();
 	}
 
+	/** The last drawing, kept for a moment: the card changes rarely and pi redraws on every keystroke. */
+	#drawn: { width: number; at: number; lines: string[] } | undefined;
+
 	render(width: number): string[] {
-		if (width < MIN_CARD || this.#source.style() === "compact") return this.#compact(width);
-		return this.#card(width);
+		const now = Date.now();
+		const risen = now - this.#born > LOGO.length * RISE_STEP_MS;
+		const drawn = this.#drawn;
+		if (risen && drawn?.width === width && now - drawn.at < REDRAW_MS) return drawn.lines;
+		const lines =
+			width < MIN_CARD || this.#source.style() === "compact"
+				? this.#compact(width)
+				: this.#card(width);
+		this.#drawn = { width, at: now, lines };
+		return lines;
 	}
 
-	invalidate(): void {}
+	invalidate(): void {
+		this.#drawn = undefined;
+	}
 
 	#card(width: number): string[] {
 		const screen = this.#screen;

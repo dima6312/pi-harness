@@ -277,7 +277,7 @@ describe("header", () => {
 		expect(lines.some((line) => line.includes("▀▀▀██▀▀▀▀██▀▀▀"))).toBe(true);
 		expect(lines.some((line) => line.includes("Anthropic/Opus 5.5"))).toBe(true);
 		expect(lines.some((line) => line.includes("First session in this folder."))).toBe(true);
-		expect(lines.filter(Boolean).at(-1)).toMatch(/^╰─ ready when you are +\/ commands/);
+		expect(lines.findLast(Boolean)).toMatch(/^╰─ ready when you are +\/ commands/);
 		expect(widths(lines.filter(Boolean)).every((width) => width === 100)).toBe(true);
 	});
 
@@ -287,7 +287,7 @@ describe("header", () => {
 			.render(100)
 			.map(plain);
 		expect(lines.some((line) => /π-harness \S+ is new +was 0\.0\.1/.test(line))).toBe(true);
-		expect(lines.filter(Boolean).at(-1)).toMatch(/^╰─ 1 thing since .+ \/ commands/);
+		expect(lines.findLast(Boolean)).toMatch(/^╰─ 1 thing since .+ \/ commands/);
 	});
 
 	test("the π rises from its feet once, when there is a terminal to redraw it", () => {

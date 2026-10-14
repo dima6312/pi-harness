@@ -104,6 +104,7 @@ interface Derived {
 	cacheHit: number | undefined;
 	cacheWarming: boolean;
 	averages: Averages;
+	context: ContextInfo | undefined;
 }
 
 export class SnapshotReader {
@@ -134,7 +135,6 @@ export class SnapshotReader {
 						},
 			thinking: ctx.thinkingLevel,
 			account: live.account,
-			context: contextOf(ctx),
 			...derived,
 			subscription: model === undefined ? false : ctx.modelRegistry.isUsingOAuth(model),
 			request: live.request,
@@ -153,8 +153,10 @@ export class SnapshotReader {
 	}
 
 	#derive(ctx: ExtensionContext): Derived {
-		// Every entry is appended at the leaf, so the leaf moving is the only way the sums change.
-		const key = ctx.sessionManager.getLeafId() ?? "";
+		// Every entry is appended at the leaf, so the leaf moving is the only way the sums change. The
+		// context also depends on the model's window. Pi counts it over the whole branch, which is too
+		// slow to do on every keystroke.
+		const key = `${ctx.sessionManager.getLeafId() ?? ""}\u0000${ctx.model?.provider}/${ctx.model?.id}`;
 		if (this.#derived !== undefined && key === this.#key) return this.#derived;
 
 		const entries: readonly SessionEntry[] = ctx.sessionManager.getBranch();
@@ -164,6 +166,7 @@ export class SnapshotReader {
 			cacheHit: cacheHitPercent(entries),
 			cacheWarming: cacheWarming(entries),
 			averages: averagesOf(entries),
+			context: contextOf(ctx),
 		};
 		return this.#derived;
 	}

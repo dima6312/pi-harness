@@ -66,6 +66,25 @@ export const GLYPH = {
 	shade: "\u2591",
 } as const;
 
+/** Frames of the marks that move while something lasts, in order. */
+export const SPIN = {
+	/** ◴ ◷ ◶ ◵ a quarter of a circle going round: a call running. */
+	quadrants: ["\u25f4", "\u25f7", "\u25f6", "\u25f5"],
+	/** ⧖ ⧗ an hourglass and the same one flowing: a call waiting on you. */
+	hourglass: ["\u29d6", "\u29d7"],
+	/** | / - \ the same, in ASCII. */
+	ascii: ["|", "/", "-", "\\"],
+	/** The ink a pen leaves while the model writes a call, one cell more each frame. */
+	scribble: [
+		"",
+		"\u2840",
+		"\u2860",
+		"\u2860\u280a",
+		"\u2860\u280a\u2880",
+		"\u2860\u280a\u2880\u2814",
+	],
+} as const;
+
 /** The lines frames, rules and scroll bars are drawn with. */
 export const LINE = {
 	/** ─ */

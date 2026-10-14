@@ -39,7 +39,7 @@ export function renderCall(
 	writing: boolean,
 ): Component {
 	const questions = params.questions ?? [];
-	return { render: (width) => questionLines(questions, theme, width, writing), invalidate() {} };
+	return drawnByWidth((width) => questionLines(questions, theme, width, writing));
 }
 
 const CURSOR = GLYPH.cursor;

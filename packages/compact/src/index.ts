@@ -7,6 +7,7 @@ import {
 	modelsFor,
 	type SessionTasks,
 	tasksFromEntries,
+	drawnByWidth,
 } from "@adeildo/pi-kit";
 import {
 	type CustomMessageEntryDraft,
@@ -176,7 +177,9 @@ export const compact = defineFeature({
 
 		scope.registerEntryRenderer<unknown>(PRUNE_ENTRY, (entry, { expanded }, theme) => {
 			const record = recordOf(entry);
-			return record === undefined ? undefined : new PruneEntry(record, expanded, theme);
+			if (record === undefined) return undefined;
+			const card = new PruneEntry(record, expanded, theme);
+			return drawnByWidth((width) => card.render(width));
 		});
 
 		registerScreen(scope);
