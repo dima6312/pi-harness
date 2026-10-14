@@ -1,4 +1,4 @@
-import { type AskResult, isAskResult } from "@adeildo/pi-kit";
+import { type AskResult, isAskResult, GLYPH } from "@adeildo/pi-kit";
 import type {
 	AgentToolResult,
 	Theme,
@@ -42,7 +42,7 @@ export function renderCall(
 	return { render: (width) => questionLines(questions, theme, width, writing), invalidate() {} };
 }
 
-const CURSOR = "\u258d";
+const CURSOR = GLYPH.cursor;
 
 function questionLines(
 	questions: Streamed,

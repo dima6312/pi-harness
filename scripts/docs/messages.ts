@@ -6,12 +6,13 @@ import {
 	UserMessageComponent,
 } from "@earendil-works/pi-coding-agent";
 
-import { framed } from "../../packages/look/src/ui/user-message.ts";
+import { framed } from "../../packages/look/src/ui/pi-entries.ts";
 
 /** Your message in the look's frame, across the width of the screen. */
 export function userMessage(text: string, width: number, theme: Theme): string[] {
 	const body = new UserMessageComponent(text, getMarkdownTheme(), 1).render(width - 2);
-	return framed(body, width, theme, "\u{f007}");
+	const top = `${theme.fg("accent", "\u{f007}")} ${theme.fg("muted", "you")}`;
+	return framed(body, width, theme, { top, color: "accent" });
 }
 
 export function assistantText(text: string, width: number): string[] {

@@ -14,6 +14,8 @@ import {
 	type TaskOp,
 	type TaskStatus,
 	tasksWith,
+	GLYPH,
+	LINE,
 } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -27,12 +29,12 @@ import {
 
 export const MARKS = {
 	doing: "\u2316",
-	waiting: "\u2691",
+	waiting: GLYPH.flag,
 	queued: "\u29d7",
 	deferred: "\u21b7",
-	done: "\u2713",
-	dropped: "\u00d7",
-	decision: "\u25c6",
+	done: GLYPH.check,
+	dropped: GLYPH.times,
+	decision: GLYPH.diamond,
 } as const;
 
 type Tint = "accent" | "warning" | "success" | "dim" | "muted" | "text" | "mdLink";
@@ -224,7 +226,7 @@ export class TasksView implements Component {
 		const on = line.id === this.#selected;
 		const branch = on
 			? theme.fg("accent", `${POINTER}  `)
-			: theme.fg("border", last ? "\u2514\u2500 " : "\u251c\u2500 ");
+			: theme.fg("border", last ? `\u2514${LINE.h} ` : `${LINE.teeLeft}${LINE.h} `);
 		return { text: `${branch}${line.text}`, id: line.id };
 	}
 
@@ -290,7 +292,7 @@ export class TasksView implements Component {
 					? theme.fg("dim", "outside")
 					: theme.fg("warning", "on you");
 			case "queued":
-				if (isStale(task)) return theme.fg("dim", `passed over ${task.idleRuns}\u00d7`);
+				if (isStale(task)) return theme.fg("dim", `passed over ${task.idleRuns}${GLYPH.times}`);
 				return task.origin === "agent" ? theme.fg("dim", "agent") : "";
 			default:
 				return task.finished === undefined ? "" : theme.fg("dim", this.#clock(task.finished.at));
@@ -310,7 +312,7 @@ export class TasksView implements Component {
 		} else if (pick?.kind === "task") {
 			const { task } = pick;
 			add(task.text, "text");
-			add(task.result && `\u2192 ${task.result}`, "success");
+			add(task.result && `${GLYPH.right} ${task.result}`, "success");
 			add(task.left && `left: ${task.left}`, "warning");
 			add(task.why && `${reasonLabel(task)}: ${task.why}`, "muted");
 			add(this.#when(task), "dim");
@@ -373,7 +375,7 @@ export class TasksView implements Component {
 				? taskKeys(selected.task).map((entry) => entry.hint)
 				: [];
 		return [
-			["\u2191\u2193", "move"],
+			[`${GLYPH.up}${GLYPH.down}`, "move"],
 			...actions,
 			["d", this.#dropped ? "hide dropped" : "dropped"],
 			["esc", "close"],
@@ -388,7 +390,10 @@ export class TasksView implements Component {
 	#scrollHint(total: number, room: number): string {
 		if (total <= room) return "";
 		const below = total - room - this.#offset;
-		return this.#options.theme.fg("dim", below > 0 ? `\u2193 ${below} more` : "\u2191 top");
+		return this.#options.theme.fg(
+			"dim",
+			below > 0 ? `${GLYPH.down} ${below} more` : `${GLYPH.up} top`,
+		);
 	}
 }
 

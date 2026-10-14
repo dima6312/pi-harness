@@ -5,6 +5,8 @@ import {
 	frameInner,
 	isAnswered,
 	type KeyHint,
+	GLYPH,
+	LINE,
 } from "@adeildo/pi-kit";
 // Drawn inline instead of as an overlay, so a tall dialog scrolls with the terminal.
 import { getSelectListTheme, type Theme } from "@earendil-works/pi-coding-agent";
@@ -39,9 +41,9 @@ import {
 } from "./layout.ts";
 import { PreviewCache } from "./preview.ts";
 
-const POINTER = "\u276f ";
+const POINTER = `${GLYPH.pointer} `;
 const RAIL = "\u258e ";
-const CHECK = " \u2713";
+const CHECK = ` ${GLYPH.check}`;
 const ELLIPSIS = "...";
 /** The name of the focused row in the panel, and the blank line under it. */
 const TITLE_ROWS = 2;
@@ -454,16 +456,18 @@ export class QuestionDialog implements Component, Focusable {
 	// A glyph and a color say the same thing, so the state survives a terminal with no color.
 	private tabLabel(text: string, index: number): string {
 		const done = this.answerOf(index) !== undefined;
-		if (index === this.tab) return this.pill(`${done ? "\u2713" : "\u25cf"} ${text}`);
+		if (index === this.tab) return this.pill(`${done ? GLYPH.check : GLYPH.dot} ${text}`);
 		return done
-			? this.theme.fg("success", ` \u2713 ${text} `)
-			: this.theme.fg("muted", ` \u25cb ${text} `);
+			? this.theme.fg("success", ` ${GLYPH.check} ${text} `)
+			: this.theme.fg("muted", ` ${GLYPH.ring} ${text} `);
 	}
 
 	private submitLabel(): string {
 		if (this.onSubmitTab) return this.pill("submit");
 		const ready = this.answeredCount() === this.questions.length;
-		return ready ? this.theme.fg("success", " \u2713 submit ") : this.theme.fg("dim", " submit ");
+		return ready
+			? this.theme.fg("success", ` ${GLYPH.check} submit `)
+			: this.theme.fg("dim", " submit ");
 	}
 
 	private questionBlock(question: Question, inner: number, terminalRows: number): string[] {
@@ -535,7 +539,7 @@ export class QuestionDialog implements Component, Focusable {
 	private belowBody(question: Question, draft: Draft, size: BodySize): string[] {
 		const options = this.optionLines(question, draft, size.inner);
 		const rows = Math.min(size.wanted, Math.max(1, size.budget - options.length - 1));
-		const rule = this.theme.fg("borderMuted", "\u2500".repeat(size.inner));
+		const rule = this.theme.fg("borderMuted", LINE.h.repeat(size.inner));
 		return [...options, rule, ...this.panel(question, draft, size.inner, rows, size.titled)];
 	}
 
@@ -685,9 +689,9 @@ export class QuestionDialog implements Component, Focusable {
 	/** What the panel hides above and below, in words, and the keys that show it. */
 	private scrolled(above: number, below: number): string {
 		const parts = [];
-		if (above > 0) parts.push(`\u2191 ${above} above`);
-		if (below > 0) parts.push(`\u2193 ${below} below`);
-		const keys = this.theme.fg("muted", "shift+\u2191\u2193 or the wheel");
+		if (above > 0) parts.push(`${GLYPH.up} ${above} above`);
+		if (below > 0) parts.push(`${GLYPH.down} ${below} below`);
+		const keys = this.theme.fg("muted", `shift+${GLYPH.up}${GLYPH.down} or the wheel`);
 		return `${this.theme.fg("dim", parts.join("   "))}   ${keys}`;
 	}
 
@@ -700,7 +704,7 @@ export class QuestionDialog implements Component, Focusable {
 		const room = Math.max(1, width - BAR_WIDTH);
 		return shown.map((line, index) => {
 			const on = index >= from && index < from + thumb;
-			const bar = on ? this.theme.fg("accent", "\u2503") : this.theme.fg("borderMuted", "\u2502");
+			const bar = on ? this.theme.fg("accent", LINE.vHeavy) : this.theme.fg("borderMuted", LINE.v);
 			const cut = truncateToWidth(line, room);
 			return `${cut}${" ".repeat(Math.max(0, room - visibleWidth(cut)))} ${bar}`;
 		});
@@ -743,21 +747,25 @@ export class QuestionDialog implements Component, Focusable {
 		const keys: KeyHint[] = [];
 		const tabs = this.questions.length > 1;
 		if (this.onSubmitTab) {
-			if (tabs) keys.push(["\u2190\u2192", "question"]);
+			if (tabs) keys.push([`${GLYPH.left}${GLYPH.right}`, "question"]);
 			keys.push(["enter", "submit"], ["esc", "cancel"]);
 		} else if (this.noting) {
-			keys.push(["type", "a note"], ["\u2191\u2193", "another option"], ["enter", "done"]);
+			keys.push(
+				["type", "a note"],
+				[`${GLYPH.up}${GLYPH.down}`, "another option"],
+				["enter", "done"],
+			);
 		} else if (this.onTypedRow) {
 			keys.push(
-				["\u2191", "options"],
+				[GLYPH.up, "options"],
 				["enter", this.question?.multiSelect ? "confirm" : "answer"],
 				["shift+enter", "new line"],
 				["esc", "back"],
 			);
 		} else {
-			if (tabs) keys.push(["\u2190\u2192", "question"]);
-			keys.push(["\u2191\u2193", "move"]);
-			if (this.overflow) keys.push(["shift+\u2191\u2193", "scroll"]);
+			if (tabs) keys.push([`${GLYPH.left}${GLYPH.right}`, "question"]);
+			keys.push([`${GLYPH.up}${GLYPH.down}`, "move"]);
+			if (this.overflow) keys.push([`shift+${GLYPH.up}${GLYPH.down}`, "scroll"]);
 			if (this.question?.multiSelect) keys.push(["space", "tick"], ["enter", "confirm"]);
 			else keys.push(["enter", "choose"]);
 			keys.push(["tab", "note"], ["esc", "cancel"]);

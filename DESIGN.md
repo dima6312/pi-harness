@@ -99,14 +99,17 @@ and never delays typing.
 The model speaks without a frame. Everything else in the transcript has one: the frame's top edge
 says who or what it is, and its bottom edge says what became of it and how long it took.
 
-| Entry                       | Top edge               | Bottom edge                | Color         |
-| --------------------------- | ---------------------- | -------------------------- | ------------- |
-| Your message                | `you`                  | nothing                    | `accent`      |
-| A tool call                 | its mark and name      | phase, time, what it wrote | the phase     |
-| A message from an agent     | `@name → you`          | how it arrived             | the agent's   |
-| Pi's own (compaction, `!`)  | `π pi` and what it did | nothing                    | `borderMuted` |
-| Messages waiting to be sent | `queued`, dashed       | the key that edits them    | `borderMuted` |
+| Entry                        | Top edge                | Bottom edge                | Color         |
+| ---------------------------- | ----------------------- | -------------------------- | ------------- |
+| Your message                 | `you`                   | nothing                    | `accent`      |
+| A tool call                  | its mark and name       | phase, time, what it wrote | the phase     |
+| A message from an agent      | `@name → you`, the time | nothing                    | the agent's   |
+| The judge's decisions        | `◈ judge`, how many     | nothing                    | `borderMuted` |
+| A `!` command                | `! shell`               | done, or the exit code     | `bashMode`    |
+| Pi's own (compaction, skill) | `π` and what it did     | nothing                    | `borderMuted` |
+| Messages waiting to be sent  | `queued`, dashed        | the key that edits them    | `borderMuted` |
 
+The kit draws them: `entryFrame()` is the frame, and `GLYPH` and `LINE` name every character.
 A dashed frame has not happened yet. A message that leaves the queue becomes a `you` frame in the
 transcript.
 

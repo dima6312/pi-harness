@@ -4,6 +4,7 @@
 // The bus is synchronous, so a request carries an id and the answer arrives on a second channel,
 // like the screen's `run` does.
 import { isObject } from "../decode.ts";
+import { GLYPH } from "../ui/glyphs.ts";
 
 /** A provider answers this to say it can draw a question right now. */
 export const AVAILABLE = "harness:ask:available";
@@ -69,7 +70,7 @@ export function isAnswered(answer: AskAnswer): boolean {
 export function describeAnswers(answers: readonly AskAnswer[]): string[] {
 	const lines: string[] = [];
 	for (const answer of answers) {
-		lines.push(`- ${answer.header}: "${answer.question}" \u2192 ${answerSummary(answer)}`);
+		lines.push(`- ${answer.header}: "${answer.question}" ${GLYPH.right} ${answerSummary(answer)}`);
 		for (const { option, note } of answer.notes) {
 			const tag = answer.picked.includes(option) ? "" : " (not picked)";
 			lines.push(`  note on "${option}"${tag}: ${note}`);

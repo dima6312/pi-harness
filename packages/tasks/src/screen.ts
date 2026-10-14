@@ -7,6 +7,7 @@ import {
 	tasksFromEntries,
 	tasksSpent,
 	tasksWith,
+	GLYPH,
 } from "@adeildo/pi-kit";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
@@ -136,7 +137,7 @@ function listed(
 			if (tasks.length === 0) return "Nothing here.";
 			return tasks
 				.map((task) =>
-					[task.text, task.result && `  \u2192 ${task.result}`, task.why && `  ${task.why}`]
+					[task.text, task.result && `  ${GLYPH.right} ${task.result}`, task.why && `  ${task.why}`]
 						.filter(Boolean)
 						.join("\n"),
 				)

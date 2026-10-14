@@ -10,6 +10,7 @@ import {
 	tasksWith,
 	logFrom,
 	hideImagesUnderOverlays,
+	GLYPH,
 } from "@adeildo/pi-kit";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
@@ -57,7 +58,7 @@ export const tasks = defineFeature({
 			const more = doing.length > 1 ? ` +${doing.length - 1}` : "";
 			session?.ui.setStatus(
 				TASKS_STATUS,
-				first === undefined ? undefined : `\u25b8 ${first}${more}`,
+				first === undefined ? undefined : `${GLYPH.triangle} ${first}${more}`,
 			);
 			scope.events.emit(TASKS_CHANGED, state);
 			if (session !== undefined && state.updatedAt !== loggedAt) {

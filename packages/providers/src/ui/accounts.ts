@@ -1,7 +1,7 @@
 // The accounts of one provider in our frame: which one is in use, what each plan has left, and the
 // keys to switch, rename, remove or add one. Renaming and removing happen in place, so the list stays
 // where it is and says what changed.
-import { frame, frameInner, type FrameLine } from "@adeildo/pi-kit";
+import { frame, frameInner, type FrameLine, GLYPH } from "@adeildo/pi-kit";
 import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import {
 	type Component,
@@ -73,7 +73,7 @@ interface Columns {
 const ADD = Symbol("add");
 type Item = string | typeof ADD;
 
-const POINTER = "\u276f ";
+const POINTER = `${GLYPH.pointer} `;
 const IN_USE = "in use";
 const MAX_VISIBLE = 8;
 const GAP = "  ";

@@ -1,10 +1,11 @@
-// While the model writes an edit or a write, pi shows the path, or the first lines of the file,
-// which stopped changing long ago. These show the end instead: the lines arriving, with a cursor
-// where the model is writing, and what it has written so far on the bottom rule.
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
+// While the model writes an edit or a write, pi shows the path, or the first lines of the file,
+// which stopped changing long ago. These show the end instead: the lines arriving, with a cursor
+// where the model is writing, and what it has written so far on the bottom rule.
+import { GLYPH } from "@adeildo/pi-kit";
 import { getLanguageFromPath, highlightCode, type Theme } from "@earendil-works/pi-coding-agent";
 
 /** What the frame shows inside, and the counts it adds to the bottom rule. */
@@ -26,7 +27,7 @@ type Streamer = (args: unknown, theme: Theme, context: StreamContext) => Stream 
 const WRITE_TAIL = 8;
 /** How many lines of the diff an edit shows while it streams. */
 const EDIT_TAIL = 10;
-const CURSOR = "\u258d";
+const CURSOR = GLYPH.cursor;
 /** Larger files are not read to count their lines. */
 const COUNT_LIMIT = 4 * 1024 * 1024;
 
@@ -84,7 +85,7 @@ export function editStream(
 	let added = 0;
 	const diff: string[] = [];
 	for (const [index, edit] of edits.entries()) {
-		if (index > 0) diff.push(theme.fg("dim", "\u22ef"));
+		if (index > 0) diff.push(theme.fg("dim", GLYPH.ellipsisAcross));
 		// Only the last edit can still be arriving, so only the others have a known end.
 		const lines = editLines(edit, index < edits.length - 1);
 		for (const line of lines.before) diff.push(theme.fg("toolDiffContext", ` ${tabs(line)}`));
@@ -143,7 +144,7 @@ function above(hidden: number, gutter: number, theme: Theme): string[] {
 	if (hidden <= 0) return [];
 	const lines = `${hidden} line${hidden === 1 ? "" : "s"} above`;
 	return [
-		`${" ".repeat(Math.max(0, gutter - 1))}${theme.fg("dim", "\u22ee")}  ${theme.fg("muted", lines)}`,
+		`${" ".repeat(Math.max(0, gutter - 1))}${theme.fg("dim", GLYPH.ellipsisUp)}  ${theme.fg("muted", lines)}`,
 	];
 }
 

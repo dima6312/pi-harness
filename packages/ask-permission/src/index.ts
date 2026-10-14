@@ -10,6 +10,7 @@ import { registerEvents } from "#pi/events.ts";
 import { registerScreen } from "#pi/screen.ts";
 import { createSession } from "#pi/session.ts";
 import { registerJudgeEntry } from "#ui/judge-entry.ts";
+import { registerNoteMessage } from "#ui/note-message.ts";
 import { registerRulingLine } from "#ui/ruling-line.ts";
 
 export const permission = defineFeature({
@@ -20,6 +21,7 @@ export const permission = defineFeature({
 	setup(scope) {
 		registerBashTimer(scope);
 		registerJudgeEntry(scope);
+		registerNoteMessage(scope);
 
 		const session = createSession();
 		registerRulingLine(scope, session);

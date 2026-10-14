@@ -9,6 +9,7 @@ import {
 	type RulingRequest,
 	type RulingTone,
 	RULING_TONES,
+	GLYPH,
 } from "@adeildo/pi-kit";
 import type { ExtensionContext, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
 import { type Component, Container, Text } from "@earendil-works/pi-tui";
@@ -123,8 +124,8 @@ function colorOf(tone: RulingTone): "dim" | "success" | "warning" | "error" {
 
 export function rulingText(ruling: CallRuling, theme: Theme, expanded: boolean): string {
 	const color = colorOf(ruling.tone);
-	let line = `${theme.fg(color, "\u25c8")} ${theme.fg(color, ruling.head)}`;
-	if (ruling.note) line += ` ${theme.fg("accent", "\u203a")} ${ruling.note}`;
+	let line = `${theme.fg(color, GLYPH.judge)} ${theme.fg(color, ruling.head)}`;
+	if (ruling.note) line += ` ${theme.fg("accent", GLYPH.chevron)} ${ruling.note}`;
 	if (ruling.why) line += `  ${theme.fg("muted", ruling.why)}`;
 	if (expanded && ruling.detail) line += `\n  ${theme.fg("dim", ruling.detail)}`;
 	return line;

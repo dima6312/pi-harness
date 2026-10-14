@@ -1,5 +1,6 @@
 // The peers tool in the chat of the agent that calls it: the message as the model writes it, then a
 // tick per recipient that turns into two when it arrives and lights up when it is read.
+import { GLYPH } from "@adeildo/pi-kit";
 import type { Delivery } from "@adeildo/pi-kit";
 import type { AgentToolResult, Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
@@ -20,7 +21,7 @@ interface Row {
 	state: { watching?: boolean };
 }
 
-const CURSOR = "\u258c";
+const CURSOR = GLYPH.bar;
 const INDENT = "  ";
 
 const ARRIVED: Record<Delivery, string> = {
@@ -77,7 +78,7 @@ function callLines(
 				? theme.fg("text", name)
 				: theme.fg(named.color as ThemeColor, theme.bold(named.handle));
 		});
-	const lines = [`${theme.fg("muted", "\u2192")} ${to.join(theme.fg("muted", ", "))}`];
+	const lines = [`${theme.fg("muted", GLYPH.right)} ${to.join(theme.fg("muted", ", "))}`];
 	const text = `${args.text ?? ""}${writing ? theme.fg("accent", CURSOR) : ""}`;
 	for (const line of wrapTextWithAnsi(text, Math.max(1, width - INDENT.length)))
 		lines.push(INDENT + theme.fg("text", line));
@@ -100,7 +101,7 @@ function resultLines(
 		);
 	}
 	const message = here.folder.messages.get(details.id);
-	if (message === undefined) return [theme.fg("dim", "\u2713 sent")];
+	if (message === undefined) return [theme.fg("dim", `${GLYPH.check} sent`)];
 	const names = here.names();
 	const nameOf = (session: string) => {
 		const named = names.get(session);
@@ -117,11 +118,11 @@ function resultLines(
 			);
 		const lines =
 			bids.length === 0
-				? [theme.fg("dim", "\u2713 sent to everyone")]
+				? [theme.fg("dim", `${GLYPH.check} sent to everyone`)]
 				: [`${theme.fg("dim", "bids")}  ${bids.join("   ")}`];
 		if (message.takenBy !== undefined)
 			lines.push(
-				`${theme.fg("success", "\u2713\u2713")} ${nameOf(message.takenBy)} ${theme.fg("muted", "took it")}`,
+				`${theme.fg("success", `${GLYPH.check}${GLYPH.check}`)} ${nameOf(message.takenBy)} ${theme.fg("muted", "took it")}`,
 			);
 		else if (award(message, here.live(), Date.now()).kind === "waiting")
 			lines.push(theme.fg("warning", "everyone is busy: the first to finish takes it"));
@@ -131,9 +132,9 @@ function resultLines(
 	return message.to.map((session) => {
 		const received = message.received.get(session);
 		if (message.read.has(session))
-			return `${theme.fg("accent", "\u2713\u2713")} ${nameOf(session)} ${theme.fg("muted", "read it")}`;
+			return `${theme.fg("accent", `${GLYPH.check}${GLYPH.check}`)} ${nameOf(session)} ${theme.fg("muted", "read it")}`;
 		if (received !== undefined)
-			return `${theme.fg("muted", "\u2713\u2713")} ${nameOf(session)} ${theme.fg("muted", ARRIVED[received.mode])}`;
-		return `${theme.fg("dim", "\u2713")} ${nameOf(session)} ${theme.fg("dim", "sent")}`;
+			return `${theme.fg("muted", `${GLYPH.check}${GLYPH.check}`)} ${nameOf(session)} ${theme.fg("muted", ARRIVED[received.mode])}`;
+		return `${theme.fg("dim", GLYPH.check)} ${nameOf(session)} ${theme.fg("dim", "sent")}`;
 	});
 }

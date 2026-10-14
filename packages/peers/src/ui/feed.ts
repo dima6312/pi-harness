@@ -1,4 +1,4 @@
-import { type Delivery, spread } from "@adeildo/pi-kit";
+import { type Delivery, spread, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -122,7 +122,7 @@ function messageLines(
 	const lines: string[] = [];
 	if (answered !== undefined) lines.push(quoteLine(answered, options));
 
-	let head = `${speaker(message, options)}${theme.fg("dim", " \u2192 ")}${recipients(message, options)}`;
+	let head = `${speaker(message, options)}${theme.fg("dim", ` ${GLYPH.right} `)}${recipients(message, options)}`;
 	head += `  ${theme.fg(fresh ? color : "dim", options.clock(message.at))}`;
 	if (message.urgent) head += theme.fg("warning", "  urgent");
 	// One addressee's receipt fits on the header line; several, or the bids, go under the words.
@@ -169,15 +169,15 @@ function receiptLines(message: Posted, options: FeedOptions): string[] {
 	const parts = message.to.map((session) => {
 		const who = many ? ` ${name(session, options)}` : "";
 		if (message.read.has(session))
-			return `${theme.fg("accent", "\u2713\u2713")}${who} ${theme.fg("muted", "read")}`;
+			return `${theme.fg("accent", `${GLYPH.check}${GLYPH.check}`)}${who} ${theme.fg("muted", "read")}`;
 		const received = message.received.get(session);
 		if (received !== undefined)
-			return `${theme.fg("muted", "\u2713\u2713")}${who} ${theme.fg("dim", ARRIVED[received.mode])}`;
+			return `${theme.fg("muted", `${GLYPH.check}${GLYPH.check}`)}${who} ${theme.fg("dim", ARRIVED[received.mode])}`;
 		const waiting =
 			live.some((peer) => peer.session === session) && now - message.at < ON_ITS_WAY_MS;
 		return waiting
 			? `${theme.fg("dim", spin(now))}${who} ${theme.fg("dim", "sending")}`
-			: `${theme.fg("dim", "\u2713")}${who} ${theme.fg("dim", "sent")}`;
+			: `${theme.fg("dim", GLYPH.check)}${who} ${theme.fg("dim", "sent")}`;
 	});
 	return [parts.join("   ")];
 }
@@ -203,7 +203,7 @@ function requestLines(message: Posted, options: FeedOptions): string[] {
 		case "taken":
 			return [
 				...(bids === "" ? [] : [bids]),
-				`${theme.fg("success", "\u2713\u2713")} ${name(ranking.by, options)} ${theme.fg("muted", "took it")}`,
+				`${theme.fg("success", `${GLYPH.check}${GLYPH.check}`)} ${name(ranking.by, options)} ${theme.fg("muted", "took it")}`,
 			];
 		case "bidding": {
 			const left = Math.max(1, Math.ceil((ranking.until - now) / 1_000));
@@ -213,7 +213,7 @@ function requestLines(message: Posted, options: FeedOptions): string[] {
 		case "waiting":
 			return [
 				...(bids === "" ? [] : [bids]),
-				`${theme.fg("warning", "\u2691")} ${theme.fg("muted", "everyone is busy, the first to finish takes it")}`,
+				`${theme.fg("warning", GLYPH.flag)} ${theme.fg("muted", "everyone is busy, the first to finish takes it")}`,
 			];
 		case "ranked": {
 			const first = ranking.order.find((session) => {
@@ -236,10 +236,10 @@ function typingLines(typing: Typing, options: FeedOptions): string[] {
 	const named = options.names.get(typing.session);
 	const color = (named?.color ?? "muted") as ThemeColor;
 	const to = typingRecipients(typing.to, options.names, theme);
-	const head = `${theme.fg(color, theme.bold(named?.handle ?? "an agent"))}${theme.fg("dim", " \u2192 ")}${to}  ${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`;
+	const head = `${theme.fg(color, theme.bold(named?.handle ?? "an agent"))}${theme.fg("dim", ` ${GLYPH.right} `)}${to}  ${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`;
 	const lines = [truncateToWidth(head, width, "...")];
 	const room = Math.max(8, width - INDENT - 1);
-	const cursor = blink(now) ? theme.fg(color, "\u258c") : " ";
+	const cursor = blink(now) ? theme.fg(color, GLYPH.bar) : " ";
 	const wrapped = wrapTextWithAnsi(typing.text, room).slice(-2);
 	if (wrapped.length === 0) wrapped.push("");
 	for (const [index, line] of wrapped.entries()) {
@@ -261,16 +261,16 @@ function happeningLine(group: readonly Happening[], options: FeedOptions): strin
 	let line: string;
 	switch (first.kind) {
 		case "joined":
-			line = `${theme.fg("dim", "\u2192")} ${names} ${theme.fg("dim", "joined")}`;
+			line = `${theme.fg("dim", GLYPH.right)} ${names} ${theme.fg("dim", "joined")}`;
 			break;
 		case "left":
-			line = `${theme.fg("dim", "\u2190")} ${names} ${theme.fg("dim", "left")}`;
+			line = `${theme.fg("dim", GLYPH.left)} ${names} ${theme.fg("dim", "left")}`;
 			break;
 		case "committed":
-			line = `${theme.fg("syntaxNumber", "\u25cf")} ${names} ${theme.fg("dim", "committed")} ${theme.fg("syntaxNumber", first.sha.slice(0, 7))} ${theme.fg("muted", first.subject)}`;
+			line = `${theme.fg("syntaxNumber", GLYPH.dot)} ${names} ${theme.fg("dim", "committed")} ${theme.fg("syntaxNumber", first.sha.slice(0, 7))} ${theme.fg("muted", first.subject)}`;
 			break;
 		case "finished":
-			line = `${theme.fg("success", "\u2713")} ${names} ${theme.fg("dim", "finished")} ${theme.fg("muted", first.task)}`;
+			line = `${theme.fg("success", GLYPH.check)} ${names} ${theme.fg("dim", "finished")} ${theme.fg("muted", first.task)}`;
 			break;
 		case "took":
 			return "";
@@ -297,7 +297,7 @@ function restarted(left: Happening, back: Happening): boolean {
 
 function restartLine(left: Happening, options: FeedOptions): string {
 	const { theme } = options;
-	const line = `${theme.fg("dim", "\u21bb")} ${name(left.session, options)} ${theme.fg("dim", "restarted")}`;
+	const line = `${theme.fg("dim", GLYPH.again)} ${name(left.session, options)} ${theme.fg("dim", "restarted")}`;
 	return stamped(line, left.at, options);
 }
 

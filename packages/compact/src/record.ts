@@ -1,4 +1,4 @@
-import { isObject } from "@adeildo/pi-kit";
+import { isObject, GLYPH } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
@@ -9,7 +9,6 @@ export const REREAD_ENTRY = "pi-compact:reread";
 export const NOTE_MESSAGE = "pi-compact:note";
 
 const LISTED = 12;
-const GLYPH = "\u25cc";
 const INDENT = "   ";
 
 export interface PruneRecord {
@@ -175,8 +174,8 @@ export class PruneEntry implements Component {
 		const { before, after, hidden, server } = this.#record;
 		// Glyph on the tool box's border column, text on its content column, numbers on its edge.
 		const edge = width - 1;
-		const head = ` ${theme.fg("accent", `${GLYPH} ${server ? "cleared" : "pruned"}`)}  `;
-		const stats = `${tokens(before)} \u2192 ${tokens(after)} tokens`;
+		const head = ` ${theme.fg("accent", `${GLYPH.ringDotted} ${server ? "cleared" : "pruned"}`)}  `;
+		const stats = `${tokens(before)} ${GLYPH.right} ${tokens(after)} tokens`;
 		const lines = [row(head, theme.fg("text", outputsHidden(hidden.length)), stats, edge, theme)];
 		for (const [label, amount] of costRows(this.#record))
 			lines.push(row(INDENT, theme.fg("muted", label), amount, edge, theme));

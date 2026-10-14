@@ -41,14 +41,22 @@ function renderer(): (data: unknown, expanded?: boolean) => Component | undefine
 	return (data, expanded = false) => registered?.({ data }, { expanded }, theme);
 }
 
-const lines = (data: unknown, expanded = false): string[] =>
+const drawn = (data: unknown, expanded = false): string[] =>
 	renderer()(data, expanded)?.render(80) ?? [];
+
+/** The rows inside the frame, without its sides. */
+const lines = (data: unknown, expanded = false): string[] =>
+	drawn(data, expanded)
+		.slice(1, -1)
+		.map((row) => row.slice(2, -2).trimEnd());
 
 const targetColumn = (row: string | undefined) => row?.indexOf("git status");
 
 describe("judge entry", () => {
-	test("accepts the array shape written today", () => {
-		expect(lines([record(), record({ toolName: "read" })])).toHaveLength(3);
+	test("accepts the array shape written today, one row per decision in a frame named judge", () => {
+		const frame = drawn([record(), record({ toolName: "read" })]);
+		expect(frame[0]).toMatch(/^\u256d\u2500 \u25c8 judge \u2500+ 2 decisions \u2500\u256e$/);
+		expect(lines([record(), record({ toolName: "read" })])).toHaveLength(2);
 	});
 
 	test("renders a single record persisted before grouping", () => {
@@ -70,7 +78,7 @@ describe("judge entry", () => {
 
 	test("degrades to a stub instead of throwing on drifted data", () => {
 		const broken = { ...record(), answers: undefined } as unknown as JudgeRecord;
-		expect(lines([broken])).toEqual(["pi-ask-permission judge: unreadable entry"]);
+		expect(drawn([broken])).toEqual(["pi-ask-permission judge: unreadable entry"]);
 	});
 
 	test("shows the reason and signals only when expanded", () => {
@@ -80,18 +88,16 @@ describe("judge entry", () => {
 	});
 
 	test("keeps a space between the label, the tool, and the target", () => {
-		expect(lines([record({ toolName: "webfetch" })])[0]).toContain(
-			"\u25c8 approved webfetch git status",
-		);
+		expect(lines([record({ toolName: "webfetch" })])[0]).toContain("approved webfetch git status");
 	});
 
 	test("a lone `ask you` does not pay for another card's dry-run label", () => {
-		expect(lines([record({ action: "ask" })])[0]).toContain("\u25c8 ask you bash git status");
+		expect(lines([record({ action: "ask" })])[0]).toStartWith("ask you bash git status");
 	});
 
 	test("aligns the target column on the widest label in the card", () => {
 		const rendered = lines([record({ action: "ask", dryRun: true }), record({ toolName: "read" })]);
-		expect(rendered[1]).toContain("\u25c8 would ask you bash git status");
-		expect(targetColumn(rendered[1])).toBe(targetColumn(rendered[2]));
+		expect(rendered[0]).toStartWith("would ask you bash git status");
+		expect(targetColumn(rendered[0])).toBe(targetColumn(rendered[1]));
 	});
 });

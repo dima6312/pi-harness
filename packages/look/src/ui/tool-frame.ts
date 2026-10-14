@@ -8,6 +8,8 @@ import {
 	RULING_CHANGED,
 	type RulingTone,
 	rulingOf,
+	GLYPH,
+	LINE,
 } from "@adeildo/pi-kit";
 import type { Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
 import {
@@ -377,12 +379,13 @@ export function rule(
 	theme: Theme,
 	color: "accent" | "success" | "error" | "muted" | "border" = "border",
 ): string {
-	const [start, end] = edge === "top" ? ["\u256d", "\u256e"] : ["\u2570", "\u256f"];
+	const [start, end] =
+		edge === "top" ? [LINE.topLeft, LINE.topRight] : [LINE.bottomLeft, LINE.bottomRight];
 	const paint = (text: string) => theme.fg(color, text);
 	const cell = left === "" ? "" : ` ${left} `;
 	const fill = Math.max(1, width - BODY_PAD - visibleWidth(cell));
 	const line =
-		paint(`${start}\u2500`) + cell + paint("\u2500".repeat(fill)) + paint(`\u2500${end}`);
+		paint(`${start}${LINE.h}`) + cell + paint(LINE.h.repeat(fill)) + paint(`${LINE.h}${end}`);
 	return truncateToWidth(line, width, "");
 }
 
@@ -390,7 +393,7 @@ export function rule(
 function cut(width: number, theme: Theme): string {
 	const paint = (text: string) => theme.fg("border", text);
 	const fill = Math.max(1, width - BODY_PAD);
-	const line = `${paint("\u251c")}${paint("\u2500".repeat(fill + 2))}${paint("\u2524")}`;
+	const line = `${paint(LINE.teeLeft)}${paint(LINE.h.repeat(fill + 2))}${paint(LINE.teeRight)}`;
 	return truncateToWidth(line, width, "");
 }
 
@@ -415,7 +418,7 @@ function inside(lines: readonly string[], width: number, theme: Theme): string[]
 		// Measuring is cheap, and cutting a line that already fits is not.
 		const text = visibleWidth(line) > inner ? truncateToWidth(line, inner, "...", true) : line;
 		const pad = " ".repeat(Math.max(0, inner - visibleWidth(text)));
-		return `${paint("\u2502")} ${text}${pad} ${paint("\u2502")}`;
+		return `${paint(LINE.v)} ${text}${pad} ${paint(LINE.v)}`;
 	});
 }
 
@@ -512,8 +515,8 @@ export function isBlank(line: string | undefined): boolean {
 
 export function rulingText(ruling: CallRuling, theme: Theme, expanded: boolean): string {
 	const color = PHASE_COLORS[stateOf(ruling.tone)];
-	let line = `${theme.fg(color, "\u25c8")} ${theme.fg(color, ruling.head)}`;
-	if (ruling.note) line += ` ${theme.fg("accent", "\u203a")} ${ruling.note}`;
+	let line = `${theme.fg(color, GLYPH.judge)} ${theme.fg(color, ruling.head)}`;
+	if (ruling.note) line += ` ${theme.fg("accent", GLYPH.chevron)} ${ruling.note}`;
 	if (ruling.why) line += `  ${theme.fg("muted", ruling.why)}`;
 	if (expanded && ruling.detail) line += ` ${theme.fg("dim", `(${ruling.detail})`)}`;
 	return line;

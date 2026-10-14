@@ -1,17 +1,12 @@
-// A message from another session, drawn in the chat of the one that got it: who, to whom and when on
-// one line, the words under it.
+// A message from another session, drawn in the chat of the one that got it: a frame in the color of
+// the agent that wrote it, who and to whom in its top edge with the time on the right, the words inside.
+import { ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
-import {
-	type Component,
-	truncateToWidth,
-	visibleWidth,
-	wrapTextWithAnsi,
-} from "@earendil-works/pi-tui";
+import { type Component, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 import type { PeerDelivery, PeerMessageDetails } from "../here.ts";
 
-export const PEER_MARK = "\u25c6";
-const INDENT = "  ";
+export const PEER_MARK = GLYPH.diamond;
 
 export function messageBlock(details: PeerMessageDetails, theme: Theme): Component {
 	return {
@@ -20,34 +15,31 @@ export function messageBlock(details: PeerMessageDetails, theme: Theme): Compone
 	};
 }
 
-/** Everything that arrived together, one block under the other. */
+/** Everything that arrived together, one frame under the other. */
 export function deliveryBlock(delivery: PeerDelivery, theme: Theme): Component {
 	return {
-		render: (width) =>
-			delivery.items.flatMap((item, index) =>
-				index === 0 ? messageLines(item, theme, width) : ["", ...messageLines(item, theme, width)],
-			),
+		render: (width) => delivery.items.flatMap((item) => messageLines(item, theme, width)),
 		invalidate() {},
 	};
 }
 
 export function messageLines(details: PeerMessageDetails, theme: Theme, width: number): string[] {
 	const color = details.fromYou ? "accent" : (details.color as ThemeColor);
-	const who = details.fromYou ? "you, from another session" : details.from;
-	const head = `${theme.fg(color, PEER_MARK)} ${theme.fg(color, theme.bold(who))}  ${theme.fg("muted", addressed(details))}`;
-	const time = theme.fg("dim", clock(details.at));
-	const gap = width - visibleWidth(head) - visibleWidth(time);
-	const lines = [
-		gap >= 2 ? `${head}${" ".repeat(gap)}${time}` : truncateToWidth(head, width, "..."),
-	];
-	for (const line of wrapTextWithAnsi(details.text, Math.max(1, width - INDENT.length)))
-		lines.push(INDENT + theme.fg("text", line));
-	return lines;
+	const who = details.fromYou ? "you, from another session" : `@${details.from}`;
+	const top = `${theme.fg(color, theme.bold(who))} ${theme.fg("muted", addressed(details))}`;
+	const body = wrapTextWithAnsi(details.text.trim(), Math.max(1, width - ENTRY_X)).map((line) =>
+		theme.fg("text", line),
+	);
+	return entryFrame(body, width, theme, {
+		top,
+		topRight: theme.fg("dim", clock(details.at)),
+		color,
+	});
 }
 
 /** Who the message went to, as this session sees it. */
 function addressed(details: PeerMessageDetails): string {
-	if (details.toYou) return "to you";
+	if (details.toYou) return `${GLYPH.right} you`;
 	if (details.takenBy === undefined) return "to everyone, taken here";
 	return `to everyone, ${details.takenBy} took it`;
 }

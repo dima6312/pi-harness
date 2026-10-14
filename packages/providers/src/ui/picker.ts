@@ -1,6 +1,6 @@
 // Our dialogs wear the same frame as the rest of the harness. A host that cannot draw a component,
 // like RPC, falls back to pi's own select.
-import { frame, frameInner, type KeyHint, oneAtATime } from "@adeildo/pi-kit";
+import { frame, frameInner, type KeyHint, oneAtATime, GLYPH } from "@adeildo/pi-kit";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -18,7 +18,7 @@ export interface PickOption {
 	description?: string;
 }
 
-const POINTER = "\u276f ";
+const POINTER = `${GLYPH.pointer} `;
 const KEYS: KeyHint[] = [
 	["↑↓", "move"],
 	["enter", "select"],

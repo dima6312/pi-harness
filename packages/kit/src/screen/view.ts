@@ -22,6 +22,7 @@ import {
 } from "../control.ts";
 import type { Layer } from "../settings/store.ts";
 import { frameBottom, type KeyHint } from "../ui/frame.ts";
+import { GLYPH, LINE } from "../ui/glyphs.ts";
 import { applyRow, listTabs, runRow } from "./client.ts";
 import { keyOf, type Line, type ScreenModel } from "./model.ts";
 
@@ -223,7 +224,10 @@ export class ScreenView implements Component {
 			if (row.confirm === undefined) this.#run(row);
 			else {
 				this.#confirming = keyOf(row);
-				this.#say(`${row.confirm} \u21b5 again to confirm, any other key to keep`, "warning");
+				this.#say(
+					`${row.confirm} ${GLYPH.enter} again to confirm, any other key to keep`,
+					"warning",
+				);
 			}
 			return;
 		}
@@ -401,22 +405,22 @@ export class ScreenView implements Component {
 
 		const border = (text: string): string => theme.fg("border", text);
 		const frame = (text: string): string =>
-			border("\u2502") + truncateToWidth(text, inner, "...", true) + border("\u2502");
+			border(LINE.v) + truncateToWidth(text, inner, "...", true) + border(LINE.v);
 
 		const left = this.#mode.kind === "text" || inner < 50 ? 0 : this.#leftWidth(inner);
 		const title = ` ${theme.fg("accent", theme.bold("Settings"))} `;
 		const lines = [
-			border("\u256d\u2500") +
+			border(`${LINE.topLeft}${LINE.h}`) +
 				title +
-				border(`${"\u2500".repeat(Math.max(0, inner - 1 - visibleWidth(title)))}\u256e`),
+				border(`${LINE.h.repeat(Math.max(0, inner - 1 - visibleWidth(title)))}${LINE.topRight}`),
 			frame(this.#tabsLine(inner)),
-			border(divider("\u251c", "\u2524", inner, left, "\u252c")),
+			border(divider(LINE.teeLeft, LINE.teeRight, inner, left, LINE.teeTop)),
 		];
 
 		const body = this.#body(inner, left);
 		for (const line of body) lines.push(frame(line));
 
-		lines.push(border(divider("\u251c", "\u2524", inner, left, "\u2534")));
+		lines.push(border(divider(LINE.teeLeft, LINE.teeRight, inner, left, LINE.teeBottom)));
 		for (const line of this.#panel(inner - 2)) lines.push(frame(` ${line}`));
 		lines.push(frameBottom(theme, inner + 2, { keys: this.#hints() }));
 		return lines;
@@ -427,7 +431,7 @@ export class ScreenView implements Component {
 		if (model.searching) {
 			const count = model.lines().filter((line) => line.kind === "row").length;
 			const found = count === 1 ? "1 match" : `${count} matches`;
-			return ` ${theme.fg("accent", "\u2315")} ${model.query}${theme.inverse(" ")}  ${theme.fg("dim", found)}`;
+			return ` ${theme.fg("accent", GLYPH.search)} ${model.query}${theme.inverse(" ")}  ${theme.fg("dim", found)}`;
 		}
 		const tabs = model.tabs.map((tab, index) =>
 			index === model.tab
@@ -467,7 +471,7 @@ export class ScreenView implements Component {
 				continue;
 			}
 			const side = truncateToWidth(sections[index] ?? "", left, "...", true);
-			out.push(side + this.#options.theme.fg("borderMuted", "\u2502") + main);
+			out.push(side + this.#options.theme.fg("borderMuted", LINE.v) + main);
 		}
 		return out;
 	}
@@ -521,7 +525,7 @@ export class ScreenView implements Component {
 			const text =
 				line === undefined ? "" : this.#line(line, at === cursor, focused[at] === true, labelWidth);
 			const mark = bar[index];
-			const edge = mark === true ? theme.fg("scrollbarThumb", "\u2503") : " ";
+			const edge = mark === true ? theme.fg("scrollbarThumb", LINE.vHeavy) : " ";
 			out.push(truncateToWidth(text, width - 1, "...", true) + edge);
 		}
 		return out;
@@ -533,7 +537,7 @@ export class ScreenView implements Component {
 
 		const row = line.row;
 		const indent = "  ".repeat(row.indent ?? 0);
-		const cursor = selected ? theme.fg("accent", "\u276f ") : "  ";
+		const cursor = selected ? theme.fg("accent", `${GLYPH.pointer} `) : "  ";
 		const room = Math.max(1, labelWidth - 1 - visibleWidth(indent));
 		const label = truncateToWidth(row.label, room, "...");
 		const pad = " ".repeat(Math.max(1, labelWidth - visibleWidth(indent) - visibleWidth(label)));
@@ -557,8 +561,11 @@ export class ScreenView implements Component {
 		const { theme } = this.#options;
 		if (row.kind === "action") {
 			if (this.#running.has(keyOf(row))) return theme.fg("accent", "running...");
-			if (row.text === undefined) return theme.fg(selected ? "accent" : "dim", "\u21b5 run");
-			return theme.fg("muted", row.text) + (selected ? theme.fg("dim", "  \u21b5 run") : "");
+			if (row.text === undefined)
+				return theme.fg(selected ? "accent" : "dim", `${GLYPH.enter} run`);
+			return (
+				theme.fg("muted", row.text) + (selected ? theme.fg("dim", `  ${GLYPH.enter} run`) : "")
+			);
 		}
 		if (row.kind === "info" || row.control === undefined) return theme.fg("dim", row.text ?? "");
 
@@ -574,8 +581,8 @@ export class ScreenView implements Component {
 		const { theme } = this.#options;
 
 		let tags = "";
-		if (row.layer === "project") tags += theme.fg("warning", "  \u25c6 project");
-		if (row.restart === true) tags += theme.fg("dim", "  \u21bb");
+		if (row.layer === "project") tags += theme.fg("warning", `  ${GLYPH.diamond} project`);
+		if (row.restart === true) tags += theme.fg("dim", `  ${GLYPH.again}`);
 		return tags;
 	}
 
@@ -596,14 +603,14 @@ export class ScreenView implements Component {
 		mode.items.slice(top, top + height).forEach((item, offset) => {
 			const index = top + offset;
 			const selected = index === mode.index;
-			const cursor = selected ? theme.fg("accent", "\u276f ") : "  ";
+			const cursor = selected ? theme.fg("accent", `${GLYPH.pointer} `) : "  ";
 			let mark: string;
 			if (mode.kind === "check") {
 				const at = mode.checked.findIndex((value) => sameJson(value, item.value));
 				mark = at === -1 ? theme.fg("dim", "[ ] ") : theme.fg("accent", `[${at + 1}] `);
 			} else {
 				const current = item.opens === undefined && sameJson(item.value, mode.current);
-				mark = current ? theme.fg("accent", "\u25cf ") : "  ";
+				mark = current ? theme.fg("accent", `${GLYPH.dot} `) : "  ";
 			}
 			const text = truncateToWidth(item.label, labelWidth - visibleWidth(mark) - 2, "...");
 			const label = selected ? theme.fg("accent", theme.bold(text)) : theme.fg("text", text);
@@ -662,15 +669,15 @@ export class ScreenView implements Component {
 		switch (mode.kind) {
 			case "pick":
 				return [
-					["\u2191\u2193", "move"],
+					[`${GLYPH.up}${GLYPH.down}`, "move"],
 					["enter", "pick"],
 					["esc", "back"],
 				];
 			case "check":
 				return [
-					["\u2191\u2193", "move"],
+					[`${GLYPH.up}${GLYPH.down}`, "move"],
 					["space", "check"],
-					["alt+\u2191\u2193", "reorder"],
+					[`alt+${GLYPH.up}${GLYPH.down}`, "reorder"],
 					["enter", "save"],
 					["esc", "back"],
 				];
@@ -681,7 +688,7 @@ export class ScreenView implements Component {
 				];
 			case "text":
 				return [
-					["\u2191\u2193", "scroll"],
+					[`${GLYPH.up}${GLYPH.down}`, "scroll"],
 					["esc", "back"],
 				];
 			case "browse":
@@ -690,7 +697,7 @@ export class ScreenView implements Component {
 
 		const model = this.#options.model;
 		const row = model.selected()?.row;
-		const keys: KeyHint[] = [["\u2191\u2193", "move"]];
+		const keys: KeyHint[] = [[`${GLYPH.up}${GLYPH.down}`, "move"]];
 		if (row?.kind === "action") keys.push(["enter", "run"]);
 		else if (row?.control?.type === "toggle") keys.push(["enter", "flip"]);
 		else if (row?.control !== undefined) keys.push(["enter", "change"]);
@@ -698,15 +705,15 @@ export class ScreenView implements Component {
 		if (row?.kind === "setting" && row.layer === "project")
 			keys.push(["del", "drop project value"]);
 		else if (row?.kind === "setting" && row.layer === "global") keys.push(["del", "reset"]);
-		if (!model.searching) keys.push(["\u2190\u2192", "tabs"], ["tab", "section"]);
+		if (!model.searching) keys.push([`${GLYPH.left}${GLYPH.right}`, "tabs"], ["tab", "section"]);
 		keys.push(["esc", model.searching ? "clear search" : "close"]);
 		return keys;
 	}
 }
 
 function divider(start: string, end: string, inner: number, left: number, joint: string): string {
-	if (left === 0 || joint === "") return `${start}${"\u2500".repeat(inner)}${end}`;
-	return `${start}${"\u2500".repeat(left)}${joint}${"\u2500".repeat(inner - left - 1)}${end}`;
+	if (left === 0 || joint === "") return `${start}${LINE.h.repeat(inner)}${end}`;
+	return `${start}${LINE.h.repeat(left)}${joint}${LINE.h.repeat(inner - left - 1)}${end}`;
 }
 
 /** True for each line of the section the cursor is in, its heading included. */

@@ -7,6 +7,8 @@ import {
 	pointer,
 	rule,
 	spread,
+	GLYPH,
+	LINE,
 } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import {
@@ -171,7 +173,7 @@ export class RoomView implements Component, Focusable {
 		const columnHeight = beside ? height : height - agentsHeight - 1;
 		const right = this.#roomColumn(roomWidth, Math.max(2, columnHeight), picker, names, live);
 
-		const column = theme.fg("borderMuted", "\u2502");
+		const column = theme.fg("borderMuted", LINE.v);
 		const pair = (left: string, room: string) => {
 			const clipped = truncateToWidth(left, agentsWidth, "");
 			const gap = " ".repeat(Math.max(0, agentsWidth - visibleWidth(clipped)));
@@ -269,8 +271,8 @@ export class RoomView implements Component, Focusable {
 	#scrollHint(): string {
 		const { theme } = this.#options;
 		if (this.#follow) return "";
-		if (this.#unread > 0) return theme.fg("accent", `\u2193 ${this.#unread} new`);
-		return theme.fg("dim", `\u2191 ${this.#offset} above`);
+		if (this.#unread > 0) return theme.fg("accent", `${GLYPH.down} ${this.#unread} new`);
+		return theme.fg("dim", `${GLYPH.up} ${this.#offset} above`);
 	}
 
 	#picker(
@@ -334,7 +336,7 @@ export class RoomView implements Component, Focusable {
 		const handle = selected === undefined ? undefined : names.get(selected.session)?.handle;
 		const other = selected !== undefined && selected.session !== this.#options.here.session;
 		if (this.#pane === "agents") {
-			const keys: KeyHint[] = [["\u2191\u2193", "pick"]];
+			const keys: KeyHint[] = [[`${GLYPH.up}${GLYPH.down}`, "pick"]];
 			if (other && handle !== undefined) keys.push(["enter", "write"]);
 			if (handle !== undefined) keys.push(["ctrl+f", this.#only === undefined ? "filter" : "all"]);
 			keys.push(["tab", "room"]);
@@ -342,13 +344,13 @@ export class RoomView implements Component, Focusable {
 		}
 		if (this.#candidates().length > 0)
 			return [
-				["\u2191\u2193", "pick"],
+				[`${GLYPH.up}${GLYPH.down}`, "pick"],
 				["tab", "mention"],
 				["esc", "keep writing"],
 			];
 		return [
 			["enter", "send"],
-			["\u2191\u2193", "scroll"],
+			[`${GLYPH.up}${GLYPH.down}`, "scroll"],
 			["tab", "agents"],
 			["esc", "close"],
 		];

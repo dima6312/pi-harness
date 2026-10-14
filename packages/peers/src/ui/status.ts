@@ -1,3 +1,4 @@
+import { GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 
 import type { BoardMark } from "../here.ts";
@@ -20,7 +21,7 @@ export const PEERS_STATUS = "pi-peers";
 
 /** The shape tells the state apart with colour off: running is filled, idle is hollow. */
 const MARKS: Record<BoardMark["state"], string> = {
-	running: "\u25c6",
-	idle: "\u25c7",
-	waiting: "\u2691",
+	running: GLYPH.diamond,
+	idle: GLYPH.diamondEmpty,
+	waiting: GLYPH.flag,
 };

@@ -45,6 +45,8 @@ Build it with `defineFeature` and `createApp` from `@adeildo/pi-kit`. The harnes
 - A feature never imports another feature's state. Anything that crosses features is an event in `packages/kit/src/contracts/`, with a plain JSON payload.
 - Every rule of the feature gets a test that fails when the rule breaks. `@adeildo/pi-kit/testing` fakes pi for that.
 - A dialog, panel or full screen draws its content inside the kit's `frame()` and follows [DESIGN.md](DESIGN.md): no backgrounds, the keys in the bottom edge, the same selected row everywhere.
+- An entry of the transcript (a message, a tool call, a record) draws inside the kit's `entryFrame()`: what it is in the top edge, what became of it in the bottom one.
+- Characters come from the kit's `GLYPH` and `LINE` by name (`GLYPH.check`, `LINE.topLeft`), never as `\u2713` in place. A character missing from the table goes into it with a comment on where it is used. Marks that need a Nerd Font live in the look's icon sets, with their Unicode and ASCII fallbacks.
 
 ## Tests
 

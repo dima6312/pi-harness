@@ -4,6 +4,8 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
+import { GLYPH, LINE } from "./glyphs.ts";
+
 /** Columns between a side of the frame and the text. */
 export const FRAME_PAD = 2;
 /** Columns the frame takes from a row: both sides and their padding. */
@@ -11,8 +13,8 @@ export const FRAME_X = 2 + FRAME_PAD * 2;
 /** Rows the frame takes: the top and the bottom edge. */
 export const FRAME_Y = 2;
 
-export const POINTER = "\u276f";
-const BAR = "\u258c";
+export const POINTER = GLYPH.pointer;
+const BAR = GLYPH.bar;
 
 /** A key and what it does, as the bottom edge lists them. */
 export type KeyHint = readonly [key: string, action: string];
@@ -50,11 +52,11 @@ export function frame(
 	const top = edge(
 		theme,
 		width,
-		"\u256d",
-		"\u256e",
+		LINE.topLeft,
+		LINE.topRight,
 		title,
 		options.status ?? "",
-		junction(options.split, "\u252c"),
+		junction(options.split, LINE.teeTop),
 	);
 	const rows = body.map((line) =>
 		typeof line === "string"
@@ -66,13 +68,13 @@ export function frame(
 
 /** The bottom edge on its own, for a screen that draws the rest itself. */
 export function frameBottom(theme: Theme, width: number, options: BottomOptions = {}): string {
-	const cross = junction(options.split, "\u2534");
+	const cross = junction(options.split, LINE.teeBottom);
 	// Past the column line when there is one, as the edge places a label that does not fit before it.
 	const room = width - 6 - (cross === undefined ? 0 : cross.at + 1);
 	const hints = keyHints(theme, fitKeys(theme, options.keys ?? [], room));
 	const footnote = options.footnote ?? "";
 	const note = visibleWidth(hints) + visibleWidth(footnote) + 3 <= room ? footnote : "";
-	return edge(theme, width, "\u2570", "\u256f", hints, note, cross);
+	return edge(theme, width, LINE.bottomLeft, LINE.bottomRight, hints, note, cross);
 }
 
 /**
@@ -91,7 +93,7 @@ function row(theme: Theme, width: number, text: string, selected: boolean): stri
 	const inner = frameInner(width);
 	const clipped = truncateToWidth(text, inner, "...");
 	const fill = " ".repeat(Math.max(0, inner - visibleWidth(clipped)));
-	const side = theme.fg("border", "\u2502");
+	const side = theme.fg("border", LINE.v);
 	const lead = selected
 		? `${theme.fg("accent", BAR)}${" ".repeat(FRAME_PAD - 1)}`
 		: " ".repeat(FRAME_PAD);
@@ -100,7 +102,7 @@ function row(theme: Theme, width: number, text: string, selected: boolean): stri
 
 /** A quiet line across the text, for a break inside one part of the frame. */
 export function rule(theme: Theme, width: number, note = ""): string {
-	const line = (count: number) => theme.fg("borderMuted", "\u2500".repeat(Math.max(0, count)));
+	const line = (count: number) => theme.fg("borderMuted", LINE.h.repeat(Math.max(0, count)));
 	if (note === "") return line(width);
 	return `${line(width - visibleWidth(note) - 1)} ${note}`;
 }
@@ -155,8 +157,8 @@ function edge(
 		tailStart >= start + visibleWidth(fittedHead) &&
 		(at === undefined || tailStart > at);
 
-	const cells: string[] = Array.from({ length: span }, () => border("\u2500"));
-	if (at !== undefined) cells[at] = border(cross?.char ?? "\u2500");
+	const cells: string[] = Array.from({ length: span }, () => border(LINE.h));
+	if (at !== undefined) cells[at] = border(cross?.char ?? LINE.h);
 	const place = (text: string, from: number) => {
 		const size = visibleWidth(text);
 		if (size === 0) return;

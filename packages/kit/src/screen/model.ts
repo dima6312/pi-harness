@@ -1,6 +1,7 @@
 import { fuzzyFilter } from "@earendil-works/pi-tui";
 
 import type { RowView, TabView } from "../contracts/screen.ts";
+import { GLYPH } from "../ui/glyphs.ts";
 
 export type Line = { kind: "heading"; title: string } | { kind: "row"; row: RowView; tab: string };
 
@@ -130,7 +131,7 @@ export class ScreenModel {
 
 		const groups = new Map<string, typeof found>();
 		for (const hit of found) {
-			const title = `${hit.tab} \u203a ${hit.row.section}`;
+			const title = `${hit.tab} ${GLYPH.chevron} ${hit.row.section}`;
 			groups.set(title, [...(groups.get(title) ?? []), hit]);
 		}
 		const lines: Line[] = [];

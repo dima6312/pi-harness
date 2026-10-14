@@ -1,4 +1,4 @@
-import { pointer, spread, type Task, tasksWith } from "@adeildo/pi-kit";
+import { pointer, spread, type Task, tasksWith, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -6,7 +6,7 @@ import type { Peer } from "../folder.ts";
 import type { Named } from "../names.ts";
 import { spin } from "./motion.ts";
 
-export const MARKS = { idle: "\u25c7", waiting: "\u2691" } as const;
+export const MARKS = { idle: GLYPH.diamondEmpty, waiting: GLYPH.flag } as const;
 
 /** Lines a task may wrap to: the selected agent shows it whole, the others a glance. */
 const TASK_LINES_OPEN = 4;

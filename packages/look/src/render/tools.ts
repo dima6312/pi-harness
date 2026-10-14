@@ -1,5 +1,7 @@
 // The mark and the name a tool call is drawn with. The mark follows the icon set in the look's
 // settings, like every other glyph on the screen.
+import { GLYPH } from "@adeildo/pi-kit";
+
 import type { IconSet } from "./glyphs.ts";
 
 type ToolKind =
@@ -30,17 +32,17 @@ const ICONS: Record<IconSet, Record<ToolKind, string>> = {
 		other: "\u{f013}", // nf-fa-gear
 	},
 	unicode: {
-		shell: "\u276f",
+		shell: GLYPH.pointer,
 		read: "\u25a4",
-		search: "\u2315",
-		edit: "\u270e",
+		search: GLYPH.search,
+		edit: GLYPH.pencil,
 		web: "\u25cd",
-		agent: "\u25c6",
+		agent: GLYPH.diamond,
 		ask: "?",
 		peers: "\u2042",
-		memory: "\u25c7",
+		memory: GLYPH.diamondEmpty,
 		mcp: "\u226b",
-		other: "\u25cb",
+		other: GLYPH.ring,
 	},
 	ascii: {
 		shell: "$",
@@ -68,11 +70,11 @@ const MARKS: Record<IconSet, Record<CallPhase, string>> = {
 		failed: "\u{f00d}", // nf-fa-times
 	},
 	unicode: {
-		writing: "\u270e",
+		writing: GLYPH.pencil,
 		waiting: "\u29d6",
 		running: "\u25f7",
-		done: "\u2713",
-		failed: "\u2717",
+		done: GLYPH.check,
+		failed: GLYPH.cross,
 	},
 	ascii: { writing: "~", waiting: ":", running: "...", done: "ok", failed: "!" },
 };

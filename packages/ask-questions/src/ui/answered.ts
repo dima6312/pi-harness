@@ -1,15 +1,15 @@
 // One question and what you answered, drawn the same in the review tab and in the transcript. Each
 // part says what it is: a tick for an option you picked, "your words" for what you typed, "note"
 // for a note, and an empty circle for a question left without an answer.
-import { type AskAnswer, isAnswered } from "@adeildo/pi-kit";
+import { type AskAnswer, isAnswered, GLYPH } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 /** The mark the dialog puts on an option with a note. */
-export const NOTE_MARK = "\u203a";
-const PICKED = "\u2713 ";
-const TYPED = "\u270e ";
-const MISSING = "\u25cb ";
+export const NOTE_MARK = GLYPH.chevron;
+const PICKED = `${GLYPH.check} `;
+const TYPED = `${GLYPH.pencil} `;
+const MISSING = `${GLYPH.ring} `;
 const INDENT = "   ";
 
 export interface Asked {

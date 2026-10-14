@@ -1,3 +1,4 @@
+import { GLYPH } from "@adeildo/pi-kit";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import type { OutsideScope } from "#core/config/schema.ts";
@@ -12,9 +13,9 @@ export const MODE_STATUS = `${NAME}:mode`;
 
 const ARROW: Record<PermissionMode, string> = {
 	manual: "",
-	edits: "\u23f5 ",
-	judge: "\u23f5 ",
-	full: "\u23f5\u23f5 ",
+	edits: `${GLYPH.play} `,
+	judge: `${GLYPH.play} `,
+	full: `${GLYPH.play}${GLYPH.play} `,
 };
 
 const OUTSIDE_TAG: Record<OutsideScope, string | undefined> = {

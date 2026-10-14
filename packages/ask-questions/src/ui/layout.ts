@@ -1,13 +1,13 @@
 // The geometry of the dialog. The question and the terminal decide all of it, never the row under
 // the cursor: reserving the space before it is needed is what keeps the dialog from jumping when
 // the focus moves.
-import { FRAME_X, FRAME_Y } from "@adeildo/pi-kit";
+import { FRAME_X, FRAME_Y, LINE } from "@adeildo/pi-kit";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 export type Layout = "beside" | "below";
 
 /** The rule between the options and the panel, with a space on each side. */
-const DIVIDER = " \u2502 ";
+const DIVIDER = ` ${LINE.v} `;
 const DIVIDER_WIDTH = 3;
 
 /** A line of prose longer than this is hard to follow, so descriptions wrap here on a wide panel. */

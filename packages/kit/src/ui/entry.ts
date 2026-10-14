@@ -1,0 +1,61 @@
+// The frame an entry of the transcript wears: what it is in the top edge, what became of it in the
+// bottom one, the content one column in from the sides. The model's own words have none. Tool calls,
+// your messages, other agents' messages and pi's own entries all share it. See DESIGN.md.
+import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+
+import { LINE } from "./glyphs.ts";
+
+/** Columns the frame takes from a row: both sides and a space inside each. */
+export const ENTRY_X = 4;
+/** A body line that the frame draws as a rule across it, as between a call and what it printed. */
+export const ENTRY_CUT = "\u0000cut";
+
+export interface EntryFrame {
+	/** Left of the top edge: who or what. */
+	top?: string;
+	/** Right of the top edge, such as a time. */
+	topRight?: string;
+	/** Left of the bottom edge: what became of it. */
+	bottom?: string;
+	/** Right of the bottom edge. */
+	bottomRight?: string;
+	/** The color of the lines. */
+	color?: ThemeColor;
+	/** Something that has not happened yet, such as a message waiting to be sent. */
+	dashed?: boolean;
+	/** Columns between each side and the text. Pi's own blocks bring one of their own, so they take 0. */
+	pad?: 0 | 1;
+}
+
+const SOLID = { h: LINE.h, v: LINE.v };
+const DASHED = { h: LINE.hDashed, v: LINE.vDashed };
+
+/** Lines drawn `ENTRY_X` columns narrower than `width` (two with no pad), in the frame. */
+export function entryFrame(
+	body: readonly string[],
+	width: number,
+	theme: Theme,
+	frame: EntryFrame = {},
+): string[] {
+	const lines = frame.dashed ? DASHED : SOLID;
+	const paint = (text: string) => theme.fg(frame.color ?? "border", text);
+	const pad = " ".repeat(frame.pad ?? 1);
+	const inner = Math.max(1, width - 2 - pad.length * 2);
+	const edge = (corners: [string, string], left?: string, right?: string) => {
+		const start = paint(corners[0] + lines.h) + (left ? ` ${left} ` : "");
+		const end = (right ? ` ${right} ` : "") + paint(lines.h + corners[1]);
+		const fill = Math.max(0, width - visibleWidth(start) - visibleWidth(end));
+		return truncateToWidth(start + paint(lines.h.repeat(fill)) + end, width, "");
+	};
+	const side = paint(lines.v);
+	return [
+		edge([LINE.topLeft, LINE.topRight], frame.top, frame.topRight),
+		...body.map((line) => {
+			if (line === ENTRY_CUT) return paint(LINE.teeLeft + LINE.h.repeat(width - 2) + LINE.teeRight);
+			const cut = truncateToWidth(line, inner, "");
+			return `${side}${pad}${cut}${" ".repeat(Math.max(0, inner - visibleWidth(cut)))}${pad}${side}`;
+		}),
+		edge([LINE.bottomLeft, LINE.bottomRight], frame.bottom, frame.bottomRight),
+	];
+}

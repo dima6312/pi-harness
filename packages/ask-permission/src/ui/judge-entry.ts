@@ -1,4 +1,4 @@
-import type { FeatureScope } from "@adeildo/pi-kit";
+import { ENTRY_X, entryFrame, type FeatureScope, GLYPH } from "@adeildo/pi-kit";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
@@ -58,25 +58,25 @@ class JudgeEntry implements Component {
 		}
 	}
 
+	/** In a frame named judge, one row per decision. */
 	private build(width: number): string[] {
 		const lines: string[] = [];
 		const columns = this.columns();
-
-		if (this.records.length > 1) {
-			lines.push(
-				this.theme.fg("accent", this.theme.bold(`${NAME} judge`)) +
-					this.theme.fg("dim", `  ${this.records.length} decisions`),
-			);
-		}
+		const inner = width - ENTRY_X;
 
 		for (const record of this.records) {
-			lines.push(this.row(record, width, columns));
+			lines.push(this.row(record, inner, columns));
 			if (!this.expanded) continue;
-			lines.push(`    ${this.theme.fg("dim", record.reason)}`);
-			lines.push(`    ${this.theme.fg("dim", judgeSignalText(record))}`);
+			lines.push(`  ${this.theme.fg("dim", record.reason)}`);
+			lines.push(`  ${this.theme.fg("dim", judgeSignalText(record))}`);
 		}
 
-		return lines;
+		const count = this.records.length > 1 ? `${this.records.length} decisions` : undefined;
+		return entryFrame(lines, width, this.theme, {
+			top: `${this.theme.fg("muted", GLYPH.judge)} ${this.theme.fg("muted", "judge")}`,
+			topRight: count === undefined ? undefined : this.theme.fg("dim", count),
+			color: "borderMuted",
+		});
 	}
 
 	/** From this card's records only, plus one column so a field never touches the next. */
@@ -93,7 +93,7 @@ class JudgeEntry implements Component {
 		const tool = record.toolName.padEnd(columns.tool);
 		const stats = judgeStatText(record);
 
-		const head = `  \u25c8 ${action}${tool}`;
+		const head = `${action}${tool}`;
 		const room = width - visibleWidth(head) - visibleWidth(stats) - 1;
 		const target = truncateToWidth(flatten(record.summary), Math.max(MIN_TARGET, room), "...");
 		const gap = Math.max(
@@ -102,7 +102,6 @@ class JudgeEntry implements Component {
 		);
 
 		return (
-			`  ${this.theme.fg(tone, "\u25c8")} ` +
 			this.theme.fg(tone, action) +
 			this.theme.fg("muted", tool) +
 			this.theme.fg("text", target) +
