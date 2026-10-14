@@ -260,9 +260,10 @@ class CallFrame implements Component {
 		const running = this.parts.executing === true && clock?.resulted !== true;
 		const phase = this.parts.phase ?? (running ? "running" : undefined);
 		const time = running && clock !== undefined ? ranFor(clock, true) : this.parts.elapsed;
+		const sweep = phase === "running" ? sweepStep(Date.now()) : undefined;
 		const body = this.parts.body.render(room(width));
 		const progress = this.parts.progress?.join("\u0000");
-		const drawn = { width, body, rest: [ruling, expanded, phase, time, progress] };
+		const drawn = { width, body, rest: [ruling, expanded, phase, time, progress, sweep] };
 		if (unchanged(this.#drawn, drawn)) return this.#drawn.lines;
 
 		const title = `${theme.fg("toolTitle", icon)} ${theme.fg("toolTitle", theme.bold(label))}`;
@@ -276,7 +277,7 @@ class CallFrame implements Component {
 			const times = [time, ...(this.parts.progress ?? [])];
 			const word = phase === "running" ? this.parts.runningAs : undefined;
 			const closing = phaseLabel(theme, mark, phase, times, word);
-			lines.push(rule("bottom", closing, width, theme, PHASE_COLORS[phase]));
+			lines.push(rule("bottom", closing, width, theme, PHASE_COLORS[phase], sweep));
 		}
 		this.#drawn = { ...drawn, lines };
 		return lines;
@@ -335,8 +336,9 @@ class ResultFrame implements Component {
 	render(width: number): string[] {
 		const { theme, phase, mark, wrote, quiet, images } = this.parts;
 		const time = this.parts.elapsed;
+		const sweep = phase === "running" ? sweepStep(Date.now()) : undefined;
 		const body = this.parts.body.render(room(width));
-		const drawn = { width, body, rest: [phase, mark, time, wrote, images, quiet] };
+		const drawn = { width, body, rest: [phase, mark, time, wrote, images, quiet, sweep] };
 		if (unchanged(this.#drawn, drawn)) return this.#drawn.lines;
 
 		const printed = quiet === true ? [] : withoutBlanks(dropTime(body));
@@ -353,6 +355,7 @@ class ResultFrame implements Component {
 				width,
 				theme,
 				PHASE_COLORS[phase],
+				sweep,
 			),
 		];
 		this.#drawn = { ...drawn, lines };
@@ -371,13 +374,29 @@ interface ResultParts {
 	quiet?: boolean;
 }
 
-/** One rule of the frame: two corners, and what sits on the left. */
+/** One step of the stretch that runs along the bottom rule of a running call. */
+const SWEEP_STEP_MS = 80;
+/** Steps the stretch takes to cross the rule. */
+const SWEEP_STEPS = 24;
+/** Cells the stretch lights. */
+const SWEEP_CELLS = 4;
+
+/** Where the stretch is now, as a step from the left. */
+export function sweepStep(now: number): number {
+	return Math.floor(now / SWEEP_STEP_MS) % SWEEP_STEPS;
+}
+
+/**
+ * One rule of the frame: two corners, and what sits on the left. A `sweep` step lights a short
+ * stretch of the line, which moves while the call runs.
+ */
 export function rule(
 	edge: "top" | "bottom",
 	left: string,
 	width: number,
 	theme: Theme,
 	color: "accent" | "success" | "error" | "muted" | "border" = "border",
+	sweep?: number,
 ): string {
 	const [start, end] =
 		edge === "top" ? [LINE.topLeft, LINE.topRight] : [LINE.bottomLeft, LINE.bottomRight];
@@ -385,8 +404,23 @@ export function rule(
 	const cell = left === "" ? "" : ` ${left} `;
 	const fill = Math.max(1, width - BODY_PAD - visibleWidth(cell));
 	const line =
-		paint(`${start}${LINE.h}`) + cell + paint(LINE.h.repeat(fill)) + paint(`${LINE.h}${end}`);
+		paint(`${start}${LINE.h}`) + cell + swept(fill, theme, paint, sweep) + paint(`${LINE.h}${end}`);
 	return truncateToWidth(line, width, "");
+}
+
+function swept(
+	fill: number,
+	theme: Theme,
+	paint: (text: string) => string,
+	sweep?: number,
+): string {
+	if (sweep === undefined || fill <= SWEEP_CELLS) return paint(LINE.h.repeat(fill));
+	const from = Math.round((sweep / (SWEEP_STEPS - 1)) * (fill - SWEEP_CELLS));
+	return (
+		paint(LINE.h.repeat(from)) +
+		theme.fg("text", LINE.h.repeat(SWEEP_CELLS)) +
+		paint(LINE.h.repeat(fill - from - SWEEP_CELLS))
+	);
 }
 
 /** The line that ends the call and starts what it printed. */

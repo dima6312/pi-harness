@@ -51,6 +51,7 @@ import { applyCursor, LookEditor } from "./ui/editor.ts";
 import { FooterComponent, StripComponent } from "./ui/footer.ts";
 import { HeaderComponent, type LoadedCounts } from "./ui/header.ts";
 import { framePiEntries } from "./ui/pi-entries.ts";
+import { frameQueue } from "./ui/queue.ts";
 import type { Screen, SlotName } from "./ui/screen.ts";
 import { registerToolFrames } from "./ui/tool-frame.ts";
 import { type Activity, describe, draftedTool } from "./ui/working.ts";
@@ -101,6 +102,7 @@ export const look = defineFeature({
 			const set = resolveIcons(icons.get(scope)).set;
 			return { theme: live.ctx.ui.theme, set, you: userFrame.get(scope) };
 		});
+		frameQueue(() => live.ctx?.ui.theme);
 		const repaint = () => live.repaint?.();
 
 		for (const entry of LOOK_SETTINGS) entry.listen(scope, repaint);

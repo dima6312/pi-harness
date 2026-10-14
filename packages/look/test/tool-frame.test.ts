@@ -11,6 +11,7 @@ import { Container, stripTerminalSequences, Text } from "@earendil-works/pi-tui"
 import { look } from "../src/index.ts";
 import { editLines } from "../src/render/streaming.ts";
 import { toolIcon } from "../src/render/tools.ts";
+import { rule, sweepStep } from "../src/ui/tool-frame.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
@@ -441,5 +442,32 @@ describe("the mark of a tool", () => {
 			// One mark per kind, so two kinds never read the same.
 			expect(toolIcon("ask_questions", set)).not.toBe(toolIcon("grep", set));
 		}
+	});
+});
+
+/** Where the lit stretch starts, marked in reverse video by the test's theme. */
+function lit(line: string): number {
+	return line.indexOf("\u001b[7m");
+}
+
+describe("the bottom rule of a running call", () => {
+	// The lit stretch is the only text in the theme's `text` color, marked here in reverse video.
+	const marked = {
+		fg: (color: string, text: string) => (color === "text" ? `\u001b[7m${text}\u001b[27m` : text),
+		bold: (text: string) => text,
+	} as never;
+
+	test("lights a stretch that moves along it, and stays plain without a step", () => {
+		const start = rule("bottom", "running", 60, marked, "accent", 0);
+		const later = rule("bottom", "running", 60, marked, "accent", 12);
+		expect(lit(start)).toBeGreaterThan(-1);
+		expect(lit(later)).toBeGreaterThan(lit(start));
+		expect(lit(rule("bottom", "done", 60, marked, "success"))).toBe(-1);
+	});
+
+	test("takes one step every 80 ms and starts over", () => {
+		expect(sweepStep(0)).toBe(0);
+		expect(sweepStep(80)).toBe(1);
+		expect(sweepStep(80 * 24)).toBe(0);
 	});
 });

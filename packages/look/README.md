@@ -49,6 +49,10 @@ The spinner names the state instead of saying "Working": `waiting` for the first
 
 Your messages sit in a frame like the tool calls', in the accent colour and named `you`, without pi's background or the blank rows above and below the text. `look.userFrame` turns it off.
 
+While a call runs, a lighter stretch moves along its bottom edge, and stops when the call ends.
+
+Pi's own entries sit in the same frame as the tool calls: compactions and branch summaries under `π`, skills, `!` commands with a cut between the command and what it printed, and the messages of extensions that bring no renderer of their own. The messages you send while the agent works wait above the editor in a dashed frame, each marked `steer` (between the agent's calls) or `next` (after its run), with the key that takes them back to the editor in the bottom edge.
+
 While the model writes an `edit` or a `write`, its frame shows the end of what has arrived, with a cursor where the model is writing. A write shows its last 8 lines with their numbers, and says whether it makes a new file or how many lines it replaces. An edit shows the lines it takes out and puts in. The lines it repeats around the change stay as context. The bottom rule counts the lines and the size, or the edits and the lines changed. Once the call is written, pi's own view takes over, with the diff read from the file.
 
 The footer is the session: the cost, the tokens sent and received, the cache of the last prompt, the average speeds, and last what other packages report, because that changes the most.

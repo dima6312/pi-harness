@@ -55,7 +55,9 @@ export function drawCall(spec: CallSpec, width: number): string[] {
 	initTheme("dark", false);
 	const real = Date.now;
 	let behind = 0;
-	Date.now = () => real() + behind;
+	// A fixed start, so what moves with time, as the stretch along a running call's rule, draws the same.
+	const start = Date.UTC(2026, 0, 1);
+	Date.now = () => start + behind;
 
 	try {
 		const base = TOOLS[spec.tool];
