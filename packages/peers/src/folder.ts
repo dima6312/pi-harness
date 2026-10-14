@@ -47,7 +47,6 @@ export interface Posted {
 	at: number;
 	received: Map<string, { mode: Delivery; at: number }>;
 	read: Set<string>;
-	unsent: boolean;
 	bids: Map<string, Bid>;
 	takenBy?: string;
 }
@@ -132,9 +131,6 @@ export class Folder {
 			case "message.read":
 				message.read.add(event.session);
 				return;
-			case "message.unsent":
-				if (event.session === message.session) message.unsent = true;
-				return;
 			case "request.bid": {
 				const { fit, reason, idle } = event.data as LoggedEvent<"request.bid">["data"];
 				message.bids.set(event.session, { fit, reason, idle, at: event.at });
@@ -164,7 +160,6 @@ export class Folder {
 			at: event.at,
 			received: new Map(),
 			read: new Set(),
-			unsent: false,
 			bids: new Map(),
 		};
 		this.messages.set(id, message);

@@ -7,14 +7,7 @@ import { applyTaskOps, emptyTasks } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "../src/bid.ts";
-import {
-	GRACE_MS,
-	Here,
-	type Hooks,
-	PEER_MESSAGE,
-	PEER_NOTE,
-	type PeerMessageDetails,
-} from "../src/here.ts";
+import { Here, type Hooks, PEER_MESSAGE, PEER_NOTE, type PeerMessageDetails } from "../src/here.ts";
 import { BID_WINDOW_MS, QUIET_AFTER } from "../src/rules.ts";
 import { statusLine } from "../src/ui/status.ts";
 
@@ -135,23 +128,14 @@ describe("a message", () => {
 		expect(receipts).toEqual(["woke", "steered"]);
 	});
 
-	test("from you arrives as your words after a moment, unless you withdraw it", () => {
+	test("from you arrives as your words right away", () => {
 		const a = session("a");
 		const b = session("b");
 		a.here.post(["b"], "run the tests", "you");
 		b.here.sync();
-		expect(b.sent).toEqual([]);
-		now += GRACE_MS;
-		b.here.sync();
 		expect(b.sent).toEqual([
 			{ kind: "user", text: "run the tests", options: { deliverAs: "followUp" } },
 		]);
-
-		a.here.post(["b"], "oops, wrong agent", "you");
-		expect(a.here.unsend()?.text).toBe("oops, wrong agent");
-		now += GRACE_MS;
-		b.here.sync();
-		expect(b.sent).toHaveLength(1);
 	});
 
 	test("a burst arrives as one, so a run reads it all instead of one run per message", () => {

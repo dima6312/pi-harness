@@ -45,7 +45,6 @@ export interface LogEventMap {
 	"message.received": { id: string; mode: Delivery };
 	/** The agent's model read it. */
 	"message.read": { id: string };
-	"message.unsent": { id: string };
 	/** A session's offer to take a request to everyone. */
 	"request.bid": { request: string; fit: number; reason: string; idle: boolean };
 	/** Written only by the session every other one agrees won the request. */

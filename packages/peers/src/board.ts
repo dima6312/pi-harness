@@ -22,7 +22,7 @@ export function boardText(
 	];
 	for (const peer of others) lines.push("", ...peerLines(peer, names));
 	const said = folder.room
-		.flatMap((item) => (item.kind === "message" && !item.message.unsent ? [item.message] : []))
+		.flatMap((item) => (item.kind === "message" ? [item.message] : []))
 		.slice(-ROOM_LINES);
 	if (said.length > 0)
 		lines.push(

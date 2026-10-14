@@ -48,7 +48,6 @@ function said(id: string, session: string, to: Posted["to"], text: string, at: n
 			at,
 			received: new Map(),
 			read: new Set(),
-			unsent: false,
 			bids: new Map(),
 		},
 	};

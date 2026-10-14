@@ -375,17 +375,6 @@ export const peers = defineFeature({
 			},
 		});
 
-		scope.registerCommand("unsend", {
-			description: "Withdraw your last message to another agent",
-			handler: async (_args, ctx) => {
-				const withdrawn = here.unsend();
-				ctx.ui.notify(
-					withdrawn === undefined ? "Nothing to withdraw: it was already read." : "Withdrawn.",
-					"info",
-				);
-			},
-		});
-
 		scope.registerMessageRenderer<PeerDelivery>(PEER_MESSAGE, (message, _options, theme) =>
 			message.details === undefined ? undefined : deliveryBlock(message.details, theme),
 		);

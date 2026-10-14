@@ -160,13 +160,12 @@ stays allowed, and the agent is told to ask a colleague before editing a file th
 
 ## Commands
 
-| Command                | Does                                                          |
-| ---------------------- | ------------------------------------------------------------- |
-| `Alt+G`                | The board and the room                                        |
-| `/room`                | The same panel                                                |
-| `/all <message>`       | Ask everyone, and the best fit takes it                       |
-| `/to <name> <message>` | Send it to one agent                                          |
-| `/unsend`              | Take back your last message, if its agent has not read it yet |
+| Command                | Does                                    |
+| ---------------------- | --------------------------------------- |
+| `Alt+G`                | The board and the room                  |
+| `/room`                | The same panel                          |
+| `/all <message>`       | Ask everyone, and the best fit takes it |
+| `/to <name> <message>` | Send it to one agent                    |
 
 ## Settings
 

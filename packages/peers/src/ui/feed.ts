@@ -132,7 +132,7 @@ function messageLines(
 
 	// Only a message that just arrived gets a rail, lit in its writer's color; the rest sit indented.
 	const lead = fresh ? `${theme.fg(color, "\u258e")} ` : "  ";
-	const body = message.unsent ? `withdrawn: ${message.text}` : message.text.trim();
+	const body = message.text.trim();
 	let wrapped = wrapTextWithAnsi(body, Math.max(8, width - INDENT));
 	if (!full) {
 		// A preview skips blank lines, so its few lines carry words.
@@ -143,8 +143,7 @@ function messageLines(
 				theme.fg("dim", `${words.length - BODY_SHOWN + 1} more lines, ctrl+f to read`),
 			];
 	}
-	for (const line of wrapped)
-		lines.push(`${lead}${theme.fg(message.unsent ? "dim" : "text", line)}`);
+	for (const line of wrapped) lines.push(`${lead}${theme.fg("text", line)}`);
 	for (const line of receipts) lines.push(truncateToWidth(`  ${line}`, width, "..."));
 	return lines;
 }
@@ -165,7 +164,6 @@ function header(left: string, right: string, width: number): string {
 
 function receiptLines(message: Posted, options: FeedOptions): string[] {
 	const { theme, now, live } = options;
-	if (message.unsent) return [];
 	if (message.to === "all") return requestLines(message, options);
 	const many = message.to.length > 1;
 	const parts = message.to.map((session) => {
@@ -410,7 +408,6 @@ export function feedMoving(room: readonly RoomItem[], live: readonly Peer[], now
 		const message = item.message;
 		if (now - message.at >= ON_ITS_WAY_MS) break;
 		if (isFresh(message.at, now)) return true;
-		if (message.unsent) continue;
 		if (message.to === "all") {
 			const kind = award(message, live, now).kind;
 			if (kind === "bidding" || kind === "ranked") return true;

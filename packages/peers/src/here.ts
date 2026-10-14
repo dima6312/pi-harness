@@ -28,8 +28,6 @@ export const PEER_MESSAGE = "pi-peers:message";
 export const PEER_NOTE = "pi-peers:note";
 /** A request to everyone another session took, kept in this transcript only. */
 export const PEER_BROADCAST = "pi-peers:broadcast";
-/** Your words wait this long before they reach another agent, so /unsend can still stop them. */
-export const GRACE_MS = 3_000;
 /** Older messages and requests are history, never delivered or bid on. */
 const RECENT_MS = 10 * 60_000;
 /** A message still being written, shown live and never logged. Stale ones are a crashed writer. */
@@ -51,7 +49,6 @@ export interface PeerMessageDetails {
 	toYou: boolean;
 	text: string;
 	at: number;
-	withdrawn?: boolean;
 	/** A request to everyone that another agent took: shown here, never sent to this agent. */
 	takenBy?: string;
 }
@@ -97,7 +94,6 @@ export class Here {
 	readonly #shown = new Set<string>();
 	readonly #bidding = new Set<string>();
 	readonly #fits = new Map<string, Fit>();
-	readonly #withdrawn = new Set<string>();
 	/** The peers this session has already been told about, and the name each had. */
 	#known = new Map<string, string>();
 	/** Your words handed to the agent, waiting for its model to read them. */
@@ -143,7 +139,7 @@ export class Here {
 		}
 		let unread = 0;
 		for (const message of this.#folder.messages.values()) {
-			if (message.unsent || message.from === "you" || message.to === "all") continue;
+			if (message.from === "you" || message.to === "all") continue;
 			if (!message.to.includes(this.session ?? "") || message.read.has(this.session ?? ""))
 				continue;
 			unread++;
@@ -205,7 +201,6 @@ export class Here {
 			const message = id === undefined ? undefined : this.#folder.messages.get(id);
 			if (message === undefined) continue;
 			if (event.type === "message.posted") this.#consider(message);
-			if (event.type === "message.unsent") this.#withdraw(message);
 			if (event.type === "request.taken") this.#showTaken(message);
 		}
 		this.#evaluate();
@@ -225,20 +220,6 @@ export class Here {
 			...(depth > 0 ? { depth } : {}),
 		});
 		return id;
-	}
-
-	/** Your last message from this session, withdrawn. Undefined when there is none to withdraw. */
-	unsend(): Posted | undefined {
-		const last = [...this.#folder.messages.values()].findLast(
-			(message) => message.session === this.session && message.from === "you" && !message.unsent,
-		);
-		if (
-			last === undefined ||
-			(last.to !== "all" && last.to.every((session) => last.read.has(session)))
-		)
-			return undefined;
-		this.log("message.unsent", { id: last.id });
-		return last;
 	}
 
 	/** What this session's agent is writing to the room right now, for the others to watch. */
@@ -366,7 +347,7 @@ export class Here {
 	}
 
 	#consider(message: Posted): void {
-		if (message.unsent || message.to !== "all" || this.#now() - message.at > RECENT_MS) return;
+		if (message.to !== "all" || this.#now() - message.at > RECENT_MS) return;
 		// An agent asking everyone does not bid on its own request.
 		if (message.from === "agent" && message.session === this.session) return;
 		void this.#bid(message);
@@ -375,7 +356,7 @@ export class Here {
 	/** A request to everyone, once someone else took it, goes in this transcript for you to read. */
 	#showTaken(message: Posted): void {
 		const taker = message.takenBy;
-		if (message.to !== "all" || message.unsent || taker === undefined) return;
+		if (message.to !== "all" || taker === undefined) return;
 		if (taker === this.session || message.session === this.session) return;
 		if (message.at < this.#openedAt || this.#shown.has(message.id)) return;
 		this.#shown.add(message.id);
@@ -403,10 +384,7 @@ export class Here {
 		const now = this.#now();
 		return [...this.#folder.messages.values()].filter(
 			(message) =>
-				message.to === "all" &&
-				!message.unsent &&
-				message.takenBy === undefined &&
-				now - message.at <= RECENT_MS,
+				message.to === "all" && message.takenBy === undefined && now - message.at <= RECENT_MS,
 		);
 	}
 
@@ -419,13 +397,9 @@ export class Here {
 		const now = this.#now();
 		let next = Number.POSITIVE_INFINITY;
 
-		const due: Posted[] = [];
-		for (const message of this.#folder.messages.values()) {
-			if (!this.#due(message, me, now)) continue;
-			const at = message.from === "you" ? message.at + GRACE_MS : message.at;
-			if (now >= at) due.push(message);
-			else next = Math.min(next, at);
-		}
+		const due = [...this.#folder.messages.values()].filter((message) =>
+			this.#due(message, me, now),
+		);
 		if (due.length > 0) this.#deliver(due);
 
 		const live = this.live();
@@ -446,7 +420,7 @@ export class Here {
 	}
 
 	#due(message: Posted, me: string, now: number): boolean {
-		if (message.unsent || message.to === "all" || !message.to.includes(me)) return false;
+		if (message.to === "all" || !message.to.includes(me)) return false;
 		if (message.received.has(me) || this.#delivered.has(message.id)) return false;
 		return now - message.at <= RECENT_MS;
 	}
@@ -509,20 +483,6 @@ export class Here {
 		else this.#handPeer([message], this.#modeFor([message]));
 	}
 
-	/** A message you withdrew after this session handed it over: the agent is told to ignore it. */
-	#withdraw(message: Posted): void {
-		const me = this.session;
-		if (me === undefined || this.#withdrawn.has(message.id)) return;
-		const handed = message.received.has(me) || message.takenBy === me;
-		if (!handed || message.read.has(me)) return;
-		this.#withdrawn.add(message.id);
-		const items = [{ ...this.#details(message), withdrawn: true }];
-		this.#hooks.sendMessage(
-			{ customType: PEER_MESSAGE, content: forModel(items), display: true, details: { items } },
-			{ deliverAs: "nextTurn" },
-		);
-	}
-
 	#details(message: Posted): PeerMessageDetails {
 		const names = this.names();
 		const sender = names.get(message.session);
@@ -576,8 +536,6 @@ export function forModel(items: readonly PeerMessageDetails[]): string {
 }
 
 function oneForModel(details: PeerMessageDetails): string {
-	if (details.withdrawn)
-		return `The operator withdrew a message sent from another session in this folder. Ignore it: "${details.text}"`;
 	if (details.fromYou)
 		return `The operator, writing from another session in this folder:\n${details.text}`;
 	const to = details.toYou ? "to you" : "to everyone, and you took it";

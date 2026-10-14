@@ -40,15 +40,13 @@ export function messageLines(details: PeerMessageDetails, theme: Theme, width: n
 	const lines = [
 		gap >= 2 ? `${head}${" ".repeat(gap)}${time}` : truncateToWidth(head, width, "..."),
 	];
-	const body = details.withdrawn ? theme.strikethrough(details.text) : details.text;
-	for (const line of wrapTextWithAnsi(body, Math.max(1, width - INDENT.length)))
-		lines.push(INDENT + (details.withdrawn ? theme.fg("dim", line) : theme.fg("text", line)));
+	for (const line of wrapTextWithAnsi(details.text, Math.max(1, width - INDENT.length)))
+		lines.push(INDENT + theme.fg("text", line));
 	return lines;
 }
 
 /** Who the message went to, as this session sees it. */
 function addressed(details: PeerMessageDetails): string {
-	if (details.withdrawn) return "withdrawn";
 	if (details.toYou) return "to you";
 	if (details.takenBy === undefined) return "to everyone, taken here";
 	return `to everyone, ${details.takenBy} took it`;

@@ -63,21 +63,17 @@ describe("the folder", () => {
 		expect(finished).toEqual(["Fix the callback"]);
 	});
 
-	test("receipts, bids and takes attach to their message; only its author unsends it", () => {
+	test("receipts, bids and takes attach to their message", () => {
 		const folder = folderOf(
 			started("a"),
 			started("b"),
 			event("a", "message.posted", { id: "m1", from: "agent", to: ["b"], text: "hi" }),
 			event("b", "message.received", { id: "m1", mode: "woke" }),
 			event("b", "message.read", { id: "m1" }),
-			event("b", "message.unsent", { id: "m1" }),
 		);
 		const message = folder.messages.get("m1");
 		expect(message?.received.get("b")?.mode).toBe("woke");
 		expect(message?.read.has("b")).toBe(true);
-		expect(message?.unsent).toBe(false);
-		folder.apply([event("a", "message.unsent", { id: "m1" })]);
-		expect(message?.unsent).toBe(true);
 	});
 });
 
