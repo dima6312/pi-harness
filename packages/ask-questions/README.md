@@ -15,9 +15,21 @@
 <!-- docs:ask-questions/preview -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/preview.png" alt="The question dialog: two questions as tabs, the options on the left, and on the right the description and the preview of the focused option." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/preview.png" alt="The question dialog: two questions as tabs, the options on the left, and on the right the description and the preview of the focused option." width="420">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/multi.png" alt="A question that takes several answers, with two of its three options checked." width="420">
   <br>
-  <em>Pick an option and read what it does before you answer.</em>
+  <em>Pick an option and read what it does, or check more than one answer.</em>
+</p>
+
+<!-- /docs -->
+
+<!-- docs:ask-questions/review -->
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/review.png" alt="The review tab: every question with its answer, before submitting." width="420">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/transcript.png" alt="Two ask_questions calls in the chat. The first is still being written and lists the questions so far. The second lists each question with the picked option, a note under it, a note on an option not picked, and an answer in quotes." width="420">
+  <br>
+  <em>Every answer on one tab before it goes, then the whole call in the chat.</em>
 </p>
 
 <!-- /docs -->
@@ -44,16 +56,6 @@ Several questions become tabs. `●` is where you are, `✓` is a question alrea
 
 ## Several picks
 
-<!-- docs:ask-questions/multi -->
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/multi.png" alt="A question that takes several answers, with two of its three options checked." width="860">
-  <br>
-  <em>A question that takes several answers.</em>
-</p>
-
-<!-- /docs -->
-
 `space` ticks and `enter` confirms. A tick counts as an answer even if you leave the question with the arrows.
 
 ## Your own words
@@ -62,29 +64,9 @@ The last row, **Type something.**, opens an editor in the panel, where `shift+en
 
 ## Before it sends
 
-<!-- docs:ask-questions/review -->
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/review.png" alt="The review tab: every question with its answer, before submitting." width="860">
-  <br>
-  <em>Every answer on one tab, before it goes to the model.</em>
-</p>
-
-<!-- /docs -->
-
 The review tab lists each question with what you said under it. `✓` marks an answer and `›` a note, and a note on an option you turned down names that option. It names what is still blank. `enter` sends it anyway, and the model is told which questions were left unanswered.
 
 ## In the chat
-
-<!-- docs:ask-questions/transcript -->
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/transcript.png" alt="Two ask_questions calls in the chat. The first is still being written and lists the questions so far. The second lists each question with the picked option, a note under it, a note on an option not picked, and an answer in quotes." width="860">
-  <br>
-  <em>The questions in the chat, then every answer with your notes.</em>
-</p>
-
-<!-- /docs -->
 
 While the model writes the call, the chat lists the questions as they arrive, so you can read them before the dialog opens. Once you answer, the call keeps the same blocks as the review tab. `ctrl+o` shows the questions uncut.
 

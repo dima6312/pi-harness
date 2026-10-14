@@ -22,19 +22,20 @@
 
 <!-- /docs -->
 
-## The screen
-
-A finished answer takes a box of its own, so you can see what the model wants to run before it runs. The mark of the tool and its name sit on the top line, the command under them, and the reason it was allowed under that, when another model answered it. A line cuts the command off from what it printed, and the bottom line says how it went: a check, a cross, and how long it took. A command still running says `running` with the time so far. A tool from an MCP server shows its server and tool instead of `mcp__server__tool`. A tool with no drawing of its own, like the memory calls, gets the same box with its name and arguments on top and its text under the cut.
-
 <!-- docs:look/call -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/look/assets/call.png" alt="Three commands, each in its own box: a bash command with the reason it was allowed and the time it took, a file read, and a command still running." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/look/assets/call.png" alt="Three commands, each in its own box: a bash command with the reason it was allowed and the time it took, a file read, and a command still running." width="420">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/look/assets/settings.png" alt="The settings screen in a frame, titled Settings. The Look tab holds Appearance, Your messages and What is on screen, with Editor frame selected. Under the list, the preview draws the editor's rounded frame with main on the top edge, the folder on the right, the model on the bottom edge and the context on the right. Below, the setting's name and default, and the keys along the bottom edge." width="420">
   <br>
-  <em>Every command in a box, with why it ran, what it printed and how long it took.</em>
+  <em>Every command in a box, and a setting shown before you keep it.</em>
 </p>
 
 <!-- /docs -->
+
+## The screen
+
+A finished answer takes a box of its own, so you can see what the model wants to run before it runs. The mark of the tool and its name sit on the top line, the command under them, and the reason it was allowed under that, when another model answered it. A line cuts the command off from what it printed, and the bottom line says how it went: a check, a cross, and how long it took. A command still running says `running` with the time so far. A tool from an MCP server shows its server and tool instead of `mcp__server__tool`. A tool with no drawing of its own, like the memory calls, gets the same box with its name and arguments on top and its text under the cut.
 
 The strip above the editor is calm on purpose. Nothing moves while the model streams except the stopwatch.
 
@@ -78,16 +79,6 @@ The look never names a colour. Every piece names a theme token, so it follows wh
 ## Settings
 
 `Alt+S` opens them on the Look tab. You can reorder every piece of the strip, the frame and the footer, pick the frame style, the icons and the separator, and switch off what you do not want. The [reference](docs/reference.md#settings) lists every key and every segment.
-
-<!-- docs:look/settings -->
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/look/assets/settings.png" alt="The settings screen in a frame, titled Settings. The Look tab holds Appearance, Your messages and What is on screen, with Editor frame selected. Under the list, the preview draws the editor's rounded frame with main on the top edge, the folder on the right, the model on the bottom edge and the context on the right. Below, the setting's name and default, and the keys along the bottom edge." width="860">
-  <br>
-  <em>Change a setting and see the result drawn under the list before you keep it.</em>
-</p>
-
-<!-- /docs -->
 
 The framed editor, and the idea of writing into its borders, come from [pi-open-tui](https://github.com/OldSuns/pi-open-tui), which this replaces. The segments with priorities come from [oh-my-pi](https://github.com/can1357/oh-my-pi).
 

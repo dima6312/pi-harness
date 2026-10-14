@@ -18,13 +18,17 @@ import { darkTheme } from "./theme.ts";
 
 const root = resolve(import.meta.dir, "../..");
 const RAW = "https://raw.githubusercontent.com/felipeadeildo/pi-harness/main";
+/** Wide enough to read at GitHub's column, and half that for two pictures in one row. */
+const PICTURE_WIDTH = 860;
+const ROW_WIDTH = 420;
 
 interface Picture {
 	name: string;
 	file: string;
 	svg: string;
 	key: string;
-	block: string;
+	caption: string;
+	alt: string;
 }
 
 async function picture(scene: Scene, theme: Theme): Promise<Picture> {
@@ -40,14 +44,36 @@ async function picture(scene: Scene, theme: Theme): Promise<Picture> {
 		file,
 		svg,
 		key: createHash("sha256").update(svg).digest("hex"),
-		block: [
-			`<p align="center">`,
-			`  <img src="${RAW}/${file}" alt="${escape(scene.alt)}" width="860">`,
-			`  <br>`,
-			`  <em>${escape(scene.caption)}</em>`,
-			`</p>`,
-		].join("\n"),
+		caption: scene.caption,
+		alt: scene.alt,
 	};
+}
+
+function imageTag(shot: Picture, width: number): string {
+	return `  <img src="${RAW}/${shot.file}" alt="${escape(shot.alt)}" width="${width}">`;
+}
+
+/** One picture, and the line under it. */
+function pictureBlock(shot: Picture): string {
+	return [
+		`<p align="center">`,
+		imageTag(shot, PICTURE_WIDTH),
+		`  <br>`,
+		`  <em>${escape(shot.caption)}</em>`,
+		`</p>`,
+	].join("\n");
+}
+
+/** Two pictures in one row, each half as wide, under the line the first one carries. */
+function rowBlock(left: Picture, right: Picture): string {
+	return [
+		`<p align="center">`,
+		imageTag(left, ROW_WIDTH),
+		imageTag(right, ROW_WIDTH),
+		`  <br>`,
+		`  <em>${escape(left.caption)}</em>`,
+		`</p>`,
+	].join("\n");
 }
 
 function escape(text: string): string {
@@ -81,7 +107,21 @@ const theme = darkTheme();
 const pictures: Picture[] = [];
 for (const scene of SCENES) pictures.push(await picture(scene, theme));
 
-const blocks = new Map(pictures.map((entry) => [entry.name, entry.block]));
+// A scene with `beside` puts both pictures in one row, so only the first of the two gets a block.
+const byName = new Map(pictures.map((entry) => [entry.name, entry]));
+const blocks = new Map<string, string>();
+for (const scene of SCENES) {
+	const mine = byName.get(scene.name);
+	if (mine === undefined) continue;
+	if (scene.beside === undefined) {
+		blocks.set(scene.name, pictureBlock(mine));
+		continue;
+	}
+	const partner = byName.get(scene.beside);
+	if (partner === undefined)
+		throw new Error(`no scene called "${scene.beside}" to sit beside ${scene.name}`);
+	blocks.set(scene.name, rowBlock(mine, partner));
+}
 const stale = pictures.filter(isStale);
 const write = !process.argv.includes("--check");
 

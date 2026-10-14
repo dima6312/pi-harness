@@ -15,9 +15,10 @@
 <!-- docs:ask-permission/preview -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-permission/assets/preview.png" alt="The permission dialog for npm install, with the reason it asks, the three answers, and a note on no: use pnpm instead." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-permission/assets/preview.png" alt="The permission dialog for npm install, with the reason it asks, the three answers, and a note on no: use pnpm instead." width="420">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-permission/assets/remember.png" alt="After always yes, the dialog asks which calls to remember: this exact call, or every pnpm call." width="420">
   <br>
-  <em>No, with a note the model reads: use pnpm instead.</em>
+  <em>No, with a note the model reads: use pnpm instead. Always yes asks what to remember.</em>
 </p>
 
 <!-- /docs -->
@@ -33,16 +34,6 @@ The dialog comes from [`@adeildo/pi-ask-questions`](../ask-questions), so a perm
 ## Always yes
 
 Pick `always yes` and it asks what to remember, then for how long.
-
-<!-- docs:ask-permission/remember -->
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-permission/assets/remember.png" alt="After always yes, the dialog asks which calls to remember: this exact call, or every pnpm call." width="860">
-  <br>
-  <em>Always yes asks how much to remember: this call, or every one like it.</em>
-</p>
-
-<!-- /docs -->
 
 The first option is the narrowest, and the one to prefer: `pnpm` would also approve `pnpm publish`.
 

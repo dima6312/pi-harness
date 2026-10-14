@@ -33,6 +33,8 @@ export interface Scene {
 	name: string;
 	caption: string;
 	alt: string;
+	/** The scene in the same row, drawn at half width under this one's caption. */
+	beside?: string;
 	draw(theme: Theme): string[] | Promise<string[]>;
 }
 
@@ -293,8 +295,9 @@ const NARROW = 56;
 export const SCENES: readonly Scene[] = [
 	{
 		name: "ask-questions/preview",
-		caption: "Pick an option and read what it does before you answer.",
+		caption: "Pick an option and read what it does, or check more than one answer.",
 		alt: "The question dialog: two questions as tabs, the options on the left, and on the right the description and the preview of the focused option.",
+		beside: "ask-questions/multi",
 		draw: questionsDialog,
 	},
 	{
@@ -305,8 +308,9 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "ask-questions/review",
-		caption: "Every answer on one tab, before it goes to the model.",
+		caption: "Every answer on one tab before it goes, then the whole call in the chat.",
 		alt: "The review tab: every question with its answer, before submitting.",
+		beside: "ask-questions/transcript",
 		draw: questionsReview,
 	},
 	{
@@ -317,8 +321,9 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "ask-permission/preview",
-		caption: "No, with a note the model reads: use pnpm instead.",
+		caption: "No, with a note the model reads: use pnpm instead. Always yes asks what to remember.",
 		alt: "The permission dialog for npm install, with the reason it asks, the three answers, and a note on no: use pnpm instead.",
+		beside: "ask-permission/remember",
 		draw: permissionAsk,
 	},
 	{
@@ -347,8 +352,9 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "look/call",
-		caption: "Every command in a box, with why it ran, what it printed and how long it took.",
+		caption: "Every command in a box, and a setting shown before you keep it.",
 		alt: "Three commands, each in its own box: a bash command with the reason it was allowed and the time it took, a file read, and a command still running.",
+		beside: "look/settings",
 		draw: lookCall,
 	},
 	{
