@@ -7,12 +7,14 @@ import { userAgent } from "./billing.ts";
 import { CLAUDE_CODE_FEATURES, CLAUDE_CODE_VERSION, turnBetas } from "./claude-code.ts";
 import { billToPlan } from "./payload.ts";
 
+const SECTION = "Anthropic subscription";
+
 export const betas = setting({
 	id: "subscription.betas",
 	default: turnBetas(),
 	decoder: stringList("anthropic-beta headers"),
 	ui: {
-		section: "Anthropic subscription",
+		section: SECTION,
 		label: "Betas",
 		description: "What an OAuth request asks for beside the betas pi computes.",
 		control: {
@@ -43,7 +45,7 @@ export const mirrored = setting({
 	default: CLAUDE_CODE_VERSION,
 	decoder: pinned(CLAUDE_CODE_VERSION),
 	ui: {
-		section: "Anthropic subscription",
+		section: SECTION,
 		label: "Mirrored version",
 		description:
 			"The Claude Code release pi reports to Anthropic. The eval pins it, so there is nothing to set.",

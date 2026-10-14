@@ -21,9 +21,12 @@ export interface Wait {
 	asked: boolean;
 }
 
+/** The runs the table below was measured on. */
+export const MEASURED_RUNS = 1688;
+
 /**
- * Measured on 1,688 runs: the chance of a message in the 4.5 minutes after a refresh, for
- * refreshes sent less than `until` minutes after the last request. Used until enough is learned.
+ * The chance of a message in the 4.5 minutes after a refresh, for refreshes sent less than `until`
+ * minutes after the last request, measured on `MEASURED_RUNS` runs. Used until enough is learned.
  */
 const MEASURED: readonly (readonly [until: number, chance: number])[] = [
 	[9, 0.28],

@@ -1,5 +1,4 @@
 // Ported from rpiv-ask-user-question.
-import { GLYPH } from "@adeildo/pi-kit";
 import {
 	Markdown,
 	type MarkdownTheme,
@@ -55,7 +54,7 @@ export class PreviewCache {
 
 	private drawing(text: string, width: number): string[] {
 		return drawingLines(text).map((line) =>
-			this.theme.codeBlock(truncateToWidth(line, Math.max(1, width), GLYPH.ellipsis)),
+			this.theme.codeBlock(truncateToWidth(line, Math.max(1, width), "...")),
 		);
 	}
 

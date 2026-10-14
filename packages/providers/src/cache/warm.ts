@@ -14,6 +14,8 @@ import { returnChance, type Returns } from "./returns.ts";
 export type CacheModel = Pick<Model<string>, "cost" | "promptCache">;
 
 export const STRATEGIES = ["learned", "pi", "minutes", "off"] as const;
+/** The learned strategy never keeps a cache warm longer than this. */
+const MAX_WARM_MINUTES = 120;
 export type Strategy = (typeof STRATEGIES)[number];
 
 export interface Away {
@@ -69,7 +71,7 @@ export function warmFor(model: CacheModel, returns: Returns | undefined, asked: 
 	const enough = cacheRead / (cacheWrite - cacheRead);
 	const window = refreshWindow(model);
 	let minutes = window;
-	while (minutes < 120 && returnChance(returns, minutes, window, asked) >= enough)
+	while (minutes < MAX_WARM_MINUTES && returnChance(returns, minutes, window, asked) >= enough)
 		minutes += window;
 	return minutes;
 }

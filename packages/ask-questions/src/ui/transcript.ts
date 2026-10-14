@@ -49,7 +49,7 @@ export function renderCall(
 function headersLine(questions: Streamed, theme: Theme, width: number): string {
 	const headers = questions.map((question) => theme.fg("accent", question?.header ?? ""));
 	const count = theme.fg("muted", counted(questions.length, "question"));
-	return truncateToWidth(`${count}  ${headers.join(theme.fg("dim", ", "))}`, width, GLYPH.ellipsis);
+	return truncateToWidth(`${count}  ${headers.join(theme.fg("dim", ", "))}`, width, "...");
 }
 
 const CURSOR = GLYPH.cursor;

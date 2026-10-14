@@ -11,6 +11,7 @@ import {
 	isReturns,
 	LEARN_DAYS,
 	learnReturns,
+	MEASURED_RUNS,
 	type Returns,
 	runsIn,
 } from "./returns.ts";
@@ -25,6 +26,8 @@ interface Learned extends Returns {
 }
 
 const RELEARN_AFTER = 86_400_000;
+/** The newest misses listed under the summary. */
+const LATEST_MISSES = 5;
 
 export const cache = defineFeature({
 	id: "cache",
@@ -120,9 +123,6 @@ function registerScreen(scope: FeatureScope, learned: () => Learned | undefined)
 	});
 }
 
-/** The newest misses listed under the summary. */
-const LATEST_MISSES = 5;
-
 function clockOf(at: number): string {
 	const date = new Date(at);
 	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
@@ -135,7 +135,7 @@ export function learnedText(
 	const runs = learned === undefined ? 0 : runsIn(learned);
 	const from =
 		runs === 0
-			? "measured on 1,688 runs, until it learns"
+			? `measured on ${MEASURED_RUNS.toLocaleString("en-US")} runs, until it learns`
 			: `from ${runs.toLocaleString("en-US")} runs`;
 	if (model === undefined) return from;
 	const plain = Math.round(warmFor(model, learned, false));

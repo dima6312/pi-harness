@@ -568,10 +568,7 @@ export class QuestionDialog implements Component, Focusable {
 		const pointer = active ? this.theme.fg("accent", POINTER) : "  ";
 		const number = this.theme.fg(active ? "accent" : "dim", String(row + 1));
 		const ticked = draft.picked.has(row);
-		const box =
-			!typed && question.multiSelect
-				? `${this.theme.fg(ticked ? "success" : "dim", ticked ? "[x]" : "[ ]")} `
-				: "";
+		const box = !typed && question.multiSelect ? `${this.checkbox(ticked)} ` : "";
 		const prefix = ROW_LEAD + (box === "" ? 0 : BOX_WIDTH);
 
 		// The note itself lives in the panel. The row only says there is one, with the same arrow.
@@ -620,7 +617,13 @@ export class QuestionDialog implements Component, Focusable {
 
 	/** The detail with the notes under it, separated by a blank line when both exist. */
 	private withNotes(detail: string[], notes: string[]): string[] {
-		return notes.length === 0 ? detail : [...detail, ...(detail.length > 0 ? [""] : []), ...notes];
+		if (notes.length === 0) return detail;
+		if (detail.length === 0) return notes;
+		return [...detail, "", ...notes];
+	}
+
+	private checkbox(ticked: boolean): string {
+		return ticked ? this.theme.fg("success", "[x]") : this.theme.fg("dim", "[ ]");
 	}
 
 	private noteLines(draft: Draft, row: number, width: number): string[] {
