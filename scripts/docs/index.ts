@@ -30,10 +30,13 @@ interface Picture {
 async function picture(scene: Scene, theme: Theme): Promise<Picture> {
 	const [pkg, name] = scene.name.split("/");
 	const file = `packages/${pkg}/assets/${name}.png`;
-	const svg = toSvg(await scene.draw(theme), {
-		background: "#18181e",
-		foreground: colorToHex(theme.colors.text),
-	});
+	const svg =
+		scene.svg !== undefined
+			? await scene.svg(theme)
+			: toSvg((await scene.draw?.(theme)) ?? [], {
+					background: "#18181e",
+					foreground: colorToHex(theme.colors.text),
+				});
 
 	return {
 		name: scene.name,
