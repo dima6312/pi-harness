@@ -1,6 +1,6 @@
 {
 	"name": "@adeildo/pi-peers",
-	"version": "5.9.2",
+	"version": "5.10.0",
 	"description": "Agents working in the same folder see each other's tasks and what they edited and ran, talk in a shared room, and decide among themselves who takes what you ask the group.",
 	"keywords": [
 		"collaboration",

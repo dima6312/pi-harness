@@ -2,6 +2,73 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.10.0](https://github.com/felipeadeildo/pi-harness/compare/v5.9.2...v5.10.0) (2026-10-14)
+
+
+### Features
+
+* **ask-questions:** draw previews as written with a scroll bar, write questions live, and label picks, notes and your words ([bb9025b](https://github.com/felipeadeildo/pi-harness/commit/bb9025bde32f3d2970cd4960a22ddbd92903f9d9))
+* **compact:** prune when a run ends with Anthropic's clearing off by default, and refuse calls that copy a pruned call ([e255e48](https://github.com/felipeadeildo/pi-harness/commit/e255e48bb871123408e6df99223e231fb9a7c76a))
+* **docs:** the brand board at the top of the README, and the settings screen as a scene ([8ae71ca](https://github.com/felipeadeildo/pi-harness/commit/8ae71cad382883fd88f0394c49b59309c7738af9))
+* frame pi's own entries, other agents' messages and the judge, drawing with named glyphs from the kit ([e8af129](https://github.com/felipeadeildo/pi-harness/commit/e8af1290fe092378f9fb1df065092b92b4e4401c))
+* **kit:** one place merges the betas a request carries, keeping the payload when nothing was added ([384ed71](https://github.com/felipeadeildo/pi-harness/commit/384ed71806e647b357ea2affbb7712581d443b76))
+* **kit:** one shape for a token count, a cost and the target of a call, decided once and used by the look ([228dfda](https://github.com/felipeadeildo/pi-harness/commit/228dfdaaecb682cbca82446f98495f6893e36117))
+* **kit:** the scroll thumb, the time of day and the prune entry's name live in the kit, so nobody works them out twice ([604793b](https://github.com/felipeadeildo/pi-harness/commit/604793b123f3e1523c6d4a422934d9168d3366c1))
+* **look:** a failed CI run and a waiting pull request on the start card ([eab51e4](https://github.com/felipeadeildo/pi-harness/commit/eab51e4f05a81ebd6c3d03c7d37de3e3bb3558c7))
+* **look:** a start card with only what changed since your last session in the folder, and a π that rises ([d61a8b1](https://github.com/felipeadeildo/pi-harness/commit/d61a8b17291243b068f063a8730b423110eabc68))
+* **look:** Alt+O opens a tool call's whole output to scroll, newest first, with the arrows moving between calls ([8b362bb](https://github.com/felipeadeildo/pi-harness/commit/8b362bbf42055be18dc288a203903d175cfb7857))
+* **look:** close a running call's frame until its result draws, waiting for your answer on ask_questions ([8fd4260](https://github.com/felipeadeildo/pi-harness/commit/8fd426087caf1a9224f9e8cf4bc47026ff3fda78))
+* **look:** fewer appearance settings with a live preview in Alt+S, and a pencil that inks in its own cell ([174c89c](https://github.com/felipeadeildo/pi-harness/commit/174c89c5701e16f532bd58f51a9816cc1324d3a3))
+* **look:** frame your messages like the tool calls, named you, without pi's background and blank rows ([54c3f98](https://github.com/felipeadeildo/pi-harness/commit/54c3f98546c48e3e9e7f65f0741cee8cc60052c9))
+* **look:** give ask_questions, peers, memory and the web tools their own marks ([beb4671](https://github.com/felipeadeildo/pi-harness/commit/beb467156356e7e1b6530eec5b79f587b1bb662a))
+* **look:** queued messages in a dashed frame and a stretch that runs along a running call's rule ([b2905ee](https://github.com/felipeadeildo/pi-harness/commit/b2905ee3d4e825a70edc33ff1c1f8aff17cccd29))
+* **look:** show the end of an edit or a write while the model writes it ([67def04](https://github.com/felipeadeildo/pi-harness/commit/67def04dd4dcd736f50f33f0c56deb1dd2271699))
+* **look:** the strip says how the run went once it ends, and every number below the editor has its word ([ab312d5](https://github.com/felipeadeildo/pi-harness/commit/ab312d5ac36e625042967837d692dd6984c7fe34))
+* one line for a written ask_questions call, and pi's cut-output note in the frame's words ([475ebab](https://github.com/felipeadeildo/pi-harness/commit/475ebabf2093539d0c721c7ce7e0af1a81ae534f))
+* **peers:** [@everyone](https://github.com/everyone) tells every agent and [@anyone](https://github.com/anyone) asks for one, taken requests arrive together and in order ([f55e6a5](https://github.com/felipeadeildo/pi-harness/commit/f55e6a5010f07d68f3eba0aac8e7c16de26ed3ad))
+* **peers:** deliver your messages at once and drop /unsend ([b841f16](https://github.com/felipeadeildo/pi-harness/commit/b841f16e78e6a6c2bfd5b6ca19161fd51abfb707))
+* **peers:** send to [@name](https://github.com/name) and [@everyone](https://github.com/everyone) from the chat, replacing /to, /all and /room ([4db84f2](https://github.com/felipeadeildo/pi-harness/commit/4db84f21b076fae033b46e9cca7f182e3c6baad1))
+* **peers:** the room draws messages and drafts in the transcript's frame ([69bc560](https://github.com/felipeadeildo/pi-harness/commit/69bc5600cebecab1a21f1a13bc2c012423b3b2f4))
+* **providers:** keep the prompt cache warm between runs while you are likely to come back ([667ba34](https://github.com/felipeadeildo/pi-harness/commit/667ba3495b5bb40791cdfedd8feffac7c07f02b6))
+* **providers:** list this session's cache misses with their cause and cost in the Providers tab ([2ca0b18](https://github.com/felipeadeildo/pi-harness/commit/2ca0b182c370d5e1bd64e866b522abdab9d391df))
+* **providers:** pin the Claude Code version and let the settings pick the betas ([ce8549e](https://github.com/felipeadeildo/pi-harness/commit/ce8549e97f1b379904d0174dfe1ba9eb0f95f597))
+* **providers:** read the beta notes out of the binary and show the pinned version read only ([f3ddccc](https://github.com/felipeadeildo/pi-harness/commit/f3ddcccd4ad2997e8dfb500885ff19ff38be5ee7))
+* **scripts:** a typing bench that says where each keystroke's time goes ([9f6dced](https://github.com/felipeadeildo/pi-harness/commit/9f6dced8d0b3c4d9abcfe9629e26de713c081494))
+* **scripts:** reverse engineer Claude Code on a cron and open a bump pull request ([88be6c4](https://github.com/felipeadeildo/pi-harness/commit/88be6c40be32622e8e63a34de7e1f5eee8cc15c2))
+
+
+### Bug Fixes
+
+* **docs:** draw the brand board from SVG groups, so the check needs no rsvg-convert ([7b59cb9](https://github.com/felipeadeildo/pi-harness/commit/7b59cb99544ce7a9e212512aff97458fbb603fe4))
+* draw framed transcript entries once per change instead of on every keystroke ([ca82a60](https://github.com/felipeadeildo/pi-harness/commit/ca82a60fef5b7e89a431c6f56ffa6bd01bd1c239))
+* keep the bench out of the room, and never announce a session that does nothing ([8ea3346](https://github.com/felipeadeildo/pi-harness/commit/8ea3346bc2c2e4e3ef0984601499f5961e2e701e))
+* **look:** hand the GitHub answer to the header's listen call ([a607545](https://github.com/felipeadeildo/pi-harness/commit/a607545610b4cc36b2bd557598dfc845293b71fe))
+* **look:** say the cache figure below the editor is the last prompt's, not the session's ([d24d0fb](https://github.com/felipeadeildo/pi-harness/commit/d24d0fb4e68fa082d3e701fd210ea866911446ad))
+* **look:** the runner's output cap is the one git had, and readGit's runner is covered by a test ([9761f95](https://github.com/felipeadeildo/pi-harness/commit/9761f953b3fe5832e2f380c8748dfcc9c6ceb4e8))
+* **peers:** a subagent stays out of the room, and a woke note carries its delivery ([4ba6407](https://github.com/felipeadeildo/pi-harness/commit/4ba6407a6c2c733ccd6a8e738ea16dea33143292))
+* **peers:** turn the peers tool back on before a run when a reload left it off ([0b69bfc](https://github.com/felipeadeildo/pi-harness/commit/0b69bfc0e6c587fcef7b7908cd852502fed8abc5))
+* **providers:** after you stop on an account at its limit, its next limits fail without asking again until it answers ([1babbaa](https://github.com/felipeadeildo/pi-harness/commit/1babbaa4673ad90da0309a39a55f69a146a05b3c))
+* **providers:** read the feature gates from identifiers, and the binary only once ([8440136](https://github.com/felipeadeildo/pi-harness/commit/844013671ca7b165d7d8c3432791a5758684a668))
+* **providers:** the web search beta says Vertex and Foundry once, and esc on the limit dialog is tested as stopping ([8e1259d](https://github.com/felipeadeildo/pi-harness/commit/8e1259de66af4df7ce158ebd3b36140fd57dd8cb))
+
+
+### Performance Improvements
+
+* **kit:** the screen keeps the lines it built, one group per section, and measures a frame row before cutting it ([ae0293f](https://github.com/felipeadeildo/pi-harness/commit/ae0293fb25639a1fba8895c049e4c1ee316745a9))
+* **look,kit:** measure a line before cutting it, which is what the editor paid per keystroke (37 and 31 ms gone from a 2.2 s typing window) and the frames on every rule ([427d1b0](https://github.com/felipeadeildo/pi-harness/commit/427d1b0edeb265273482918d66aac16a11bf5ce9))
+* **look:** keep the footer and the strip drawn for 100 ms, dropped by anything that asks for a redraw (footer 31/25 ms -&gt; 10 ms, busy window 550/584 -&gt; 468/486 ms) ([a37f3fb](https://github.com/felipeadeildo/pi-harness/commit/a37f3fb1a994e75e5ad6bb7f31d2b8f82518a322))
+* **look:** resolve the glyph set once per setting change, not on every frame, rule and slot: 153 and 96 ms gone from a 2.2 s typing window (p50 10.2 ms) ([57ce92d](https://github.com/felipeadeildo/pi-harness/commit/57ce92df566997a6201e64427b8ce19d12ff3007))
+* **look:** the Alt+O view wraps its lines once, one stat answers whether a write replaces a file, and the filler and the header measure before cutting ([94b8cfe](https://github.com/felipeadeildo/pi-harness/commit/94b8cfea37356153f867c59cc93489bed73199a3))
+* **peers:** one pass over the peers per frame, and the group words from one place ([d5191be](https://github.com/felipeadeildo/pi-harness/commit/d5191be83ae866f0b9f93f85c5ce0a6a5f6fdba7))
+* **providers:** learn the return chance line by line, and check the cached Claude Code binary without reading it ([f7d1fa8](https://github.com/felipeadeildo/pi-harness/commit/f7d1fa8496ce034133565b10b6623d96a3f7963f))
+* redraw the start card, context use and finished entries only when they change; animate the marks of running, waiting and writing calls ([b8e20ba](https://github.com/felipeadeildo/pi-harness/commit/b8e20baa8078f142fcadcd2246c7d3d3600d873a))
+* **scripts:** the newest-pi compare reads the registry once, and the release notes only when a body needs them ([7d3d1dd](https://github.com/felipeadeildo/pi-harness/commit/7d3d1dde418bfb7deeabe37120e8f33457c2701e))
+
+
+### Reverts
+
+* **docs:** drop the brand board, the session card stays as the one picture ([1679bbd](https://github.com/felipeadeildo/pi-harness/commit/1679bbda5f7c66cc560e858feb6e03988c124792))
+
 ## [5.9.2](https://github.com/felipeadeildo/pi-harness/compare/v5.9.1...v5.9.2) (2026-10-13)
 
 
