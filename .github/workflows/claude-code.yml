@@ -1,10 +1,9 @@
-# Reverse engineers the Claude Code release the harness mimics: the pin, the features it knows, the
-# betas a turn asks for, and the shape of the request it sends. A release that verifies opens a pull
-# request with the new pin; one that does not files an issue. A cron, because Anthropic publishes no
-# event, and by hand for a re-check. The steps are in scripts/claude-code.ts.
+# Re-checks the Claude Code release the harness mimics, on a cron because Anthropic publishes no
+# event, and by hand for a re-check. The steps are in scripts/claude-code.ts: a release that verifies
+# opens a pull request with the new pin, and one that does not files an issue.
 #
-# No account is involved: the release is on a public bucket, and the turn the eval runs is answered by
-# a server of its own, so a credential would only be a way to spend money on a request nothing reads.
+# No secret is configured. The release is public and the eval answers the turn from a server in the
+# same job, so a credential would only buy a request nothing reads.
 #
 # GitHub stops a cron after 60 days without activity in the repository; re-enable it from the
 # Actions tab if that happens.
