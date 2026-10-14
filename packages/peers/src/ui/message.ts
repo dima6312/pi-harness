@@ -1,6 +1,6 @@
 // A message from another session, drawn in the chat of the one that got it: a frame in the color of
 // the agent that wrote it, who and to whom in its top edge with the time on the right, the words inside.
-import { ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
+import { drawnByWidth, ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -9,18 +9,14 @@ import type { PeerDelivery, PeerMessageDetails } from "../here.ts";
 export const PEER_MARK = GLYPH.diamond;
 
 export function messageBlock(details: PeerMessageDetails, theme: Theme): Component {
-	return {
-		render: (width) => messageLines(details, theme, width),
-		invalidate() {},
-	};
+	return drawnByWidth((width) => messageLines(details, theme, width));
 }
 
 /** Everything that arrived together, one frame under the other. */
 export function deliveryBlock(delivery: PeerDelivery, theme: Theme): Component {
-	return {
-		render: (width) => delivery.items.flatMap((item) => messageLines(item, theme, width)),
-		invalidate() {},
-	};
+	return drawnByWidth((width) =>
+		delivery.items.flatMap((item) => messageLines(item, theme, width)),
+	);
 }
 
 export function messageLines(details: PeerMessageDetails, theme: Theme, width: number): string[] {

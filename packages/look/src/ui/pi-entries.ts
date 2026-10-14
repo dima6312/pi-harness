@@ -118,8 +118,34 @@ function wrap(
 		const look = paint();
 		const frame = look === undefined || width < ENTRY_X * 2 ? undefined : frameOf(this, look);
 		if (look === undefined || frame === undefined) return own.call(this, width);
-		return framed(own.call(this, width - 2), width, look.theme, frame);
+		const source = own.call(this, width - 2);
+		// The transcript draws every entry on every keystroke. Pi caches its own lines, so the frame
+		// is only drawn again when they, the width or the paint change.
+		const known = drawnBefore.get(this);
+		const key = `${width}\u0000${frame.top}\u0000${frame.bottom}\u0000${frame.color}`;
+		if (known?.key === key && known.theme === look.theme && sameLines(known.source, source))
+			return known.lines;
+		const lines = framed(source, width, look.theme, frame);
+		drawnBefore.set(this, { key, theme: look.theme, source, lines });
+		return lines;
 	};
+}
+
+interface Drawn {
+	/** The width and the frame's labels. */
+	key: string;
+	theme: Theme;
+	source: readonly string[];
+	lines: string[];
+}
+
+const drawnBefore = new WeakMap<object, Drawn>();
+
+function sameLines(a: readonly string[], b: readonly string[]): boolean {
+	if (a === b) return true;
+	if (a.length !== b.length) return false;
+	for (let index = 0; index < a.length; index++) if (a[index] !== b[index]) return false;
+	return true;
 }
 
 /** Pi's lines, drawn two columns narrower with a column of padding each side, in the frame. */

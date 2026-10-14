@@ -1,4 +1,4 @@
-import { type AskResult, isAskResult, GLYPH } from "@adeildo/pi-kit";
+import { drawnByWidth, type AskResult, isAskResult, GLYPH } from "@adeildo/pi-kit";
 import type {
 	AgentToolResult,
 	Theme,
@@ -122,20 +122,17 @@ export function renderResult(
 		details.answers.find(
 			(answer) => answer.question === question.question && answer.header === question.header,
 		);
-	return {
-		render: (width) => [
-			...(details.cancelled ? [theme.fg("warning", "closed without submitting")] : []),
-			...questions.flatMap((question, index) =>
-				answerBlock(
-					question,
-					answerTo(question),
-					theme,
-					width,
-					expanded,
-					questions.length > 1 ? index + 1 : undefined,
-				),
+	return drawnByWidth((width) => [
+		...(details.cancelled ? [theme.fg("warning", "closed without submitting")] : []),
+		...questions.flatMap((question, index) =>
+			answerBlock(
+				question,
+				answerTo(question),
+				theme,
+				width,
+				expanded,
+				questions.length > 1 ? index + 1 : undefined,
 			),
-		],
-		invalidate() {},
-	};
+		),
+	]);
 }

@@ -2,7 +2,7 @@
 // bottom one, the content one column in from the sides. The model's own words have none. Tool calls,
 // your messages, other agents' messages and pi's own entries all share it. See DESIGN.md.
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 import { LINE } from "./glyphs.ts";
 
@@ -58,4 +58,21 @@ export function entryFrame(
 		}),
 		edge([LINE.bottomLeft, LINE.bottomRight], frame.bottom, frame.bottomRight),
 	];
+}
+
+/**
+ * A component drawn once per width. The transcript draws every entry on every keystroke, so an
+ * entry that draws itself again each time slows typing down as the session grows.
+ */
+export function drawnByWidth(draw: (width: number) => string[]): Component {
+	let drawn: { width: number; lines: string[] } | undefined;
+	return {
+		render(width) {
+			if (drawn?.width !== width) drawn = { width, lines: draw(width) };
+			return drawn.lines;
+		},
+		invalidate() {
+			drawn = undefined;
+		},
+	};
 }

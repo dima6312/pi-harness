@@ -120,3 +120,18 @@ describe("a ! command", () => {
 		]);
 	});
 });
+
+describe("drawing on every keystroke", () => {
+	beforeAll(() => initTheme("dark", false));
+	afterEach(() => framePiEntries(() => undefined));
+
+	test("an entry is framed again only when pi's lines, the width or the labels change", () => {
+		const message = new UserMessageComponent("hello", getMarkdownTheme(), 1);
+		framePiEntries(() => ({ theme: plain, set: "ascii", you: true }));
+		const first = message.render(40);
+		expect(message.render(40)).toBe(first);
+		expect(message.render(41)).not.toBe(first);
+		framePiEntries(() => ({ theme: plain, set: "unicode", you: true }));
+		expect(visible(message.render(41))[0]).toContain("\u25b8 you");
+	});
+});
