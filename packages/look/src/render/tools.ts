@@ -2,7 +2,18 @@
 // settings, like every other glyph on the screen.
 import type { IconSet } from "./glyphs.ts";
 
-type ToolKind = "shell" | "read" | "search" | "edit" | "web" | "agent" | "mcp" | "other";
+type ToolKind =
+	| "shell"
+	| "read"
+	| "search"
+	| "edit"
+	| "web"
+	| "agent"
+	| "ask"
+	| "peers"
+	| "memory"
+	| "mcp"
+	| "other";
 
 const ICONS: Record<IconSet, Record<ToolKind, string>> = {
 	nerd: {
@@ -12,6 +23,9 @@ const ICONS: Record<IconSet, Record<ToolKind, string>> = {
 		edit: "\u{f044}", // nf-fa-pencil
 		web: "\u{f0ac}", // nf-fa-globe
 		agent: "\u{f06a9}", // nf-md-robot
+		ask: "\u{f059}", // nf-fa-circle_question
+		peers: "\u{f0c0}", // nf-fa-users
+		memory: "\u{f09d1}", // nf-md-brain
 		mcp: "\u{f1e6}", // nf-fa-plug
 		other: "\u{f013}", // nf-fa-gear
 	},
@@ -22,16 +36,22 @@ const ICONS: Record<IconSet, Record<ToolKind, string>> = {
 		edit: "\u270e",
 		web: "\u25cd",
 		agent: "\u25c6",
+		ask: "?",
+		peers: "\u2042",
+		memory: "\u25c7",
 		mcp: "\u226b",
 		other: "\u25cb",
 	},
 	ascii: {
 		shell: "$",
 		read: "=",
-		search: "?",
+		search: "/",
 		edit: "+",
 		web: "@",
 		agent: "*",
+		ask: "?",
+		peers: "&",
+		memory: "#",
 		mcp: ">",
 		other: "-",
 	},
@@ -73,6 +93,7 @@ export function toolLabel(toolName: string): string {
 
 function toolKind(toolName: string): ToolKind {
 	if (toolName.startsWith("mcp__")) return "mcp";
+	if (toolName.startsWith("memory_")) return "memory";
 	switch (toolName) {
 		case "bash":
 		case "powershell":
@@ -94,11 +115,21 @@ function toolKind(toolName: string): ToolKind {
 		case "fetch":
 		case "webfetch":
 		case "web_fetch":
+		case "fetch_content":
+		case "get_search_content":
+		case "source_check":
 			return "web";
 		case "task":
 		case "agent":
 		case "subagent":
+		case "bg_wait":
 			return "agent";
+		case "ask_questions":
+			return "ask";
+		case "peers":
+			return "peers";
+		case "scratchpad":
+			return "memory";
 		default:
 			return "other";
 	}

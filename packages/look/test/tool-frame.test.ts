@@ -10,6 +10,7 @@ import { Container, stripTerminalSequences, Text } from "@earendil-works/pi-tui"
 
 import { look } from "../src/index.ts";
 import { editLines } from "../src/render/streaming.ts";
+import { toolIcon } from "../src/render/tools.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
@@ -421,5 +422,24 @@ describe("the lines an edit changes", () => {
 		});
 		// The line still arriving may be cut short, so it is never context yet.
 		expect(editLines({ oldText: "a\nb", newText: "a" }, false).before).toEqual([]);
+	});
+});
+
+describe("the mark of a tool", () => {
+	test("our own tools and the ones we install have their own, in every icon set", () => {
+		for (const set of ["nerd", "unicode", "ascii"] as const) {
+			const generic = toolIcon("something_else", set);
+			for (const name of [
+				"ask_questions",
+				"peers",
+				"memory_write",
+				"scratchpad",
+				"fetch_content",
+				"bg_wait",
+			])
+				expect(toolIcon(name, set)).not.toBe(generic);
+			// One mark per kind, so two kinds never read the same.
+			expect(toolIcon("ask_questions", set)).not.toBe(toolIcon("grep", set));
+		}
 	});
 });
