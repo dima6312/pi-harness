@@ -15,7 +15,7 @@ import {
 	truncateTail,
 } from "../src/render/format.ts";
 import { BOXES, border } from "../src/render/frame.ts";
-import { ASCII, NERD, resolveIcons, UNICODE } from "../src/render/glyphs.ts";
+import { ASCII, glyphsOf, NERD, resolveIcons, UNICODE } from "../src/render/glyphs.ts";
 import { ROLE_TOKENS } from "../src/render/paint.ts";
 import { plain } from "./helpers.ts";
 
@@ -175,6 +175,18 @@ describe("glyphs", () => {
 		expect(resolveIcons("auto", { LANG: "C" })).toBe(ASCII);
 		expect(resolveIcons("auto", { TERM: "dumb" })).toBe(ASCII);
 		expect(resolveIcons("unicode", {})).toBe(UNICODE);
+	});
+
+	test("the glyph set is resolved once per setting, so a redraw does not look it up again", () => {
+		let mode: "nerd" | "ascii" = "nerd";
+		const glyphs = glyphsOf(() => mode);
+
+		const first = glyphs();
+		expect(glyphs()).toBe(first);
+
+		mode = "ascii";
+		expect(glyphs()).toBe(ASCII);
+		expect(glyphs()).not.toBe(first);
 	});
 
 	test("every glyph set is one column per glyph, so the frame stays straight", () => {
