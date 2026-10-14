@@ -27,7 +27,8 @@ import {
 	type PeerDelivery,
 	type PeerMessageDetails,
 } from "./here.ts";
-import { byHandle, mentionsIn } from "./names.ts";
+import { completeMentions, EVERYONE_MENTION, recipientsOf } from "./mention.ts";
+import { byHandle, mentionsIn, type Named } from "./names.ts";
 import { delivery, model, PEERS_SETTINGS } from "./settings.ts";
 import { deliveryBlock, messageBlock } from "./ui/message.ts";
 import { FRAME_MS } from "./ui/motion.ts";
@@ -146,6 +147,8 @@ export const peers = defineFeature({
 		scope.onSessionStart((ctx) => {
 			session = ctx;
 			here.open(ctx.sessionManager, ctx.model === undefined ? undefined : modelRef(ctx.model));
+			if (ctx.mode === "tui")
+				ctx.ui.addAutocompleteProvider((current) => completeMentions(current, others));
 		});
 		scope.onShutdown(() => {
 			session?.ui.setStatus(PEERS_STATUS, undefined);
@@ -153,11 +156,35 @@ export const peers = defineFeature({
 			session = undefined;
 		});
 
+		function others(): Named[] {
+			return [...here.names().values()].filter((named) => named.session !== here.session);
+		}
+
 		scope.on("agent_start", () => here.started());
 		scope.on("agent_settled", () => here.settled());
-		scope.on("input", (event) => {
-			if (event.source === "interactive" && !event.text.startsWith("/")) here.prompted();
-			return { action: "continue" };
+		scope.on("input", (event, ctx) => {
+			if (event.source !== "interactive" || event.text.startsWith("/"))
+				return { action: "continue" };
+			// The watcher may not have caught a session that just opened.
+			here.sync();
+			const to = recipientsOf(here.names(), here.session, event.text);
+			if (to === undefined) {
+				here.prompted();
+				return { action: "continue" };
+			}
+			if (to === "all" && others().length === 0) {
+				ctx.ui.notify("No other agent works in this folder.", "warning");
+				ctx.ui.setEditorText(event.text);
+				return { action: "handled" };
+			}
+			here.post(to === "all" ? "all" : to.map((named) => named.session), event.text, "you");
+			ctx.ui.notify(
+				to === "all"
+					? `Asked @${EVERYONE_MENTION}. The agent that fits best takes it.`
+					: `Sent to ${to.map((named) => `@${named.handle}`).join(", ")}.`,
+				"info",
+			);
+			return { action: "handled" };
 		});
 
 		// The message the agent is writing, live, for the others' room.
@@ -294,11 +321,6 @@ export const peers = defineFeature({
 			handler: (ctx) => openRoom(ctx),
 		});
 
-		scope.registerCommand("room", {
-			description: "Read and write with the other agents in this folder",
-			handler: (_args, ctx) => openRoom(ctx),
-		});
-
 		async function openRoom(ctx: ExtensionContext): Promise<void> {
 			if (ctx.mode !== "tui") return;
 			await ctx.ui.custom<void>(
@@ -336,44 +358,6 @@ export const peers = defineFeature({
 				},
 			);
 		}
-
-		scope.registerCommand("to", {
-			description: "Send a message to another agent in this folder: /to <name> <message>",
-			getArgumentCompletions: (prefix) => {
-				if (prefix.includes(" ")) return null;
-				return [...here.names().values()]
-					.filter(
-						(named) =>
-							named.session !== here.session && named.handle.startsWith(prefix.toLowerCase()),
-					)
-					.map((named) => ({ value: `${named.handle} `, label: named.handle }));
-			},
-			handler: async (args, ctx) => {
-				const [name = "", ...words] = args.trim().split(/\s+/);
-				const text = words.join(" ").trim();
-				const named = byHandle(here.names(), name);
-				if (named === undefined || named.session === here.session || text === "") {
-					ctx.ui.notify(
-						named === undefined
-							? `No agent called ${name || "that"} in this folder.`
-							: "Write the message after the name.",
-						"warning",
-					);
-					ctx.ui.setEditorText(`/to ${args}`);
-					return;
-				}
-				here.post([named.session], text, "you");
-			},
-		});
-
-		scope.registerCommand("all", {
-			description: "Ask every agent in this folder: the one that fits best takes it",
-			handler: async (args, ctx) => {
-				const text = args.trim();
-				if (text === "") return ctx.ui.notify("Write what you want after /all.", "warning");
-				here.post("all", text, "you");
-			},
-		});
 
 		scope.registerMessageRenderer<PeerDelivery>(PEER_MESSAGE, (message, _options, theme) =>
 			message.details === undefined ? undefined : deliveryBlock(message.details, theme),

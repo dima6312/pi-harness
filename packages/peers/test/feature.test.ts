@@ -34,6 +34,9 @@ async function mounted(id: string) {
 		ui: {
 			notify: (message: string) => notes.push(message),
 			setEditorText: (text: string) => (editor = text),
+			addAutocompleteProvider: () => {},
+			setWidget: () => {},
+			theme: { fg: (_color: string, text: string) => text, bold: (text: string) => text },
 		},
 		isIdle: () => true,
 	});
@@ -118,11 +121,43 @@ test("what the agent edits, runs and commits goes on the board", async () => {
 	]);
 });
 
-test("/to with a name nobody has puts your words back in the editor", async () => {
+function posted() {
+	return new FolderFeed(eventsDir("/repo"))
+		.read()
+		.filter((event) => event.type === "message.posted")
+		.map((event) => Object.assign({ session: event.session }, event.data));
+}
+
+test("a message that mentions another agent goes to it instead of yours", async () => {
+	const a = await mounted("a");
+	await mounted("b");
+	const [result] = await a.fake.fire(
+		"input",
+		{ text: "@new-b run the tests", source: "interactive" },
+		a.ctx,
+	);
+	expect(result).toEqual({ action: "handled" });
+	expect(posted()).toMatchObject([
+		{ session: "a", from: "you", to: ["b"], text: "@new-b run the tests" },
+	]);
+	expect(a.notes).toEqual(["Sent to @new-b."]);
+});
+
+test("@everyone asks every agent, and a file or an unknown name stays yours", async () => {
+	const a = await mounted("a");
+	await mounted("b");
+	const fire = (text: string) => a.fake.fire("input", { text, source: "interactive" }, a.ctx);
+	expect(await fire("read @src/new-b.ts and @nobody")).toEqual([{ action: "continue" }]);
+	expect(await fire("@everyone who takes the deploy?")).toEqual([{ action: "handled" }]);
+	expect(posted()).toMatchObject([{ to: "all", text: "@everyone who takes the deploy?" }]);
+});
+
+test("@everyone alone in the folder puts your words back in the editor", async () => {
 	const { fake, ctx, notes, editor } = await mounted("a");
-	await fake.commands.get("to")?.handler("migrtion run the tests", ctx as never);
-	expect(notes).toEqual(["No agent called migrtion in this folder."]);
-	expect(editor()).toBe("/to migrtion run the tests");
+	await fake.fire("input", { text: "@everyone ship it", source: "interactive" }, ctx);
+	expect(notes).toEqual(["No other agent works in this folder."]);
+	expect(editor()).toBe("@everyone ship it");
+	expect(posted()).toEqual([]);
 });
 
 test("the tool reads the board and refuses names nobody has", async () => {

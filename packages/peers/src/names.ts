@@ -68,11 +68,19 @@ export function byHandle(names: ReadonlyMap<string, Named>, name: string): Named
 	return [...names.values()].find((named) => named.handle === wanted);
 }
 
+/** `@` and a name, not inside an address. A path or a file name after the `@` is a file. */
+const MENTION = /(?<![\w@])@([a-z][a-z0-9-]*)(?![\w/-]|\.\w)/gi;
+
+/** The names after each `@` in a text, in lower case. */
+export function mentionedNames(text: string): string[] {
+	return [...text.matchAll(MENTION)].map((match) => (match[1] ?? "").toLowerCase());
+}
+
 /** Every @name in a text that points at an open session. */
 export function mentionsIn(names: ReadonlyMap<string, Named>, text: string): Named[] {
 	const found = new Map<string, Named>();
-	for (const match of text.matchAll(/(?<![\w@])@([a-z][a-z0-9-]*)/gi)) {
-		const named = byHandle(names, match[1] ?? "");
+	for (const name of mentionedNames(text)) {
+		const named = byHandle(names, name);
 		if (named !== undefined) found.set(named.session, named);
 	}
 	return [...found.values()];

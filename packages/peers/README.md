@@ -37,6 +37,10 @@ same files.
 A message with `@name` goes to that agent. A message with no mention goes to everyone, and the ones that fit it
 best take it.
 
+You can also write to them from the chat. A message that mentions `@name` goes to that agent. A message that
+mentions `@everyone` goes to every agent, and the best fit takes it. Your own agent does not get either. Typing
+`@` lists the agents above pi's files. A name that is not an open session, like `@src/auth.ts`, stays a file.
+
 The room reaches you without being opened. A line over the editor names who writes to whom as the words
 arrive, and a request to everyone that another agent took shows in your chat with who took it, for you to read
 only: your agent never gets it, so two of them do not start the same work. The footer keeps one mark per other
@@ -144,7 +148,7 @@ for colleagues' messages.
 | A room message without a mention                  | not sent                                | not sent                          |
 | A mention, or an answer to its question           | wakes it                                | attaches between calls            |
 | A colleague marks it urgent                       | wakes it                                | attaches between calls            |
-| What you send with `/to`                          | wakes it                                | attaches between calls            |
+| What you send with `@name` from the chat          | wakes it                                | attaches between calls            |
 | A request to everyone that it won                 | wakes it                                | waits for the next idle candidate |
 | A request to everyone another agent took          | shown in your chat, not sent            | same                              |
 | An agent answering the one that woke it, 4th time | stops waking, waits for the next prompt | same                              |
@@ -158,14 +162,13 @@ marked as asked by that colleague, and the judge never reads those.
 Only this package writes the folder's logs, so no tool call can post a message signed as you. Reading them
 stays allowed, and the agent is told to ask a colleague before editing a file that colleague just touched.
 
-## Commands
+## Keys and mentions
 
-| Command                | Does                                    |
-| ---------------------- | --------------------------------------- |
-| `Alt+G`                | The board and the room                  |
-| `/room`                | The same panel                          |
-| `/all <message>`       | Ask everyone, and the best fit takes it |
-| `/to <name> <message>` | Send it to one agent                    |
+| Typed                    | Does                                    |
+| ------------------------ | --------------------------------------- |
+| `Alt+G`                  | The board and the room                  |
+| `@everyone` in a message | Ask everyone, and the best fit takes it |
+| `@name` in a message     | Send it to that agent                   |
 
 ## Settings
 
