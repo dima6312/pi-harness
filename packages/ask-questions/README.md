@@ -17,7 +17,7 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/preview.png" alt="The question dialog: two questions as tabs, the options on the left, and on the right the description and the preview of the focused option." width="860">
   <br>
-  <em>Two questions as tabs, and the preview of the focused option.</em>
+  <em>Pick an option and read what it does before you answer.</em>
 </p>
 
 <!-- /docs -->
@@ -81,7 +81,7 @@ The review tab lists each question with what you said under it. `✓` marks an a
 <p align="center">
   <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-questions/assets/transcript.png" alt="Two ask_questions calls in the chat. The first is still being written and lists the questions so far. The second lists each question with the picked option, a note under it, a note on an option not picked, and an answer in quotes." width="860">
   <br>
-  <em>In the chat: the questions as the model writes them, then each one with your answer and notes.</em>
+  <em>The questions in the chat, then every answer with your notes.</em>
 </p>
 
 <!-- /docs -->

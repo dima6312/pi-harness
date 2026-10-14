@@ -31,7 +31,7 @@ A finished answer takes a box of its own, so you can see what the model wants to
 <p align="center">
   <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/look/assets/call.png" alt="Three commands, each in its own box: a bash command with the reason it was allowed and the time it took, a file read, and a command still running." width="860">
   <br>
-  <em>One command that ran, one a rule let through, and one still going.</em>
+  <em>Every command in a box, with why it ran, what it printed and how long it took.</em>
 </p>
 
 <!-- /docs -->
@@ -84,7 +84,7 @@ The look never names a colour. Every piece names a theme token, so it follows wh
 <p align="center">
   <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/look/assets/settings.png" alt="The settings screen in a frame, titled Settings. The Look tab holds Appearance, Your messages and What is on screen, with Editor frame selected. Under the list, the preview draws the editor's rounded frame with main on the top edge, the folder on the right, the model on the bottom edge and the context on the right. Below, the setting's name and default, and the keys along the bottom edge." width="860">
   <br>
-  <em>Alt+S: the settings on their tab, with a preview of the selected one drawn under the list.</em>
+  <em>Change a setting and see the result drawn under the list before you keep it.</em>
 </p>
 
 <!-- /docs -->

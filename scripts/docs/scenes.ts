@@ -293,7 +293,7 @@ const NARROW = 56;
 export const SCENES: readonly Scene[] = [
 	{
 		name: "ask-questions/preview",
-		caption: "Two questions as tabs, and the preview of the focused option.",
+		caption: "Pick an option and read what it does before you answer.",
 		alt: "The question dialog: two questions as tabs, the options on the left, and on the right the description and the preview of the focused option.",
 		draw: questionsDialog,
 	},
@@ -311,8 +311,7 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "ask-questions/transcript",
-		caption:
-			"In the chat: the questions as the model writes them, then each one with your answer and notes.",
+		caption: "The questions in the chat, then every answer with your notes.",
 		alt: "Two ask_questions calls in the chat. The first is still being written and lists the questions so far. The second lists each question with the picked option, a note under it, a note on an option not picked, and an answer in quotes.",
 		draw: questionsTranscript,
 	},
@@ -324,19 +323,19 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "harness/permission",
-		caption: "The permission ask, drawn at the width a pair fits in.",
+		caption: "Pi asks before it runs the command, and says why.",
 		alt: "The permission dialog for npm install, narrow: the command, the reason it asks, the three answers, the note on no, and the keys.",
 		draw: (theme) => permissionAsk(theme, NARROW),
 	},
 	{
 		name: "harness/questions",
-		caption: "A question from the model, drawn at the width a pair fits in.",
+		caption: "The model asks, with the options and the reason for each.",
 		alt: "The question dialog, narrow: two tabs, the options, and the panel with the description and the preview below them.",
 		draw: (theme) => questionsDialog(theme, NARROW),
 	},
 	{
 		name: "ask-permission/remember",
-		caption: "Always yes asks which calls to remember.",
+		caption: "Always yes asks how much to remember: this call, or every one like it.",
 		alt: "After always yes, the dialog asks which calls to remember: this exact call, or every pnpm call.",
 		draw: permissionRemember,
 	},
@@ -348,7 +347,7 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "look/call",
-		caption: "One command that ran, one a rule let through, and one still going.",
+		caption: "Every command in a box, with why it ran, what it printed and how long it took.",
 		alt: "Three commands, each in its own box: a bash command with the reason it was allowed and the time it took, a file read, and a command still running.",
 		draw: lookCall,
 	},
@@ -360,8 +359,7 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "tasks/panel",
-		caption:
-			"Alt+T: what the agent is doing, what waits on you, what is queued, what got done and what was decided.",
+		caption: "Alt+T: the agent's work as a list you can steer, and what waits on you.",
 		alt: "The session's tasks over the chat: the session as the title, one task under way, one waiting on you with the cursor on it, two queued, four done with the time each finished, one decision, and a pane with the selected task's reason.",
 		draw: tasksPanel,
 	},
@@ -373,8 +371,7 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "peers/room",
-		caption:
-			"Alt+G: the agents in this folder and what each is doing, beside the room you all talk in and write to.",
+		caption: "Alt+G: what every agent in the folder is doing, beside the room you talk in.",
 		alt: "The room panel in a rounded frame, in two columns. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration idle; this session last, rewriting the README. On the right the room, every message in a frame in its writer's color: your request to switch the login to OAuth with the bids as bars inside the frame and oauth taking it on the bottom edge, migration's commit as a plain line, oauth asking migration about src/auth.ts with woke it on the bottom edge, migration's answer with its rail still lit inside the frame, oauth's draft in a dashed frame saying writing, and under it all the line you write in, dashed, naming who the words go to.",
 		draw: (theme) => peersRoom(theme),
 	},
@@ -388,8 +385,7 @@ export const SCENES: readonly Scene[] = [
 	// every scene above draws with.
 	{
 		name: "look/settings",
-		caption:
-			"Alt+S: the settings on their tab, with a preview of the selected one drawn under the list.",
+		caption: "Change a setting and see the result drawn under the list before you keep it.",
 		alt: "The settings screen in a frame, titled Settings. The Look tab holds Appearance, Your messages and What is on screen, with Editor frame selected. Under the list, the preview draws the editor's rounded frame with main on the top edge, the folder on the right, the model on the bottom edge and the context on the right. Below, the setting's name and default, and the keys along the bottom edge.",
 		draw: (theme) => settingsLines(theme),
 	},

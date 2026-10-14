@@ -39,7 +39,7 @@ Pick `always yes` and it asks what to remember, then for how long.
 <p align="center">
   <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/ask-permission/assets/remember.png" alt="After always yes, the dialog asks which calls to remember: this exact call, or every pnpm call." width="860">
   <br>
-  <em>Always yes asks which calls to remember.</em>
+  <em>Always yes asks how much to remember: this call, or every one like it.</em>
 </p>
 
 <!-- /docs -->

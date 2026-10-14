@@ -52,7 +52,7 @@ The model writes every task in the language of your messages, as a short imperat
 <p align="center">
   <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/tasks/assets/panel.png" alt="The session's tasks over the chat: the session as the title, one task under way, one waiting on you with the cursor on it, two queued, four done with the time each finished, one decision, and a pane with the selected task's reason." width="860">
   <br>
-  <em>Alt+T: what the agent is doing, what waits on you, what is queued, what got done and what was decided.</em>
+  <em>Alt+T: the agent's work as a list you can steer, and what waits on you.</em>
 </p>
 
 <!-- /docs -->
