@@ -13,16 +13,6 @@
 
 <p align="center"><code>pi install npm:@adeildo/pi-harness</code></p>
 
-<!-- docs:harness/brand -->
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/harness/assets/brand.png" alt="A brand board on the terminal's dark ground. At the top left the π in pixels in three states of its rise, the wordmark π-harness, the line about asking before running, and the install command. At the top right the structure the product draws: a message in a frame with who wrote it on top and what became of it on the bottom, a dashed frame for what has not been sent yet, and a rule with what runs on it. Below, four real screens: the start card, a session with its framed calls and the editor, the settings with a preview of the editor frame, and the room with its agents and framed messages." width="860">
-  <br>
-  <em>The brand: the mark, the structure of the screen, and what it looks like in use.</em>
-</p>
-
-<!-- /docs -->
-
 <!-- docs:harness/conversation -->
 
 <p align="center">

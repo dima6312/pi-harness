@@ -40,17 +40,8 @@ function runsOf(cells: Cell[]): Run[] {
 	return runs;
 }
 
-interface Terminal {
-	width: number;
-	height: number;
-	font: string;
-	fontSize: number;
-	shapes: string[];
-	texts: string[];
-}
-
-/** The lines walked into shapes and runs, on the grid a monospace font lines up with. */
-function terminal(lines: readonly string[], options: SvgOptions): Terminal {
+/** One SVG for the lines, drawn on a grid so a monospace font lines every column up. */
+export function toSvg(lines: readonly string[], options: SvgOptions): string {
 	const fontSize = options.fontSize ?? 20;
 	const cell = fontSize * 0.6;
 	const height = Math.round(fontSize * 1.5);
@@ -100,39 +91,14 @@ function terminal(lines: readonly string[], options: SvgOptions): Terminal {
 		}
 	}
 
-	return { width, height: total, font, fontSize, shapes, texts };
-}
-
-/** One SVG for the lines, drawn on a grid so a monospace font lines every column up. */
-export function toSvg(lines: readonly string[], options: SvgOptions): string {
-	const drawn = terminal(lines, options);
 	return [
-		`<svg xmlns="http://www.w3.org/2000/svg" width="${drawn.width}" height="${drawn.height}" viewBox="0 0 ${drawn.width} ${drawn.height}">`,
-		`<rect width="${drawn.width}" height="${drawn.height}" rx="14" fill="${options.background}"/>`,
-		...drawn.shapes,
-		`<g font-family="${drawn.font}" font-size="${drawn.fontSize}" xml:space="preserve">`,
-		...drawn.texts,
+		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${total}" viewBox="0 0 ${width} ${total}">`,
+		`<rect width="${width}" height="${total}" rx="14" fill="${options.background}"/>`,
+		...shapes,
+		`<g font-family="${font}" font-size="${fontSize}" xml:space="preserve">`,
+		...texts,
 		"</g>",
 		"</svg>",
 		"",
 	].join("\n");
-}
-
-/** The same drawing as a group, so a picture can hold several of them. */
-export function terminalGroup(
-	lines: readonly string[],
-	options: SvgOptions,
-): { width: number; height: number; group: string } {
-	const drawn = terminal(lines, options);
-	return {
-		width: drawn.width,
-		height: drawn.height,
-		group: [
-			`<rect width="${drawn.width}" height="${drawn.height}" rx="14" fill="${options.background}"/>`,
-			...drawn.shapes,
-			`<g font-family="${drawn.font}" font-size="${drawn.fontSize}" xml:space="preserve">`,
-			...drawn.texts,
-			"</g>",
-		].join("\n"),
-	};
 }

@@ -12,7 +12,7 @@ import { renderSegments, type SegmentId } from "../render/segments.ts";
 import type { HeaderStyle } from "../settings.ts";
 import type { Screen } from "./screen.ts";
 
-export const PIXELS = [
+const PIXELS = [
 	"..............",
 	".############.",
 	"##############",
