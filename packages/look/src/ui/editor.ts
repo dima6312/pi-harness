@@ -189,8 +189,11 @@ function withoutSoftwareCursor(line: string): string {
 }
 
 function fill(line: string, width: number): string {
+	const cells = visibleWidth(line);
+	// Measuring is cheap, and cutting a line that already fits is not.
+	if (cells <= width) return line + " ".repeat(width - cells);
 	const clipped = truncateToWidth(line, width, "");
-	return `${clipped}${" ".repeat(Math.max(0, width - visibleWidth(clipped)))}`;
+	return clipped + " ".repeat(Math.max(0, width - visibleWidth(clipped)));
 }
 
 export function applyCursor(tui: TUI, style: CursorStyle): void {

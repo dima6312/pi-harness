@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { GLYPH } from "@adeildo/pi-kit";
+import { CUT, GLYPH } from "@adeildo/pi-kit";
 import { keyText } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
@@ -161,7 +161,10 @@ export class HeaderComponent implements Component {
 			),
 		);
 		lines.push("");
-		return lines.map((line) => truncateToWidth(line, width, ""));
+		// Every line is drawn to the width already, and measuring is cheaper than cutting.
+		return lines.map((line) =>
+			visibleWidth(line) > width ? truncateToWidth(line, width, "") : line,
+		);
 	}
 
 	/** The art, its rows lit from the feet up while it rises. */
@@ -227,7 +230,7 @@ export class HeaderComponent implements Component {
 			.join(separator);
 		const last = this.#source.lastVisit();
 		return [first, ...this.#notes(notes, paint, last, this.#screen.snapshot().now), ""].map(
-			(line) => truncateToWidth(` ${line}`, width, "..."),
+			(line) => truncateToWidth(` ${line}`, width, CUT),
 		);
 	}
 
@@ -284,8 +287,11 @@ export function halfBlocks(pixels: readonly string[]): string[] {
 }
 
 function pad(text: string, width: number): string {
-	const clipped = truncateToWidth(text, Math.max(0, width), "...");
-	return `${clipped}${" ".repeat(Math.max(0, width - visibleWidth(clipped)))}`;
+	const cells = visibleWidth(text);
+	// Measuring is cheap, and cutting a line that already fits is not.
+	if (cells <= width) return text + " ".repeat(width - cells);
+	const clipped = truncateToWidth(text, width, CUT);
+	return clipped + " ".repeat(Math.max(0, width - visibleWidth(clipped)));
 }
 
 function center(text: string, width: number): string {

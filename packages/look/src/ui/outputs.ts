@@ -1,7 +1,7 @@
 // Alt+O: a tool call's whole output in a frame you scroll, newest call first. Pi only shows a long
 // output cut in the transcript, and Ctrl+O opens every call at once; here one call opens at a time,
 // and the arrows move between calls.
-import { frame, frameInner, FRAME_Y, GLYPH, type KeyHint } from "@adeildo/pi-kit";
+import { CUT, frame, frameInner, FRAME_Y, GLYPH, type KeyHint } from "@adeildo/pi-kit";
 import type { SessionEntry, Theme } from "@earendil-works/pi-coding-agent";
 import {
 	type Component,
@@ -73,6 +73,8 @@ export class OutputView implements Component {
 	#index = 0;
 	#scroll = 0;
 	#width = 80;
+	/** The wrapped lines of what is on screen, wrapped again only when it or the width changes. */
+	#wrapped: { output: Output; inner: number; lines: string[] } | undefined;
 
 	constructor(options: OutputViewOptions) {
 		this.#options = options;
@@ -120,14 +122,16 @@ export class OutputView implements Component {
 		});
 	}
 
-	invalidate(): void {}
+	invalidate(): void {
+		this.#wrapped = undefined;
+	}
 
 	/** The mark, the tool and what it pointed at, cut so the count beside it still fits. */
 	#title(output: Output): string {
 		const { theme } = this.#options;
 		const mark = output.failed ? theme.fg("error", GLYPH.cross) : theme.fg("success", GLYPH.check);
 		const room = Math.max(8, Math.floor(this.#width / 2) - output.tool.length);
-		const target = truncateToWidth(output.target, room, "...");
+		const target = truncateToWidth(output.target, room, CUT);
 		return `${mark} ${theme.fg("toolTitle", theme.bold(output.tool))} ${theme.fg("muted", target)}`;
 	}
 
@@ -138,7 +142,11 @@ export class OutputView implements Component {
 
 	#lines(output: Output): string[] {
 		const inner = frameInner(this.#width);
-		return output.lines.flatMap((line) => wrapTextWithAnsi(line, inner));
+		const known = this.#wrapped;
+		if (known !== undefined && known.output === output && known.inner === inner) return known.lines;
+		const lines = output.lines.flatMap((line) => wrapTextWithAnsi(line, inner));
+		this.#wrapped = { output, inner, lines };
+		return lines;
 	}
 
 	#page(): number {

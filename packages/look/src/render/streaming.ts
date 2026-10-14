@@ -1,12 +1,14 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
 // While the model writes an edit or a write, pi shows the path, or the first lines of the file,
 // which stopped changing long ago. These show the end instead: the lines arriving, with a cursor
 // where the model is writing, and what it has written so far on the bottom rule.
-import { GLYPH } from "@adeildo/pi-kit";
+import { GLYPH, isObject } from "@adeildo/pi-kit";
 import { getLanguageFromPath, highlightCode, type Theme } from "@earendil-works/pi-coding-agent";
+
+import { tabs } from "./format.ts";
 
 /** What the frame shows inside, and the counts it adds to the bottom rule. */
 export interface Stream {
@@ -166,16 +168,15 @@ function targetOf(path: string, context: StreamContext): Target {
 	const full = resolve(context.cwd, path);
 	let target: Target = { path, exists: false };
 	try {
-		if (existsSync(full)) {
-			const info = statSync(full);
-			target = { path, exists: true };
-			if (info.isFile() && info.size <= COUNT_LIMIT) {
-				const text = readFileSync(full, "utf8");
-				target.lines = text === "" ? 0 : text.replace(/\n$/, "").split("\n").length;
-			}
-		}
-	} catch {
+		const info = statSync(full);
 		target = { path, exists: true };
+		if (info.isFile() && info.size <= COUNT_LIMIT) {
+			const text = readFileSync(full, "utf8");
+			target.lines = text === "" ? 0 : text.replace(/\n$/, "").split("\n").length;
+		}
+	} catch (error) {
+		// A path that is not there is a new file; one that cannot be read is still a file.
+		target = { path, exists: (error as NodeJS.ErrnoException).code !== "ENOENT" };
 	}
 	context.state.streamTarget = target;
 	return target;
@@ -194,8 +195,7 @@ function pathOf(args: unknown): string | undefined {
 }
 
 function field(args: unknown, key: string): string | undefined {
-	if (typeof args !== "object" || args === null) return undefined;
-	const value = (args as Record<string, unknown>)[key];
+	const value = isObject(args) ? args[key] : undefined;
 	return typeof value === "string" ? value : undefined;
 }
 
@@ -206,16 +206,12 @@ export interface PartialEdit {
 
 /** The edits written so far. The last one may have its old text and nothing else yet. */
 function editsOf(args: unknown): PartialEdit[] {
-	if (typeof args !== "object" || args === null) return [];
-	const { edits } = args as { edits?: unknown };
+	if (!isObject(args)) return [];
+	const { edits } = args;
 	const list = Array.isArray(edits) ? edits : [args];
 	return list.flatMap((edit) => {
 		const oldText = field(edit, "oldText");
 		const newText = field(edit, "newText");
 		return oldText === undefined && newText === undefined ? [] : [{ oldText, newText }];
 	});
-}
-
-function tabs(text: string): string {
-	return text.replace(/\t/g, "   ");
 }
