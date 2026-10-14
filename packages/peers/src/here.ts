@@ -30,6 +30,8 @@ export const PEER_NOTE = "pi-peers:note";
 export const PEER_BROADCAST = "pi-peers:broadcast";
 /** Older messages and requests are history, never delivered or bid on. */
 const RECENT_MS = 10 * 60_000;
+/** A session that has shown nothing yet waits this long before it is worth telling the agent about. */
+const ANNOUNCE_MS = 4_000;
 /** A message still being written, shown live and never logged. Stale ones are a crashed writer. */
 const TYPING_STALE_MS = 15_000;
 const TYPING_EVERY_MS = 100;
@@ -96,6 +98,8 @@ export class Here {
 	readonly #fits = new Map<string, Fit>();
 	/** The peers this session has already been told about, and the name each had. */
 	#known = new Map<string, string>();
+	/** Peers with nothing to show yet, and when this session first saw them. */
+	#seen = new Map<string, number>();
 	/** Your words handed to the agent, waiting for its model to read them. */
 	readonly #unread = new Map<string, string>();
 	#typedAt = 0;
@@ -316,30 +320,32 @@ export class Here {
 	#announce(): void {
 		const names = this.names();
 		const live = this.live().filter((peer) => peer.session !== this.session);
-		const now = new Map(
+		const at = this.#now();
+		const handles = new Map(
 			live.map((peer) => [peer.session, names.get(peer.session)?.handle ?? "anon"]),
 		);
+		/** Who the agent is being told about now, and the name used. */
+		const told = new Map<string, string>();
 		const lines: string[] = [];
+
 		for (const peer of live) {
-			if (this.#known.has(peer.session)) continue;
-			const named = names.get(peer.session);
-			const doing = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "doing");
-			const waiting = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "waiting");
-			const edited = [...peer.edited.keys()].slice(-3);
-			const parts = [
-				`${named?.handle ?? "another agent"} is working in this folder`,
-				peer.title === undefined ? "" : ` on ${peer.title}`,
-			];
-			lines.push(`${parts.join("")}.`);
-			if (doing.length > 0) lines.push(`  doing: ${doing.map((task) => task.text).join("; ")}`);
-			if (waiting.length > 0)
-				lines.push(`  waiting: ${waiting.map((task) => task.text).join("; ")}`);
-			if (edited.length > 0) lines.push(`  edited: ${edited.join(", ")}`);
+			const handle = handles.get(peer.session) ?? "anon";
+			if (this.#known.has(peer.session)) {
+				told.set(peer.session, handle);
+				continue;
+			}
+			// A session that opened and has done nothing yet may be on its way out, so it waits a moment.
+			if (!worthTelling(peer) && this.#fresh(peer.session, at)) continue;
+			this.#seen.delete(peer.session);
+			lines.push(...peerLines(peer, names.get(peer.session)?.handle ?? "another agent"));
+			told.set(peer.session, handle);
 		}
+
 		// A session that left is not in the names any more, so use the name it had while it was here.
 		for (const [session, handle] of this.#known)
-			if (!now.has(session)) lines.push(`${handle} left this folder.`);
-		this.#known = now;
+			if (!told.has(session)) lines.push(`${handle} left this folder.`);
+		for (const session of this.#seen.keys()) if (!handles.has(session)) this.#seen.delete(session);
+		this.#known = told;
 		if (lines.length === 0) return;
 		this.#hooks.sendMessage(
 			{
@@ -349,6 +355,16 @@ export class Here {
 			},
 			{ deliverAs: "nextTurn" },
 		);
+	}
+
+	/** Whether a peer with nothing to show yet is still inside the wait before it is told. */
+	#fresh(session: string, at: number): boolean {
+		const seen = this.#seen.get(session);
+		if (seen === undefined) {
+			this.#seen.set(session, at);
+			return true;
+		}
+		return at - seen < ANNOUNCE_MS;
 	}
 
 	#consider(message: Posted): void {
@@ -558,6 +574,36 @@ function sendOptions(mode: Delivery): {
 		case "next-turn":
 			return { deliverAs: "nextTurn" };
 	}
+}
+
+/**
+ * What the agent is told about one colleague: who it is, what it is doing, and what it touched.
+ */
+function peerLines(peer: Peer, who: string): string[] {
+	const doing = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "doing");
+	const waiting = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "waiting");
+	const edited = [...peer.edited.keys()].slice(-3);
+	const title = peer.title === undefined ? "" : ` on ${peer.title}`;
+	const lines = [`${who} is working in this folder${title}.`];
+	if (doing.length > 0) lines.push(`  doing: ${doing.map((task) => task.text).join("; ")}`);
+	if (waiting.length > 0) lines.push(`  waiting: ${waiting.map((task) => task.text).join("; ")}`);
+	if (edited.length > 0) lines.push(`  edited: ${edited.join(", ")}`);
+	return lines;
+}
+
+/**
+ * Whether a session has shown anything worth telling the agent about: a name, a title, work, or a
+ * message. One with none of it may be a bench or a tool that opens pi for a moment.
+ */
+function worthTelling(peer: Peer): boolean {
+	return (
+		peer.handle !== undefined ||
+		peer.title !== undefined ||
+		peer.tasks !== undefined ||
+		peer.edited.size > 0 ||
+		peer.ran.length > 0 ||
+		peer.commits.length > 0
+	);
 }
 
 /** What the agent's model reads. A peer's words are never the operator's. */

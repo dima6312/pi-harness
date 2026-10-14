@@ -355,4 +355,28 @@ describe("who else is here", () => {
 		expect(a.notes[0]?.text).toContain("doing: Move the users table");
 		expect(a.notes[0]?.text).toContain("edited: src/db.ts");
 	});
+
+	test("a session that opens and leaves without doing anything is never mentioned", () => {
+		const a = session("a");
+		const b = session("b");
+		a.here.sync();
+		expect(a.notes).toHaveLength(0);
+
+		b.here.close();
+		a.here.sync();
+		expect(a.notes).toHaveLength(0);
+	});
+
+	test("a session with nothing to show is mentioned once it has been here a moment", () => {
+		const a = session("a");
+		const b = session("b");
+		a.here.sync();
+		expect(a.notes).toHaveLength(0);
+
+		now += 5_000;
+		b.here.log("session.state", { state: "idle" });
+		a.here.sync();
+		expect(a.notes).toHaveLength(1);
+		expect(a.notes[0]?.text).toContain("is working in this folder");
+	});
 });

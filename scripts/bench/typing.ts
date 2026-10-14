@@ -11,6 +11,7 @@ import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync 
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { benchEnv } from "./env.ts";
 import { type Cost, ours, readProfile, report, under } from "./profile.ts";
 
 /** Long enough to see the cost, short enough to read the numbers: the line the first bench typed. */
@@ -57,12 +58,7 @@ let lastOutput = performance.now();
 const spawnedAt = performance.now();
 const child = Bun.spawn(["pi", ...(session === undefined ? [] : ["--session", session])], {
 	cwd: root,
-	env: {
-		...process.env,
-		TERM: "xterm-256color",
-		COLORTERM: "truecolor",
-		NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --cpu-prof --cpu-prof-dir=${dir}`.trim(),
-	},
+	env: benchEnv(process.env, dir),
 	terminal: {
 		cols: COLS,
 		rows: ROWS,
