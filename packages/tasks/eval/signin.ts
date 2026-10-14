@@ -7,10 +7,12 @@ import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
 
+import { withClaudeCodeBetas } from "../../providers/src/subscription/betas.ts";
 import { userAgent } from "../../providers/src/subscription/billing.ts";
+import { CLAUDE_CODE_VERSION, turnBetas } from "../../providers/src/subscription/claude-code.ts";
 import { billToPlan } from "../../providers/src/subscription/payload.ts";
 
-const CLAUDE_CODE = "2.1.280";
+const CLAUDE_CODE = CLAUDE_CODE_VERSION;
 
 /** Pi's models, with every Anthropic request signed by a harness account and billed to its plan. */
 export async function signedIn(): Promise<ModelRegistry> {
@@ -28,7 +30,8 @@ export async function signedIn(): Promise<ModelRegistry> {
 					typeof payload === "object" && payload !== null
 						? billToPlan(payload as Record<string, unknown>, CLAUDE_CODE)
 						: undefined;
-				return (await options?.onPayload?.(billed ?? payload, model)) ?? billed;
+				const next = billed === undefined ? undefined : withClaudeCodeBetas(billed, turnBetas());
+				return (await options?.onPayload?.(next ?? payload, model)) ?? next;
 			},
 		});
 	return signed;

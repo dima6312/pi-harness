@@ -106,7 +106,7 @@ In `~/.pi/agent/extensions/pi-harness/settings.json`:
 | `cache.strategy`         | `"learned"`        | How refreshes between runs are decided: `"learned"`, `"pi"`, `"minutes"` or `"off"`            |
 | `cache.upTo`             | `20`               | Minutes `"minutes"` keeps refreshing after the last request                                    |
 
-The Claude plan billing comes from [pi-claude-max](https://github.com/bradennss/pi-claude-max) by Braden Lamb, MIT. This is a rewrite: it pins the version, carries pi's cache breakpoints over instead of dropping the one-hour TTL, moves every system block after the identity instead of only the second, asks for the betas Claude Code asks for, and checks for an OAuth token instead of the provider name.
+The Claude plan billing comes from [pi-claude-max](https://github.com/bradennss/pi-claude-max) by Braden Lamb, MIT. This is a rewrite: it pins the version, carries pi's cache breakpoints over instead of dropping the one-hour TTL, moves every system block after the identity instead of only the second, carries the betas Claude Code carries, and checks for an OAuth token instead of the provider name.
 
 Several accounts per provider, with a switch to the next one when a limit hits, follow [pi-multiprovider](https://github.com/monotykamary/pi-multiprovider) by monotykamary, also MIT. This one keeps them inside pi's own login, with no OAuth of its own.
 

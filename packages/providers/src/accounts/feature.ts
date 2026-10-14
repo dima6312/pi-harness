@@ -3,7 +3,7 @@ import { ACCOUNT_STATE, type AccountState, defineFeature, isObject } from "@adei
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { type AutocompleteItem, Key } from "@earendil-works/pi-tui";
 
-import { claudeCodeVersion } from "../subscription/feature.ts";
+import { CLAUDE_CODE_VERSION } from "../subscription/claude-code.ts";
 import { anthropicQuota } from "../usage/anthropic.ts";
 import { Quota } from "../usage/quota.ts";
 import { resetIn, windowsOf } from "../usage/read.ts";
@@ -36,9 +36,7 @@ export const accounts = defineFeature({
 			limited: new Map(),
 			usage: new Map(),
 			quota: new Quota({
-				anthropic: anthropicQuota(() =>
-					scope.has("subscription") ? claudeCodeVersion.get(scope) : claudeCodeVersion.default,
-				),
+				anthropic: anthropicQuota(() => CLAUDE_CODE_VERSION),
 			}),
 		};
 

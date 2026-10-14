@@ -10,7 +10,7 @@ export { accounts } from "./accounts/feature.ts";
 export { onAuthFailure, onLimit, WHEN_LIMITED, type WhenLimited } from "./accounts/settings.ts";
 export { accountsPath, AccountStore } from "./accounts/store.ts";
 export { cache } from "./cache/feature.ts";
-export { claudeCodeVersion, subscription } from "./subscription/feature.ts";
+export { betas, subscription } from "./subscription/feature.ts";
 
 export default function piProviders(pi: ExtensionAPI): void {
 	createApp(pi, { name: NAME }).use(subscription).use(accounts).use(cache).build();
