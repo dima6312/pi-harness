@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { callTarget, formatCost, formatTokens } from "../src/index.ts";
+import { callTarget, formatCost, formatTokens, mergeBetas } from "../src/index.ts";
 
 describe("how a number reads", () => {
 	test("a token count keeps its precision while it is small", () => {
@@ -38,5 +38,21 @@ describe("what a call pointed at", () => {
 		expect(callTarget({ content: "text" })).toBe("");
 		expect(callTarget(undefined)).toBe("");
 		expect(callTarget(["a"])).toBe("");
+	});
+});
+
+describe("the betas a request carries", () => {
+	test("keeps what pi computed, adds ours once, and drops what is not a name", () => {
+		const first = mergeBetas(["pi-beta", 42], ["ours"]);
+		expect(first.betas).toEqual(["pi-beta", "ours"]);
+		expect(first.added).toBe(true);
+
+		const again = mergeBetas(first.betas, ["ours"]);
+		expect(again.added).toBe(false);
+	});
+
+	test("a payload with no list yet, or a list that is not one, still gets ours", () => {
+		expect(mergeBetas(undefined, ["ours"]).betas).toEqual(["ours"]);
+		expect(mergeBetas("nope", ["ours"]).betas).toEqual(["ours"]);
 	});
 });
