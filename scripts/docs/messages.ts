@@ -2,12 +2,16 @@
 import {
 	AssistantMessageComponent,
 	getMarkdownTheme,
+	type Theme,
 	UserMessageComponent,
 } from "@earendil-works/pi-coding-agent";
 
-/** The width of the screen the message is drawn on, so its background reaches the edge. */
-export function userMessage(text: string, width: number): string[] {
-	return new UserMessageComponent(text, getMarkdownTheme(), 0).render(width);
+import { framed } from "../../packages/look/src/ui/user-message.ts";
+
+/** Your message in the look's frame, across the width of the screen. */
+export function userMessage(text: string, width: number, theme: Theme): string[] {
+	const body = new UserMessageComponent(text, getMarkdownTheme(), 1).render(width - 2);
+	return framed(body, width, theme, "\u{f007}");
 }
 
 export function assistantText(text: string, width: number): string[] {

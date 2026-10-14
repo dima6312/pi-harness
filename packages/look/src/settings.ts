@@ -19,7 +19,7 @@ const STATUS_LABELS: Partial<Record<SegmentId, string>> = {
 	[PERMISSION_STATUS]: "permission mode",
 };
 
-export const SECTIONS = ["Editor", "Slots", "Footer", "Start screen", "Working line"];
+export const SECTIONS = ["Editor", "Slots", "Footer", "Start screen", "Working line", "Transcript"];
 
 export type HeaderStyle = "card" | "compact" | "off";
 export type SeparatorStyle = "dot" | "bar" | "slash" | "space";
@@ -223,6 +223,18 @@ export const peek = setting({
 	},
 });
 
+export const userFrame = setting({
+	id: "look.userFrame",
+	default: true,
+	decoder: boolean,
+	ui: {
+		section: "Transcript",
+		label: "Your messages",
+		description:
+			"Your messages in a frame like the tool calls', named you, with no blank row above and below the text. Off keeps pi's block.",
+	},
+});
+
 export const LOOK_SETTINGS = [
 	strip,
 	stripRight,
@@ -241,4 +253,5 @@ export const LOOK_SETTINGS = [
 	gaugeCells,
 	labels,
 	peek,
+	userFrame,
 ];

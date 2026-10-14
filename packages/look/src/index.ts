@@ -45,12 +45,14 @@ import {
 	stripRight,
 	topLeft,
 	topRight,
+	userFrame,
 } from "./settings.ts";
 import { applyCursor, LookEditor } from "./ui/editor.ts";
 import { FooterComponent, StripComponent } from "./ui/footer.ts";
 import { HeaderComponent, type LoadedCounts } from "./ui/header.ts";
 import type { Screen, SlotName } from "./ui/screen.ts";
 import { registerToolFrames } from "./ui/tool-frame.ts";
+import { frameUserMessages } from "./ui/user-message.ts";
 import { type Activity, describe, draftedTool } from "./ui/working.ts";
 
 export { SEGMENT_IDS, SEGMENTS, type SegmentId } from "./render/segments.ts";
@@ -94,6 +96,10 @@ export const look = defineFeature({
 
 		const screen = createScreen(scope, live, reader, telemetry);
 		registerToolFrames(scope);
+		frameUserMessages(() => {
+			if (live.ctx === undefined || !userFrame.get(scope)) return undefined;
+			return { theme: live.ctx.ui.theme, set: resolveIcons(icons.get(scope)).set };
+		});
 		const repaint = () => live.repaint?.();
 
 		for (const entry of LOOK_SETTINGS) entry.listen(scope, repaint);

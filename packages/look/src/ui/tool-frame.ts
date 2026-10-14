@@ -370,7 +370,7 @@ interface ResultParts {
 }
 
 /** One rule of the frame: two corners, and what sits on the left. */
-function rule(
+export function rule(
 	edge: "top" | "bottom",
 	left: string,
 	width: number,
@@ -505,7 +505,7 @@ function withoutBlanks(lines: readonly string[]): string[] {
 	return lines.filter((line) => !isBlank(line));
 }
 
-function isBlank(line: string | undefined): boolean {
+export function isBlank(line: string | undefined): boolean {
 	// A line of nothing but colour codes reads as blank, and pi's renderers end their parts with one.
 	return stripTerminalSequences(line ?? "").trim() === "";
 }

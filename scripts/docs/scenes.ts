@@ -244,7 +244,7 @@ function conversation(theme: Theme): string[] {
 	const look = lookParts(theme, "");
 	const opening = [
 		...look.header,
-		...userMessage("commit with a semantic message and push", WIDTH),
+		...userMessage("commit with a semantic message and push", WIDTH, theme),
 		...assistantText("Running the tests first.", WIDTH),
 		...drawCalls(
 			[
