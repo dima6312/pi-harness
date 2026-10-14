@@ -15,6 +15,8 @@ export class ScreenModel {
 	tab = 0;
 	query = "";
 	#cursor: string | undefined;
+	/** Built once per tab, query and list, and dropped by the four mutators that change one of them. */
+	#lines: Line[] | undefined;
 
 	constructor(tabs: TabView[]) {
 		this.tabs = tabs;
@@ -29,13 +31,16 @@ export class ScreenModel {
 	refresh(tabs: TabView[]): void {
 		const title = this.tabs[this.tab]?.title;
 		this.tabs = tabs;
+		this.#lines = undefined;
 		const index = tabs.findIndex((entry) => entry.title === title);
 		this.tab = index === -1 ? 0 : index;
 		if (this.#index() === -1) this.#cursor = this.#firstKey();
 	}
 
+	/** The lines of the current tab, or of the search. Shared between calls until one of them changes. */
 	lines(): Line[] {
-		return this.searching ? this.#results() : this.#tabLines();
+		this.#lines ??= this.searching ? this.#results() : this.#tabLines();
+		return this.#lines;
 	}
 
 	selected(): Extract<Line, { kind: "row" }> | undefined {
@@ -77,6 +82,7 @@ export class ScreenModel {
 	switchTab(delta: number): void {
 		if (this.searching || this.tabs.length === 0) return;
 		this.tab = (this.tab + delta + this.tabs.length) % this.tabs.length;
+		this.#lines = undefined;
 		this.#cursor = this.#firstKey();
 	}
 
@@ -85,12 +91,14 @@ export class ScreenModel {
 		const index = this.tabs.findIndex((entry) => entry.title.toLowerCase().startsWith(wanted));
 		if (index === -1) return false;
 		this.tab = index;
+		this.#lines = undefined;
 		this.#cursor = this.#firstKey();
 		return true;
 	}
 
 	setQuery(query: string): void {
 		this.query = query;
+		this.#lines = undefined;
 		this.#cursor = this.#firstKey();
 	}
 
@@ -132,7 +140,9 @@ export class ScreenModel {
 		const groups = new Map<string, typeof found>();
 		for (const hit of found) {
 			const title = `${hit.tab} ${GLYPH.chevron} ${hit.row.section}`;
-			groups.set(title, [...(groups.get(title) ?? []), hit]);
+			const group = groups.get(title) ?? [];
+			group.push(hit);
+			groups.set(title, group);
 		}
 		const lines: Line[] = [];
 		for (const [title, hits] of groups) {

@@ -378,6 +378,26 @@ describe("the screen model", () => {
 		expect(model.selected()?.row.id).toBe("mode");
 	});
 
+	test("keeps the lines it built until the list, the tab or the query changes", () => {
+		const model = new ScreenModel(TABS);
+		const first = model.lines();
+		expect(model.lines()).toBe(first);
+
+		model.switchTab(1);
+		const otherTab = model.lines();
+		expect(otherTab).not.toBe(first);
+		expect(model.lines()).toBe(otherTab);
+
+		model.refresh([...TABS]);
+		expect(model.lines()).not.toBe(otherTab);
+
+		model.setQuery("o");
+		const found = model.lines();
+		expect(model.lines()).toBe(found);
+		expect(found).not.toEqual(otherTab);
+		expect(found.some((line) => line.kind === "heading")).toBe(true);
+	});
+
 	test("search spans every tab, groups by tab and section, and keeps the tabs' order", () => {
 		const model = new ScreenModel(TABS);
 		model.setQuery("o");

@@ -1,6 +1,6 @@
 // Where the settings files live and how they are read and written. Every app shares them, so a
 // write keeps every key it does not know.
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { CONFIG_DIR_NAME, getAgentDir } from "@earendil-works/pi-coding-agent";
@@ -23,12 +23,13 @@ export function projectSettingsPath(cwd: string): string {
 }
 
 export function readSettingsFile(path: string): SettingsFile {
-	if (!existsSync(path)) return { data: {}, warnings: [] };
 	try {
 		const data: unknown = JSON.parse(readFileSync(path, "utf8"));
 		if (isObject(data)) return { data, warnings: [] };
 		return { data: {}, warnings: [`${path}: must contain a JSON object; using the defaults`] };
 	} catch (error) {
+		// A file that is not there is a fresh start, not a warning.
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") return { data: {}, warnings: [] };
 		const reason = error instanceof Error ? error.message : String(error);
 		return { data: {}, warnings: [`${path}: could not be read (${reason}); using the defaults`] };
 	}
