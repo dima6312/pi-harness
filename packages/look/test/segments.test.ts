@@ -356,7 +356,7 @@ describe("labels", () => {
 				"answered in 0:08  2 calls",
 				"last call 1.4s wait  900ms thought  v31 tok/s",
 				"in 85k  out 347",
-				"cache 97%",
+				"last prompt 97% cached",
 				"ctx 43% ###----- 431k/1M",
 			],
 		);

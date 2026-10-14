@@ -478,7 +478,10 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 			const value =
 				hit >= 90 ? paint.role("done", percent(hit)) : paint.stress(100 - hit, percent(hit));
 			return {
-				text: options.labels ? `${paint.dim("cache ")}${value}` : `${icon}${value}`,
+				// The numbers around it are the session's, so the label says this one is the last prompt's.
+				text: options.labels
+					? `${paint.dim("last prompt ")}${value}${paint.dim(" cached")}`
+					: `${icon}${value}`,
 				compact: options.labels ? `${paint.dim("cache ")}${value}` : `${icon}${value}`,
 			};
 		},
