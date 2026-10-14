@@ -1,3 +1,4 @@
+import { callTarget } from "@adeildo/pi-kit";
 import {
 	type ContextEditEntryDraft,
 	estimateTokens,
@@ -192,16 +193,8 @@ function cutArguments(
 }
 
 export function describeCall(name: string, args: unknown): string {
-	const fields = typeof args === "object" && args !== null ? (args as Record<string, unknown>) : {};
-	const target = [
-		fields.path,
-		fields.file_path,
-		fields.command,
-		fields.query,
-		fields.url,
-		fields.pattern,
-	].find((value): value is string => typeof value === "string" && value.trim() !== "");
-	return `${name} ${clip(target ?? JSON.stringify(fields))}`.trim();
+	const target = callTarget(args);
+	return `${name} ${clip(target === "" ? JSON.stringify(args ?? {}) : target)}`.trim();
 }
 
 /**

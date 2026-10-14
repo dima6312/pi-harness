@@ -2,6 +2,7 @@
 // A request reads the cache up to where the last one wrote it, as long as nothing before that point
 // changed and the cache was still alive. So each miss has one of a few causes, and the entries
 // between it and the request before it say which.
+import { formatCost, formatTokens } from "@adeildo/pi-kit";
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 
 /** A request that wrote at least this much again counts as a miss: a turn only writes its tail. */
@@ -123,16 +124,6 @@ export function extraCost(
 	return (tokens * Math.max(0, prices.cacheWrite - prices.cacheRead)) / 1_000_000;
 }
 
-/** Readable short counts: 506k, 4.4M. */
-function short(count: number): string {
-	if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
-	return `${Math.round(count / 1000)}k`;
-}
-
-function dollars(amount: number): string {
-	return amount >= 10 ? `$${Math.round(amount)}` : `$${amount.toFixed(2)}`;
-}
-
 /** One line for the session: how many misses, what they cost, and their causes, biggest first. */
 export function missesSummary(
 	misses: readonly Miss[],
@@ -149,9 +140,9 @@ export function missesSummary(
 			return `${count} ${count === 1 ? cause : PLURAL[cause]}`;
 		});
 	const cost =
-		prices === undefined ? "" : `, ${dollars(extraCost(written, prices))} over reading them`;
+		prices === undefined ? "" : `, ${formatCost(extraCost(written, prices))} over reading them`;
 	const count = misses.length === 1 ? "1 miss" : `${misses.length} misses`;
-	return `${count} wrote ${short(written)} tokens again${cost}: ${causes.join(", ")}`;
+	return `${count} wrote ${formatTokens(written)} tokens again${cost}: ${causes.join(", ")}`;
 }
 
 /** One miss: its cause, what it wrote again and what that cost, and the detail that shows the cause. */
@@ -159,8 +150,8 @@ export function missLine(
 	miss: Miss,
 	prices: { cacheRead: number; cacheWrite: number } | undefined,
 ): string {
-	const cost = prices === undefined ? "" : `, ${dollars(extraCost(miss.written, prices))}`;
-	return `${miss.cause}: ${short(miss.written)} written again${cost}${DETAIL[miss.cause](miss)}`;
+	const cost = prices === undefined ? "" : `, ${formatCost(extraCost(miss.written, prices))}`;
+	return `${miss.cause}: ${formatTokens(miss.written)} written again${cost}${DETAIL[miss.cause](miss)}`;
 }
 
 const PLURAL: Record<MissCause, string> = {
@@ -188,5 +179,5 @@ const DETAIL: Record<MissCause, (miss: Miss) => string> = {
 function shrank(miss: Miss): string {
 	return miss.before === undefined
 		? ""
-		: ` (context ${short(miss.before)} to ${short(miss.prompt)})`;
+		: ` (context ${formatTokens(miss.before)} to ${formatTokens(miss.prompt)})`;
 }

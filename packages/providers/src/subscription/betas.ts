@@ -1,3 +1,5 @@
+import { mergeBetas } from "@adeildo/pi-kit";
+
 type Payload = Record<string, unknown>;
 
 /**
@@ -5,12 +7,6 @@ type Payload = Record<string, unknown>;
  * the moment an extension sets an `anthropic-beta` header, so this grows `payload.betas` instead.
  */
 export function withClaudeCodeBetas(payload: Payload, wanted: readonly string[]): Payload {
-	const betas = Array.isArray(payload.betas) ? payload.betas.filter(isString) : [];
-	const missing = wanted.filter((beta) => !betas.includes(beta));
-	if (missing.length === 0) return payload;
-	return { ...payload, betas: [...betas, ...missing] };
-}
-
-function isString(value: unknown): value is string {
-	return typeof value === "string";
+	const { betas, added } = mergeBetas(payload.betas, wanted);
+	return added ? { ...payload, betas } : payload;
 }

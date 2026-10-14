@@ -1,4 +1,4 @@
-import { isObject, GLYPH } from "@adeildo/pi-kit";
+import { formatCost, formatTokens, isObject, GLYPH } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
@@ -127,10 +127,6 @@ export function hiddenCalls(branch: readonly unknown[]): Set<string> {
 	return calls;
 }
 
-export function tokens(count: number): string {
-	return count < 1000 ? String(count) : `${Math.round(count / 1000)}k`;
-}
-
 export function outputsHidden(count: number): string {
 	return count === 1 ? "1 old tool output" : `${count} old tool outputs`;
 }
@@ -139,20 +135,16 @@ export function outputsHidden(count: number): string {
 export function costRows(record: PruneRecord): [string, string][] {
 	const { rewrite, saving } = record;
 	if (rewrite === undefined || saving === undefined || saving < 0.005) return [];
-	if (rewrite < 0.005) return [["saved on each request after", money(saving)]];
+	if (rewrite < 0.005) return [["saved on each request after", formatCost(saving)]];
 	const paid = record.server
 		? "cache rewrite on this request"
 		: "cache rewrite on the next request, at most";
 	const requests = Math.ceil(rewrite / saving);
 	const back = requests === 1 ? "back in 1 request" : `back in ${requests} requests`;
 	return [
-		[paid, money(rewrite)],
-		[`saved on each request after, ${back}`, money(saving)],
+		[paid, formatCost(rewrite)],
+		[`saved on each request after, ${back}`, formatCost(saving)],
 	];
-}
-
-function money(dollars: number): string {
-	return dollars < 0.01 ? "under $0.01" : `~$${dollars.toFixed(2)}`;
 }
 
 /** Laid out like the judge's rulings: a glyph, a label, the detail, and numbers on the right edge. */
@@ -175,14 +167,14 @@ export class PruneEntry implements Component {
 		// Glyph on the tool box's border column, text on its content column, numbers on its edge.
 		const edge = width - 1;
 		const head = ` ${theme.fg("accent", `${GLYPH.ringDotted} ${server ? "cleared" : "pruned"}`)}  `;
-		const stats = `${tokens(before)} ${GLYPH.right} ${tokens(after)} tokens`;
+		const stats = `${formatTokens(before)} ${GLYPH.right} ${formatTokens(after)} tokens`;
 		const lines = [row(head, theme.fg("text", outputsHidden(hidden.length)), stats, edge, theme)];
 		for (const [label, amount] of costRows(this.#record))
 			lines.push(row(INDENT, theme.fg("muted", label), amount, edge, theme));
 		if (this.#expanded) {
 			const shown = hidden.slice(0, LISTED);
 			for (const { call, tokens: size } of shown)
-				lines.push(row(INDENT, theme.fg("muted", call), tokens(size), edge, theme));
+				lines.push(row(INDENT, theme.fg("muted", call), formatTokens(size), edge, theme));
 			const more = hidden.length - shown.length;
 			if (more > 0) lines.push(INDENT + theme.fg("dim", `and ${more} more`));
 		}

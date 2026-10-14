@@ -440,11 +440,11 @@ describe("the line a prune leaves", () => {
 
 	test("says what the next request pays to rewrite the cache, and when that pays back", () => {
 		expect(costRows(record)).toEqual([
-			["cache rewrite on the next request, at most", "~$1.12"],
-			["saved on each request after, back in 5 requests", "~$0.23"],
+			["cache rewrite on the next request, at most", "$1.116"],
+			["saved on each request after, back in 5 requests", "$0.227"],
 		]);
 		expect(costRows({ ...record, rewrite: 0 })).toEqual([
-			["saved on each request after", "~$0.23"],
+			["saved on each request after", "$0.227"],
 		]);
 		expect(priced({ ...billed, cacheRead: 0 }, 0, 455_000, 198_000)).toBeUndefined();
 	});
@@ -453,8 +453,8 @@ describe("the line a prune leaves", () => {
 		const lines = new PruneEntry(record, true, plain).render(80);
 		expect(lines.slice(0, 3)).toEqual([
 			` \u25cc pruned  2 old tool outputs${" ".repeat(32)}705k \u2192 250k tokens`,
-			`   cache rewrite on the next request, at most${" ".repeat(28)}~$1.12`,
-			`   saved on each request after, back in 5 requests${" ".repeat(23)}~$0.23`,
+			`   cache rewrite on the next request, at most${" ".repeat(28)}$1.116`,
+			`   saved on each request after, back in 5 requests${" ".repeat(23)}$0.227`,
 		]);
 		expect(lines.at(-1)).toBe(`   bash bun test packages/tasks${" ".repeat(45)}12k`);
 		for (const line of lines) expect(visibleWidth(line)).toBe(79);

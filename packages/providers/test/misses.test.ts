@@ -94,9 +94,9 @@ describe("why a request wrote the cache again", () => {
 			answer(10, 200_000, 1_000),
 		]);
 		expect(missesSummary(misses, PRICES)).toBe(
-			"2 misses wrote 340k tokens again, $1.63 over reading them: 1 pause, 1 first request",
+			"2 misses wrote 340k tokens again, $1.632 over reading them: 1 pause, 1 first request",
 		);
-		expect(missLine(misses[1]!, PRICES)).toBe("pause: 300k written again, $1.44 after 9 min away");
+		expect(missLine(misses[1]!, PRICES)).toBe("pause: 300k written again, $1.440 after 9 min away");
 		expect(missesSummary([], PRICES)).toBe(
 			"none yet: every request read what the one before wrote",
 		);

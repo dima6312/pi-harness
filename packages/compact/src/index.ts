@@ -8,6 +8,7 @@ import {
 	type SessionTasks,
 	tasksFromEntries,
 	drawnByWidth,
+	formatTokens,
 } from "@adeildo/pi-kit";
 import {
 	type CustomMessageEntryDraft,
@@ -40,7 +41,6 @@ import {
 	REREAD_ENTRY,
 	type Spent,
 	spentOn,
-	tokens,
 } from "./record.ts";
 import { clearsOnServer, KEEP_TOOL_USES, serverCleared, withServerClearing } from "./server.ts";
 import {
@@ -300,7 +300,7 @@ export function spentText({ prunes, freed, hidden, rereads }: Spent): string {
 	if (prunes === 0) return "nothing hidden yet";
 	const times = prunes === 1 ? "1 prune" : `${prunes} prunes`;
 	const share = hidden === 0 ? 0 : Math.round((rereads / hidden) * 100);
-	return `${times} freed ${tokens(freed)} tokens; ${rereads} of ${hidden} hidden outputs run again (${share}%)`;
+	return `${times} freed ${formatTokens(freed)} tokens; ${rereads} of ${hidden} hidden outputs run again (${share}%)`;
 }
 
 export default function piCompact(pi: ExtensionAPI): void {
