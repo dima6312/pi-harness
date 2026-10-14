@@ -44,6 +44,8 @@ export interface HeaderSource {
 	lastVisit(): LastVisit | undefined;
 	/** What GitHub answered for this folder, undefined while it is still being asked. */
 	github?(): GithubState | undefined;
+	/** The harness version on the card, the installed package's unless pinned (the docs pictures pin it). */
+	version?(): string;
 }
 
 interface Hint {
@@ -93,7 +95,7 @@ export class HeaderComponent implements Component {
 			return drawn.lines;
 		const notes = startNotes(
 			this.#screen.snapshot(),
-			HARNESS_VERSION,
+			this.#version(),
 			this.#source.lastVisit(),
 			github,
 		);
@@ -239,7 +241,11 @@ export class HeaderComponent implements Component {
 
 	#title(paint: Paint): string {
 		const glyph = paint.bold(paint.role("brand", GLYPH.pi));
-		return `${glyph}${paint.bold("-harness")} ${paint.dim(HARNESS_VERSION)}`;
+		return `${glyph}${paint.bold("-harness")} ${paint.dim(this.#version())}`;
+	}
+
+	#version(): string {
+		return this.#source.version?.() ?? HARNESS_VERSION;
 	}
 
 	#segments(ids: readonly SegmentId[], paint: Paint): string {
