@@ -26,7 +26,7 @@ import { Telemetry } from "./data/telemetry.ts";
 import type { DeltaKind } from "./data/telemetry.ts";
 import { REQUEST_ENTRY, type RequestRecord } from "./data/totals.ts";
 import { visit } from "./data/visits.ts";
-import { resolveIcons } from "./render/glyphs.ts";
+import { type Glyphs, glyphsOf } from "./render/glyphs.ts";
 import { PLAIN, themePaint } from "./render/paint.ts";
 import { claimedStatuses, renderSegments, SEGMENTS } from "./render/segments.ts";
 import {
@@ -104,12 +104,12 @@ export const look = defineFeature({
 			activity: undefined,
 		};
 
-		const screen = createScreen(scope, live, reader, telemetry);
+		const glyphs = glyphsOf(() => icons.get(scope));
+		const screen = createScreen(scope, live, reader, telemetry, glyphs);
 		registerToolFrames(scope);
 		framePiEntries(() => {
 			if (live.ctx === undefined) return undefined;
-			const set = resolveIcons(icons.get(scope)).set;
-			return { theme: live.ctx.ui.theme, set, you: userFrame.get(scope) };
+			return { theme: live.ctx.ui.theme, set: glyphs().set, you: userFrame.get(scope) };
 		});
 		frameQueue(() => live.ctx?.ui.theme);
 		const repaint = () => live.repaint?.();
@@ -302,6 +302,7 @@ function createScreen(
 	live: Live,
 	reader: SnapshotReader,
 	telemetry: Telemetry,
+	glyphs: () => Glyphs,
 ): Screen {
 	const slots: Record<SlotName, typeof strip> = {
 		strip,
@@ -335,7 +336,7 @@ function createScreen(
 			});
 			return snapshot;
 		},
-		glyphs: () => resolveIcons(icons.get(scope)),
+		glyphs,
 		paint: (border) => (live.ctx === undefined ? PLAIN : themePaint(live.ctx.ui.theme, border)),
 		separator: () => SEPARATOR,
 		options: () => ({

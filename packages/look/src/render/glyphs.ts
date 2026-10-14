@@ -160,3 +160,17 @@ export function resolveIcons(mode: IconMode, env: NodeJS.ProcessEnv = process.en
 	if (env.SSH_TTY !== undefined || env.SSH_CONNECTION !== undefined) return UNICODE;
 	return NERD;
 }
+
+/**
+ * The glyphs for a scope, resolved once and again only when the setting behind them changes. Every
+ * frame, rule and slot of the screen asks for them on each drawing, and resolving each time was a
+ * fifth of what typing cost.
+ */
+export function glyphsOf(modeOf: () => IconMode): () => Glyphs {
+	let known: { mode: IconMode; glyphs: Glyphs } | undefined;
+	return () => {
+		const mode = modeOf();
+		if (known?.mode !== mode) known = { mode, glyphs: resolveIcons(mode) };
+		return known.glyphs;
+	};
+}

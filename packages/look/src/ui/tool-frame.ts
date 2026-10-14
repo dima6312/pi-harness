@@ -21,7 +21,7 @@ import {
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 
-import { type IconSet, resolveIcons } from "../render/glyphs.ts";
+import { type IconSet, glyphsOf } from "../render/glyphs.ts";
 import { type Stream, STREAMERS } from "../render/streaming.ts";
 import { stateMark, toolIcon, toolLabel } from "../render/tools.ts";
 import { icons } from "../settings.ts";
@@ -43,6 +43,8 @@ const RESULT_PREVIEW_LINES = 10;
 
 export function registerToolFrames(scope: FeatureScope): void {
 	const redraws = new Map<string, () => void>();
+	// The set is asked for on every drawing of every frame, and it changes only with the setting.
+	const set = glyphsOf(() => icons.get(scope));
 	scope.events.on(FRAMED, (data) => {
 		if (isObject(data)) data.framed = true;
 	});
@@ -53,7 +55,7 @@ export function registerToolFrames(scope: FeatureScope): void {
 	scope.registerToolRenderer((toolName, next) =>
 		framed(scope, next(), {
 			name: toolName,
-			set: () => resolveIcons(icons.get(scope)).set,
+			set: () => set().set,
 			redraws,
 		}),
 	);
