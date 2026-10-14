@@ -19,6 +19,7 @@ import type {
 import type { TUI } from "@earendil-works/pi-tui";
 
 import { type GitState, readGit } from "./data/git.ts";
+import { type GithubState, readGithub } from "./data/github.ts";
 import { emptySnapshot, type LiveInputs, type Snapshot, SnapshotReader } from "./data/snapshot.ts";
 import type { LastVisit } from "./data/start-notes.ts";
 import { Telemetry } from "./data/telemetry.ts";
@@ -65,6 +66,8 @@ export { ROLE_TOKENS } from "./render/paint.ts";
 
 const STRIP_WIDGET = "pi-look:strip";
 const TICK_MS = 500;
+/** GitHub is asked once per process, however many sessions it opens. */
+let probedGithub = false;
 
 interface Live {
 	ctx: ExtensionContext | undefined;
@@ -72,6 +75,7 @@ interface Live {
 	tui: TUI | undefined;
 	repaint: (() => void) | undefined;
 	git: GitState | undefined;
+	github: GithubState | undefined;
 	probing: boolean;
 	ticker: ReturnType<typeof setInterval> | undefined;
 	frame: Snapshot | undefined;
@@ -93,6 +97,7 @@ export const look = defineFeature({
 			tui: undefined,
 			repaint: undefined,
 			git: undefined,
+			github: undefined,
 			probing: false,
 			ticker: undefined,
 			frame: undefined,
@@ -146,7 +151,18 @@ export const look = defineFeature({
 				visited = true;
 				lastVisit = visit(visitsFile, ctx.cwd, HARNESS_VERSION, Date.now());
 			}
-			installHeader(ctx, screen, scope, () => lastVisit);
+			// Once per launch, off the critical path: the card shows these lines when the answers arrive.
+			if (!probedGithub) {
+				probedGithub = true;
+				void probeGithub(live, lastVisit?.at);
+			}
+			installHeader(
+				ctx,
+				screen,
+				scope,
+				() => lastVisit,
+				() => live.github,
+			);
 		});
 
 		scope.onShutdown(() => {
@@ -376,6 +392,7 @@ function installHeader(
 	screen: Screen,
 	scope: FeatureScope,
 	lastVisit: () => LastVisit | undefined,
+	github: () => GithubState | undefined,
 ): void {
 	if (ctx.mode !== "tui") return;
 	if (header.get(scope) === "off") {
@@ -386,7 +403,12 @@ function installHeader(
 		(tui) =>
 			new HeaderComponent(
 				screen,
-				{ style: () => header.get(scope), counts: () => loadedCounts(scope), lastVisit },
+				{
+					style: () => header.get(scope),
+					counts: () => loadedCounts(scope),
+					lastVisit,
+					github,
+				},
 				tui,
 			),
 	);
@@ -416,6 +438,16 @@ function setActivity(live: Live, scope: FeatureScope, activity: Activity): void 
 	if (message === live.activity) return;
 	live.activity = message;
 	live.ctx?.ui.setWorkingMessage(message);
+}
+
+async function probeGithub(live: Live, since: number | undefined): Promise<void> {
+	const ctx = live.ctx;
+	if (ctx === undefined) return;
+	const github = await readGithub(ctx.cwd, since);
+	if (live.ctx === undefined) return;
+	live.github = github;
+	// The card keeps its drawing for a second; this is the redraw that makes the new lines appear.
+	live.repaint?.();
 }
 
 async function probeGit(live: Live): Promise<void> {

@@ -4,6 +4,7 @@ import { GLYPH } from "@adeildo/pi-kit";
 import { keyText } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
+import type { GithubState } from "../data/github.ts";
 import { type LastVisit, since, type StartNote, startNotes } from "../data/start-notes.ts";
 import { BOXES, border } from "../render/frame.ts";
 import { EFFORT_LEVELS, type Paint } from "../render/paint.ts";
@@ -41,6 +42,8 @@ export interface HeaderSource {
 	counts(): LoadedCounts;
 	/** The last session in this folder, undefined for the first one. */
 	lastVisit(): LastVisit | undefined;
+	/** What GitHub answered for this folder, undefined while it is still being asked. */
+	github?(): GithubState | undefined;
 }
 
 interface Hint {
@@ -76,18 +79,29 @@ export class HeaderComponent implements Component {
 	}
 
 	/** The last drawing, kept for a moment: the card changes rarely and pi redraws on every keystroke. */
-	#drawn: { width: number; at: number; lines: string[] } | undefined;
+	#drawn:
+		| { width: number; at: number; github: GithubState | undefined; lines: string[] }
+		| undefined;
 
 	render(width: number): string[] {
 		const now = Date.now();
+		const github = this.#source.github?.();
 		const risen = now - this.#born > LOGO.length * RISE_STEP_MS;
 		const drawn = this.#drawn;
-		if (risen && drawn?.width === width && now - drawn.at < REDRAW_MS) return drawn.lines;
+		// GitHub answers after the card is up, and that answer must not wait for the next keystroke.
+		if (risen && drawn?.width === width && drawn.github === github && now - drawn.at < REDRAW_MS)
+			return drawn.lines;
+		const notes = startNotes(
+			this.#screen.snapshot(),
+			HARNESS_VERSION,
+			this.#source.lastVisit(),
+			github,
+		);
 		const lines =
 			width < MIN_CARD || this.#source.style() === "compact"
-				? this.#compact(width)
-				: this.#card(width);
-		this.#drawn = { width, at: now, lines };
+				? this.#compact(width, notes)
+				: this.#card(width, notes);
+		this.#drawn = { width, at: now, github, lines };
 		return lines;
 	}
 
@@ -95,7 +109,7 @@ export class HeaderComponent implements Component {
 		this.#drawn = undefined;
 	}
 
-	#card(width: number): string[] {
+	#card(width: number, notes: readonly StartNote[]): string[] {
 		const screen = this.#screen;
 		const paint = screen.paint();
 		const box = BOXES.rounded;
@@ -105,7 +119,6 @@ export class HeaderComponent implements Component {
 		const rightWidth = withLogo ? inner - LOGO_COLUMN - 2 : inner;
 		const snapshot = screen.snapshot();
 		const last = this.#source.lastVisit();
-		const notes = startNotes(snapshot, HARNESS_VERSION, last);
 
 		const right = [
 			"",
@@ -206,20 +219,16 @@ export class HeaderComponent implements Component {
 			}));
 	}
 
-	#compact(width: number): string[] {
+	#compact(width: number, notes: readonly StartNote[]): string[] {
 		const paint = this.#screen.paint();
 		const separator = paint.dim(this.#screen.separator());
 		const first = [this.#title(paint), this.#segments(["model", "effort", "path", "branch"], paint)]
 			.filter((part) => part !== "")
 			.join(separator);
 		const last = this.#source.lastVisit();
-		const notes = this.#notes(
-			startNotes(this.#screen.snapshot(), HARNESS_VERSION, last),
-			paint,
-			last,
-			this.#screen.snapshot().now,
+		return [first, ...this.#notes(notes, paint, last, this.#screen.snapshot().now), ""].map(
+			(line) => truncateToWidth(` ${line}`, width, "..."),
 		);
-		return [first, ...notes, ""].map((line) => truncateToWidth(` ${line}`, width, "..."));
 	}
 
 	#title(paint: Paint): string {

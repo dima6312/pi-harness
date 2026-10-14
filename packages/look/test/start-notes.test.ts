@@ -18,6 +18,18 @@ describe("what the start screen says", () => {
 		expect(startNotes(quiet, "5.9.2", { at: 0, version: "5.9.2" })).toEqual([]);
 	});
 
+	test("what GitHub waited with: a failed CI run and a pull request, after the branch it sits on", () => {
+		const notes = startNotes({ ...quiet, git: { ...git, behind: 1 } }, "5.9.2", undefined, {
+			ci: { branch: "main", sha: "b8e20ba", name: "Release" },
+			pr: { number: 52, title: "Fix the frame", waits: "changes requested" },
+		});
+		expect(notes.map((note) => [note.mark, note.text, note.detail])).toEqual([
+			["↓", "main is 1 behind", "pull before you start"],
+			["✗", "CI failed on main", "b8e20ba  Release"],
+			["⚑", "PR #52 Fix the frame", "changes requested"],
+		]);
+	});
+
 	test("what waits on you: a sign-in, conflicts, a branch behind, other agents, a plan near its limit, a new version", () => {
 		const notes = startNotes(
 			{

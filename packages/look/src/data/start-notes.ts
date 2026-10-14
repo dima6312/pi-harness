@@ -2,6 +2,7 @@
 // the last session here. On a quiet day the list is empty and the screen says so in one line.
 import { GLYPH } from "@adeildo/pi-kit";
 
+import type { GithubState } from "./github.ts";
 import type { Snapshot } from "./snapshot.ts";
 
 /** Plans used past this percent show on the start screen. */
@@ -25,6 +26,7 @@ export function startNotes(
 	snapshot: Pick<Snapshot, "peers" | "account" | "git" | "branch">,
 	version: string,
 	last: LastVisit | undefined,
+	github?: GithubState,
 ): StartNote[] {
 	const notes: StartNote[] = [];
 	const { account, git } = snapshot;
@@ -44,6 +46,20 @@ export function startNotes(
 			color: "warning",
 			text: `${snapshot.branch ?? "this branch"} is ${git.behind} behind`,
 			detail: "pull before you start",
+		});
+	if (github?.ci !== undefined)
+		notes.push({
+			mark: GLYPH.cross,
+			color: "error",
+			text: `CI failed on ${github.ci.branch}`,
+			detail: `${github.ci.sha}  ${github.ci.name}`,
+		});
+	if (github?.pr !== undefined)
+		notes.push({
+			mark: GLYPH.flag,
+			color: "warning",
+			text: `PR #${github.pr.number} ${github.pr.title}`,
+			detail: github.pr.waits,
 		});
 	for (const peer of snapshot.peers)
 		notes.push({

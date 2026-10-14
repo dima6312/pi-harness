@@ -121,6 +121,10 @@ another agent working in the folder, a plan close to its limit, a new harness ve
 it says so in one line. Pi's own list of loaded skills, prompts and extensions is hidden. The top edge
 reads `π-harness` and its version, with pi's version on the right.
 
+GitHub is asked once per launch, in the background, and nothing waits on the answer: the CI and pull
+request lines appear when the answers arrive, and a missing `gh`, no network or a folder that is not
+on GitHub leaves them out.
+
 ## Settings
 
 `Alt+S` keeps one tab per package. The selected setting shows a preview of its effect under the list,
