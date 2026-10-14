@@ -341,7 +341,8 @@ class ResultFrame implements Component {
 		const drawn = { width, body, rest: [phase, mark, time, wrote, images, quiet] };
 		if (unchanged(this.#drawn, drawn)) return this.#drawn.lines;
 
-		const printed = quiet === true ? [] : withoutBlanks(dropTime(body));
+		const printed =
+			quiet === true ? [] : withoutBlanks(dropTime(body)).map((line) => hidden(line, theme));
 		const lines = [
 			// The cut opens what the call printed, and a call with nothing to print has no cut.
 			...(printed.length === 0 ? [] : [cut(width, theme), ...inside(printed, width, theme)]),
@@ -447,6 +448,19 @@ function room(width: number): number {
 }
 
 /** Pi prints the time of a call itself, and the frame says it on the bottom rule instead. */
+/** Pi's note on the lines it cut from an output, as `... (240 earlier lines, ctrl+o to expand)`. */
+const HIDDEN = /^\.\.\. \((\d+) (earlier|more) lines, (.+?) to expand\)$/u;
+
+/** Pi's note on cut lines, in the frame's words: which way they are, how many, and the key. */
+export function hidden(line: string, theme: Theme): string {
+	const match = HIDDEN.exec(stripTerminalSequences(line).trim());
+	if (match === null) return line;
+	const [, count, side, key] = match;
+	const where = side === "earlier" ? "above" : "below";
+	const lines = theme.fg("muted", `${count} lines ${where}`);
+	return `${theme.fg("dim", GLYPH.ellipsisUp)} ${lines}  ${theme.fg("dim", key ?? "")}`;
+}
+
 function dropTime(lines: readonly string[]): string[] {
 	const at = lines.findLastIndex((line) => !isBlank(line));
 	if (at === -1) return [...lines];

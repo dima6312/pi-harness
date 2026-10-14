@@ -30,8 +30,9 @@ export const ASK_RENDERERS = {
 };
 
 /**
- * One line for each question, and the one the model is still writing whole: its text and the
- * options as they arrive, with a cursor where it writes. So you can read them before the dialog opens.
+ * While the model writes, one line for each question and the last one whole, its options arriving
+ * under a cursor, so you can read them before the dialog opens. Once written, one line with the
+ * headers: the dialog under it shows the questions whole, and so do the answers after it.
  */
 export function renderCall(
 	params: Partial<QuestionParams>,
@@ -39,7 +40,16 @@ export function renderCall(
 	writing: boolean,
 ): Component {
 	const questions = params.questions ?? [];
-	return drawnByWidth((width) => questionLines(questions, theme, width, writing));
+	return drawnByWidth((width) =>
+		writing ? questionLines(questions, theme, width, true) : [headersLine(questions, theme, width)],
+	);
+}
+
+/** How many questions, and their headers. */
+function headersLine(questions: Streamed, theme: Theme, width: number): string {
+	const headers = questions.map((question) => theme.fg("accent", question?.header ?? ""));
+	const count = theme.fg("muted", counted(questions.length, "question"));
+	return truncateToWidth(`${count}  ${headers.join(theme.fg("dim", ", "))}`, width, GLYPH.ellipsis);
 }
 
 const CURSOR = GLYPH.cursor;

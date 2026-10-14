@@ -500,9 +500,9 @@ describe("in the transcript", () => {
 		const live = draw(renderCall({ questions: [AUTH, feat as Question] }, plain, true));
 		// The question being written shows whole, its options under it, and a cursor where it writes.
 		expect(live.split("\n").slice(1)).toEqual(["Feat  Which ones?", "      1 Search\u258d"]);
-		// Written, every question takes one line.
-		expect(draw(renderCall({ questions: [AUTH, feat as Question] }, plain, false))).toMatch(
-			/^Auth {2}Which auth method\? +2 options\nFeat {2}Which ones\? +1 option$/,
+		// Written, one line with the headers: the dialog under it and the answers show the questions.
+		expect(draw(renderCall({ questions: [AUTH, feat as Question] }, plain, false)).trimEnd()).toBe(
+			"2 questions  Auth, Feat",
 		);
 	});
 

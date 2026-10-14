@@ -11,6 +11,7 @@ import { Container, stripTerminalSequences, Text } from "@earendil-works/pi-tui"
 import { look } from "../src/index.ts";
 import { editLines } from "../src/render/streaming.ts";
 import { stateMark, toolIcon } from "../src/render/tools.ts";
+import { hidden } from "../src/ui/tool-frame.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
@@ -468,5 +469,17 @@ describe("the mark of a phase that lasts", () => {
 			expect(new Set(frames).size).toBeGreaterThan(1);
 			for (const frame of frames) expect([...frame]).toHaveLength(1);
 		}
+	});
+});
+
+describe("lines pi cut from an output", () => {
+	test("say how many, which way, and the key, in the frame's words", () => {
+		expect(hidden("... (240 earlier lines, ctrl+o to expand)", theme)).toBe(
+			"\u22ee 240 lines above  ctrl+o",
+		);
+		expect(hidden("... (12 more lines, ctrl+o to expand)", theme)).toBe(
+			"\u22ee 12 lines below  ctrl+o",
+		);
+		expect(hidden("... nothing to see", theme)).toBe("... nothing to see");
 	});
 });
