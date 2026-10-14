@@ -1,6 +1,5 @@
 // The Alt+S screen, drawn by the real ScreenView with the look package's own settings, so the picture
-// of the settings is the screen the product opens and not a mockup. Adapted from a scene by
-// cache-warming.
+// of the settings is the screen the product opens and not a mockup.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
