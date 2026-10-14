@@ -105,44 +105,36 @@ const PI_ASKS = new Set([
 /**
  * The gate each feature sits behind, from the `{beta, when}` table a build keeps beside the registry.
  *
- * The predicate itself is minified, but the names it tests are not, so the class comes from the
- * keywords rather than from reading the expression. A window with no keyword known here is skipped
+ * The predicate is minified but the names it tests are not, so the class comes from the identifiers
+ * in the window rather than from reading the expression. A window with none of them is left out
  * instead of guessed at.
  */
 const GATES: readonly (readonly [string, string])[] = [
 	["firstPartyOnlyBetas", "Anthropic's own API only."],
 	["firstPartyCapabilityBetas", "Only when the account has the capability."],
 	["experimentalBetasOff", "Off once experimental betas are disabled."],
-	['provider==="vertex"', "Vertex and Foundry only."],
-	['provider==="bedrock"', "Bedrock and Mantle only."],
+	["vertex", "Vertex and Foundry only."],
+	["bedrock", "Bedrock and Mantle only."],
 	["perTurnTiming", "Only when per turn timing is on."],
 	["interleavedThinking", "Only while thinking is on."],
-	['canonical.includes("haiku")', "Not sent for Haiku."],
+	["haiku", "Not sent for Haiku."],
 ];
 
 /** The class of gate each header sits behind, when the build states one. */
-function gates(source: string): Map<string, string> {
-	const byVariable = new Map<string, string>();
-	const declared =
-		/([A-Za-z_$][\w$]*)=z\("([a-z][a-z0-9_]*)",\s*("[a-z0-9][a-z0-9.-]*"|[A-Za-z_$][\w$]*)\)/g;
-	for (const match of source.matchAll(declared)) {
-		const variable = match[1];
-		const spelled = match[3];
-		if (variable === undefined || spelled === undefined) continue;
-		const header = spelled.startsWith('"') ? spelled.slice(1, -1) : constant(source, spelled);
-		if (header !== undefined) byVariable.set(variable, header);
-	}
-
+function gates(source: string, declared: readonly Declaration[]): Map<string, string> {
+	const known = new Map(declared.map(({ variable, header }) => [variable, header]));
 	const found = new Map<string, string>();
 	for (const match of source.matchAll(/\{beta:([A-Za-z_$][\w$]*),when:/g)) {
-		const header = byVariable.get(match[1] ?? "");
+		const header = known.get(match[1] ?? "");
 		if (header === undefined || match.index === undefined) continue;
 		// The predicate ends at the object's own brace, and reaching past it reads the next feature's
 		// gate instead of this one.
 		const close = source.indexOf("}", match.index);
-		const window = new Set(source.slice(match.index, close === -1 ? match.index + 200 : close));
+		const identifiers = new Set(
+			source.slice(match.index, close === -1 ? match.index + 200 : close).split(/[^A-Za-z0-9_$]+/),
+		);
 		for (const [keyword, phrase] of GATES)
-			if (window.has(keyword)) {
+			if (identifiers.has(keyword)) {
 				found.set(header, phrase);
 				break;
 			}
@@ -183,15 +175,18 @@ export async function channelVersion(channel: Channel): Promise<string> {
 export async function capture(version: string, workdir: string): Promise<Contract> {
 	const binary = await download(version, workdir);
 	const turn = await probeTurn(binary, PROMPT);
-	const features = await registry(binary);
+	const source = (await readFile(binary)).toString("latin1");
 
+	const declared = declarations(source);
+	const gated = gates(source, declared);
 	const system = blocks(turn.body.system);
 	const betas = new Set(betasOf(turn.headers, "anthropic-beta"));
-	const gated = gates((await readFile(binary)).toString("latin1"));
-	for (const feature of features) {
-		feature.turn = betas.has(feature.header);
-		feature.description = describe(feature.header, gated.get(feature.header));
-	}
+	const features = declared.map(({ name, header }) => ({
+		name,
+		header,
+		turn: betas.has(header),
+		description: describe(header, gated.get(header)),
+	}));
 
 	return {
 		version,
@@ -259,36 +254,41 @@ async function unpack(response: Response, packed: string, binary: string): Promi
 	return done;
 }
 
+interface Declaration {
+	name: string;
+	header: string;
+	/** The minified variable holding it, which is what a gate table names. */
+	variable: string;
+}
+
 /**
- * The `z("name", "header")` pairs the binary keeps after the string `"claude_code"`.
+ * The feature declarations a build keeps together, as `VAR=z("name", "header")`.
  *
- * A build can spell a header as a constant instead, which the caller resolves.
+ * The list right after the string `"claude_code"` is a list of those variables, so this reads the
+ * same set from the side that also gives the variable a gate names. A header a build spelled as a
+ * constant resolves from that constant's own assignment.
  */
-async function registry(binary: string): Promise<Feature[]> {
-	const source = (await readFile(binary)).toString("latin1");
+function declarations(source: string): Declaration[] {
 	const anchor = source.indexOf('"claude_code"');
-	if (anchor < 0) throw new Error(`${binary} has no feature registry`);
+	if (anchor < 0) throw new Error("this build has no feature registry");
 
-	const window = source.slice(anchor - 40, anchor + 6_000);
-	const features: Feature[] = [];
-	let end = 0;
-	for (const match of window.matchAll(
-		/\(\s*"([a-z][a-z0-9_]*)"(?:\s*,\s*("[a-z0-9][a-z0-9.-]*"|[A-Za-z_$][\w$]*))?\s*\)/g,
-	)) {
-		if (match.index !== undefined && end !== 0 && match.index - end > 120) break;
-		end = (match.index ?? 0) + match[0].length;
-
-		const name = match[1];
-		const found = match[2];
-		if (name === undefined || found === undefined) continue;
-		const resolved = found.startsWith('"') ? found.slice(1, -1) : constant(source, found);
+	const window = source.slice(anchor - 200, anchor + 6_000);
+	const pair =
+		/([A-Za-z_$][\w$]*)=z\("([a-z][a-z0-9_]*)",\s*("[a-z0-9][a-z0-9.-]*"|[A-Za-z_$][\w$]*)\)/g;
+	const found: Declaration[] = [];
+	for (const match of window.matchAll(pair)) {
+		const variable = match[1];
+		const name = match[2];
+		const spelled = match[3];
+		if (variable === undefined || name === undefined || spelled === undefined) continue;
+		const header = spelled.startsWith('"') ? spelled.slice(1, -1) : constant(source, spelled);
 		// `x-cc-internal-` headers are latches between Claude Code's own processes, not features.
-		if (resolved !== undefined && !resolved.startsWith("x-cc-internal-"))
-			features.push({ name, header: resolved, turn: false, description: "" });
+		if (header === undefined || header.startsWith("x-cc-internal-")) continue;
+		found.push({ name, header, variable });
 	}
-	if (features.length < 20)
-		throw new Error(`${binary} yielded ${features.length} features, which is too few to trust`);
-	return features;
+	if (found.length < 20)
+		throw new Error(`this build yielded ${found.length} features, which is too few to trust`);
+	return found;
 }
 
 /** The string a build assigned to a name, for a header the registry spelled as a constant. */
