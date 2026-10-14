@@ -58,10 +58,6 @@ export const GLYPH = {
 	ellipsisUp: "\u22ee",
 	/** ⋯ a gap between parts, as between two edits. */
 	ellipsisAcross: "\u22ef",
-	/** █ a full cell of a gauge. */
-	block: "\u2588",
-	/** ░ an empty cell of a gauge. */
-	shade: "\u2591",
 } as const;
 
 /** Frames of the marks that move while something lasts, in order. */
@@ -76,13 +72,13 @@ export const SPIN = {
 	pencil: ["\u270e", "\u270f", "\u2710", "\u270f"],
 } as const;
 
-/** The lines frames, rules and scroll bars are drawn with. */
 /**
  * The mark a cut line ends with. Three dots, not the `…` glyph: every font and every icon set has
  * them, and the terminal width of one dot is one column everywhere.
  */
 export const CUT = "...";
 
+/** The lines frames, rules and scroll bars are drawn with. */
 export const LINE = {
 	/** ─ */
 	h: "\u2500",

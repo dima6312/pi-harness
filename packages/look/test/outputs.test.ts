@@ -90,3 +90,24 @@ describe("the tool output view", () => {
 		expect(closed()).toBe(true);
 	});
 });
+
+describe("the cost of the view", () => {
+	test("wraps the output once, and again only when the call or the width changes", () => {
+		const opening = new OutputView({
+			theme: plain,
+			outputs: outputsOf(BRANCH),
+			rows: () => 20,
+			close: () => {},
+		});
+
+		const first = opening.render(80);
+		expect(opening.render(80)).toBe(first);
+		expect(opening.render(80)).toBe(first);
+
+		// A narrower screen is a new drawing, and so is moving to another call.
+		expect(opening.render(60)).not.toBe(first);
+		const moved = opening.render(60);
+		opening.handleInput("\u001b[D");
+		expect(opening.render(60)).not.toBe(moved);
+	});
+});

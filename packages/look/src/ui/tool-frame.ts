@@ -449,7 +449,6 @@ function room(width: number): number {
 	return Math.max(1, width - BODY_PAD);
 }
 
-/** Pi prints the time of a call itself, and the frame says it on the bottom rule instead. */
 /** Pi's note on the lines it cut from an output, as `... (240 earlier lines, ctrl+o to expand)`. */
 const HIDDEN = /^\.\.\. \((\d+) (earlier|more) lines, (.+?) to expand\)$/u;
 
@@ -463,6 +462,7 @@ export function hidden(line: string, theme: Theme): string {
 	return `${theme.fg("dim", GLYPH.ellipsisUp)} ${lines}  ${theme.fg("dim", key ?? "")}`;
 }
 
+/** Pi prints the time of a call itself, and the frame says it on the bottom rule instead. */
 function dropTime(lines: readonly string[]): string[] {
 	const at = lines.findLastIndex((line) => !isBlank(line));
 	if (at === -1) return [...lines];

@@ -414,10 +414,6 @@ function installHeader(
 	github: () => GithubState | undefined,
 ): void {
 	if (ctx.mode !== "tui") return;
-	if (header === "off") {
-		ctx.ui.setHeader(undefined);
-		return;
-	}
 	ctx.ui.setHeader(
 		(tui) =>
 			new HeaderComponent(

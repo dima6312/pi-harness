@@ -11,7 +11,7 @@ import { framePreview, iconsPreview, userFramePreview } from "./ui/previews.ts";
 
 export const SECTIONS = ["Appearance"];
 
-export type HeaderStyle = "card" | "compact" | "off";
+export type HeaderStyle = "card" | "compact";
 export type CursorStyle = "block" | "bar" | "underline";
 
 export const PERMISSION_MODE: SegmentId = "status:pi-ask-permission:mode";

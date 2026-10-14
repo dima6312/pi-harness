@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { processRunner, type Runner } from "./runner.ts";
 
 export interface GitState {
 	ahead: number;
@@ -40,13 +40,16 @@ export function parseStatus(output: string): GitState {
 	return state;
 }
 
-export function readGit(cwd: string): Promise<GitState | undefined> {
-	return new Promise((resolve) => {
-		execFile(
-			"git",
-			["-C", cwd, "status", "--porcelain=v2", "--branch", "--show-stash"],
-			{ timeout: 2000 },
-			(error, stdout) => resolve(error === null ? parseStatus(stdout) : undefined),
+export async function readGit(
+	cwd: string,
+	run: Runner = processRunner(cwd, 2000),
+): Promise<GitState | undefined> {
+	try {
+		return parseStatus(
+			await run("git", ["-C", cwd, "status", "--porcelain=v2", "--branch", "--show-stash"]),
 		);
-	});
+	} catch {
+		// A folder that is not a repository, or a git that did not answer: the card says nothing.
+		return undefined;
+	}
 }

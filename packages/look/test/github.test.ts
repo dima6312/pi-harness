@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { type Runner, readGithub } from "../src/data/github.ts";
+import { readGithub } from "../src/data/github.ts";
+import type { Runner } from "../src/data/runner.ts";
 
 /** A command line that answers only what the test set up, and fails for anything else. */
 function runner(answers: { branch?: string; runs?: string; pulls?: string }): Runner {

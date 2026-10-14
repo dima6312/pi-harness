@@ -1,14 +1,10 @@
 // The answers GitHub gives the start card: the last run of CI on this branch, and your own open pull
 // requests with something waiting on you. The card asks once per launch, in the background, and shows
 // nothing when gh is missing, the network is down, or the folder is not on GitHub.
-import { execFile } from "node:child_process";
-
 import { isObject } from "@adeildo/pi-kit";
 
-/** How long one command may take before it is given up on. The card is never worth a longer wait. */
-const TIMEOUT_MS = 3000;
-/** Room for a page of pull requests with their comments. */
-const MAX_OUTPUT = 1_000_000;
+import { processRunner, type Runner } from "./runner.ts";
+
 /** The conclusions that mean a run did not pass. */
 const FAILED = new Set(["failure", "startup_failure", "timed_out"]);
 /** What gh is asked about a pull request: enough to tell a new comment from an old one. */
@@ -32,24 +28,6 @@ export interface OpenPullRequest {
 export interface GithubState {
 	ci: CiFailure | undefined;
 	pr: OpenPullRequest | undefined;
-}
-
-/** Runs one command in the folder and returns its stdout. Rejects when it fails or takes too long. */
-export type Runner = (file: string, args: readonly string[]) => Promise<string>;
-
-export function processRunner(cwd: string, timeoutMs: number = TIMEOUT_MS): Runner {
-	return (file, args) =>
-		new Promise((resolve, reject) => {
-			execFile(
-				file,
-				[...args],
-				{ cwd, timeout: timeoutMs, maxBuffer: MAX_OUTPUT },
-				(error, stdout) => {
-					if (error === null) resolve(stdout);
-					else reject(error instanceof Error ? error : new Error(String(error)));
-				},
-			);
-		});
 }
 
 /**

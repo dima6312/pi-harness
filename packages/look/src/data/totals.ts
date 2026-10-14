@@ -68,25 +68,26 @@ export function totalsOf(entries: readonly SessionEntry[]): Totals {
 	return totals;
 }
 
-export function cacheHitPercent(entries: readonly SessionEntry[]): number | undefined {
+/** The usage of the last answer the model gave, which is what the cache lines talk about. */
+function lastAssistantUsage(entries: readonly SessionEntry[]): UsageLike | undefined {
 	for (let index = entries.length - 1; index >= 0; index--) {
 		const entry = entries[index];
 		if (entry?.type !== "message" || entry.message.role !== "assistant") continue;
-
-		const usage = entry.message.usage;
-		const prompt = usage.input + usage.cacheRead + usage.cacheWrite;
-		return prompt === 0 ? undefined : (usage.cacheRead / prompt) * 100;
+		return entry.message.usage;
 	}
 	return undefined;
 }
 
+export function cacheHitPercent(entries: readonly SessionEntry[]): number | undefined {
+	const usage = lastAssistantUsage(entries);
+	if (usage === undefined) return undefined;
+	const prompt = usage.input + usage.cacheRead + usage.cacheWrite;
+	return prompt === 0 ? undefined : (usage.cacheRead / prompt) * 100;
+}
+
 export function cacheWarming(entries: readonly SessionEntry[]): boolean {
-	for (let index = entries.length - 1; index >= 0; index--) {
-		const entry = entries[index];
-		if (entry?.type !== "message" || entry.message.role !== "assistant") continue;
-		return entry.message.usage.cacheRead === 0 && entry.message.usage.cacheWrite > 0;
-	}
-	return false;
+	const usage = lastAssistantUsage(entries);
+	return usage !== undefined && usage.cacheRead === 0 && usage.cacheWrite > 0;
 }
 
 export function averagesOf(entries: readonly SessionEntry[]): Averages {
