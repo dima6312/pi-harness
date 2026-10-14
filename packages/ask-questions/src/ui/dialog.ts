@@ -53,6 +53,8 @@ const BOX_WIDTH = 4;
 const ROW_PREFIX = ROW_LEAD + BOX_WIDTH + CHECK.length;
 /** What the typed answer asks of the panel while it is still empty. */
 const TYPED_NEED = 5;
+/** The gap and the bar a scrolled panel draws on its right. */
+const BAR_WIDTH = 2;
 /** A blank line and the line of the note editor, under the detail of an option. */
 const NOTE_EDITOR_ROWS = 2;
 
@@ -492,8 +494,15 @@ export class QuestionDialog implements Component, Focusable {
 			this.panelTop = 0;
 		}
 
-		const layout = layoutFor(inner);
 		const labels = question.options.map((option) => option.label);
+		// A drawing is cut when it does not fit, so a question with a wide one shows it under the options.
+		const widest = Math.max(
+			0,
+			...question.options.map((option) => this.previews.widest(option.preview ?? "")),
+		);
+		const beside =
+			layoutFor(inner) === "beside" && widest <= panelWidth(inner, leftWidth(labels, inner));
+		const layout = beside ? "beside" : "below";
 		const left = layout === "beside" ? leftWidth(labels, inner) : inner;
 		const width = layout === "beside" ? panelWidth(inner, left) : inner;
 		// The panel names the focused row only when the row has to cut its label. It is decided for the
@@ -656,11 +665,14 @@ export class QuestionDialog implements Component, Focusable {
 			if (content.length <= room) {
 				out.push(...content);
 			} else {
+				// Drawn again beside the scroll bar, which takes the last columns.
+				const barred = this.panelContent(question, draft, Math.max(1, width - BAR_WIDTH));
 				const view = Math.max(1, room - 1);
-				const last = content.length - view;
+				const last = barred.length - view;
 				this.panelTop = Math.max(0, Math.min(this.panelTop, last));
+				const shown = barred.slice(this.panelTop, this.panelTop + view);
 				out.push(
-					...content.slice(this.panelTop, this.panelTop + view),
+					...this.withScrollBar(shown, width, barred.length),
 					this.scrolled(this.panelTop, last - this.panelTop),
 				);
 				this.overflow = true;
@@ -670,12 +682,28 @@ export class QuestionDialog implements Component, Focusable {
 		return [...out, ...pinned];
 	}
 
-	/** What the panel hides above and below, in words. */
+	/** What the panel hides above and below, in words, and the keys that show it. */
 	private scrolled(above: number, below: number): string {
 		const parts = [];
 		if (above > 0) parts.push(`\u2191 ${above} above`);
 		if (below > 0) parts.push(`\u2193 ${below} below`);
-		return this.theme.fg("dim", parts.join("   "));
+		const keys = this.theme.fg("muted", "shift+\u2191\u2193 or the wheel");
+		return `${this.theme.fg("dim", parts.join("   "))}   ${keys}`;
+	}
+
+	/** The lines in view, with a bar on the right whose thumb says where they are in the whole. */
+	private withScrollBar(shown: readonly string[], width: number, total: number): string[] {
+		const view = shown.length;
+		const thumb = Math.max(1, Math.round((view * view) / total));
+		const last = Math.max(1, total - view);
+		const from = Math.round((this.panelTop / last) * (view - thumb));
+		const room = Math.max(1, width - BAR_WIDTH);
+		return shown.map((line, index) => {
+			const on = index >= from && index < from + thumb;
+			const bar = on ? this.theme.fg("accent", "\u2503") : this.theme.fg("borderMuted", "\u2502");
+			const cut = truncateToWidth(line, room);
+			return `${cut}${" ".repeat(Math.max(0, room - visibleWidth(cut)))} ${bar}`;
+		});
 	}
 
 	/** The note being written, pinned to the foot of the panel so a long preview cannot push it out. */
@@ -691,7 +719,9 @@ export class QuestionDialog implements Component, Focusable {
 		const lines = [this.theme.bold("Review your answers"), ""];
 		for (const [index, question] of this.questions.entries()) {
 			const answer = this.answerOf(index) ?? this.unanswered(index);
-			lines.push(...answerBlock(question, answer, this.theme, inner, false));
+			const number = this.questions.length > 1 ? index + 1 : undefined;
+			if (index > 0) lines.push("");
+			lines.push(...answerBlock(question, answer, this.theme, inner, false, number));
 		}
 		const missing = this.questions.length - this.answeredCount();
 		if (missing > 0) {

@@ -4,7 +4,13 @@ import type {
 	Theme,
 	ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
-import { type Component, Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	type Component,
+	Text,
+	truncateToWidth,
+	visibleWidth,
+	wrapTextWithAnsi,
+} from "@earendil-works/pi-tui";
 
 import type { QuestionParams } from "../schema.ts";
 import { type Asked, answerBlock } from "./answered.ts";
@@ -23,40 +29,72 @@ export const ASK_RENDERERS = {
 	) => renderResult(result, options.expanded, theme, context.args.questions),
 };
 
-/** While the model writes, each question shows as it arrives, so you can read them before the dialog opens. */
+/**
+ * One line for each question, and the one the model is still writing whole: its text and the
+ * options as they arrive, with a cursor where it writes. So you can read them before the dialog opens.
+ */
 export function renderCall(
 	params: Partial<QuestionParams>,
 	theme: Theme,
 	writing: boolean,
 ): Component {
 	const questions = params.questions ?? [];
-	const title = theme.fg("toolTitle", theme.bold("ask"));
-	if (!writing) {
-		return new Text(`${title} ${counted(questions.length, "question")}`, 0, 0);
-	}
-	return { render: (width) => writingLines(questions, title, theme, width), invalidate() {} };
+	return { render: (width) => questionLines(questions, theme, width, writing), invalidate() {} };
 }
 
-function writingLines(questions: Streamed, title: string, theme: Theme, width: number): string[] {
+const CURSOR = "\u258d";
+
+function questionLines(
+	questions: Streamed,
+	theme: Theme,
+	width: number,
+	writing: boolean,
+): string[] {
 	const rows = questions.map((question) => ({
 		header: question?.header ?? "",
 		text: question?.question ?? "",
-		options: question?.options?.length ?? 0,
+		options: (question?.options ?? []).map((option) => option?.label ?? ""),
 	}));
 	const headers = Math.max(0, ...rows.map((row) => visibleWidth(row.header)));
-	const lines = [`${title} ${theme.fg("muted", `${counted(rows.length, "question")} so far`)}`];
+	const lines: string[] = [];
 	for (const [index, row] of rows.entries()) {
-		// The last question is the one the model is still writing.
-		const options = index === rows.length - 1 ? "writing" : counted(row.options, "option");
 		const pad = " ".repeat(headers - visibleWidth(row.header));
-		const lead = `  ${theme.fg("accent", row.header)}${pad}  `;
-		const room = Math.max(1, width - visibleWidth(lead) - options.length - 2);
-		const text = truncateToWidth(row.text, room, "...");
-		const gap = Math.max(2, width - visibleWidth(lead) - visibleWidth(text) - options.length);
-		const line = `${lead}${theme.fg("muted", text)}${" ".repeat(gap)}${theme.fg("dim", options)}`;
-		lines.push(truncateToWidth(line, width));
+		const lead = `${theme.fg("accent", row.header)}${pad}  `;
+		if (writing && index === rows.length - 1) {
+			lines.push(...writingQuestion(lead, row, theme, width));
+			continue;
+		}
+		const count = theme.fg("dim", counted(row.options.length, "option"));
+		const room = Math.max(1, width - visibleWidth(lead) - visibleWidth(count) - 2);
+		const text = theme.fg("muted", truncateToWidth(row.text, room, "..."));
+		const gap = " ".repeat(
+			Math.max(2, width - visibleWidth(lead) - visibleWidth(text) - visibleWidth(count)),
+		);
+		lines.push(truncateToWidth(`${lead}${text}${gap}${count}`, width));
 	}
 	return lines;
+}
+
+/** The question being written, whole, with its options numbered under it as they arrive. */
+function writingQuestion(
+	lead: string,
+	row: { text: string; options: string[] },
+	theme: Theme,
+	width: number,
+): string[] {
+	const indent = " ".repeat(visibleWidth(lead));
+	const room = Math.max(1, width - indent.length);
+	const text = wrapTextWithAnsi(theme.fg("text", row.text), room);
+	const lines = text.map((line, index) => (index === 0 ? lead : indent) + line);
+	for (const [index, label] of row.options.entries())
+		lines.push(
+			truncateToWidth(
+				`${indent}${theme.fg("dim", String(index + 1))} ${theme.fg("text", label)}`,
+				width,
+			),
+		);
+	if (lines.length === 0) return [];
+	return [...lines.slice(0, -1), `${lines.at(-1)}${theme.fg("accent", CURSOR)}`];
 }
 
 function contentText(result: AgentToolResult<unknown>): string {
@@ -87,8 +125,15 @@ export function renderResult(
 	return {
 		render: (width) => [
 			...(details.cancelled ? [theme.fg("warning", "closed without submitting")] : []),
-			...questions.flatMap((question) =>
-				answerBlock(question, answerTo(question), theme, width, expanded),
+			...questions.flatMap((question, index) =>
+				answerBlock(
+					question,
+					answerTo(question),
+					theme,
+					width,
+					expanded,
+					questions.length > 1 ? index + 1 : undefined,
+				),
 			),
 		],
 		invalidate() {},

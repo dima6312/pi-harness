@@ -430,6 +430,9 @@ describe("a preview taller than the panel", () => {
 		expect(firstRow(dialog)).toBe("1");
 		expect(text).toMatch(/\u2193 \d+ below/);
 		expect(text).toContain("shift+\u2191\u2193 scroll");
+		// The panel draws a bar whose thumb sits at the top, and names the keys where it is cut.
+		expect(text).toContain("\u2503");
+		expect(text).toContain("shift+\u2191\u2193 or the wheel");
 		press(dialog, "\x1b[1;2B");
 		expect(Number(firstRow(dialog))).toBeGreaterThan(1);
 		expect(dialog.render(120).join("\n")).toMatch(/\u2191 \d+ above/);
@@ -451,18 +454,59 @@ describe("a preview taller than the panel", () => {
 	});
 });
 
+describe("a preview drawn as a picture", () => {
+	const box = [
+		"\u256d\u2500 frame \u2500\u256e",
+		"\u2502 a    b  \u2502",
+		"\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+	].join("\n");
+	const wide = `${"\u2500".repeat(110)}\n\u2502 too wide to sit beside the options`;
+
+	test("keeps its lines and spaces, which markdown would join", () => {
+		const { dialog } = open({
+			question: "Which?",
+			header: "Pick",
+			options: [{ label: "Boxed", preview: box }, { label: "Plain" }],
+		});
+		const text = dialog.render(120).join("\n");
+		expect(text).toContain("\u2502 a    b  \u2502");
+		expect(text).toContain("\u256d\u2500 frame \u2500\u256e");
+	});
+
+	test("goes under the options when it is too wide to sit beside them", () => {
+		const { dialog } = open({
+			question: "Which?",
+			header: "Pick",
+			options: [{ label: "Wide", preview: wide }, { label: "Plain" }],
+		});
+		const lines = dialog.render(120);
+		const row = lines.findIndex((line) => line.includes("1  Wide"));
+		const drawn = lines.findIndex((line) => line.includes("too wide to sit beside"));
+		expect(drawn).toBeGreaterThan(row);
+		expect(lines[drawn]).not.toContain("Plain");
+	});
+});
+
 describe("in the transcript", () => {
 	test("while the model writes, each question shows as it arrives", () => {
 		const text = draw(
 			renderCall({ questions: [AUTH, { header: "Feat" } as Question] }, plain, true),
 		);
-		expect(text).toContain("ask 2 questions so far");
-		expect(text).toMatch(/Auth\s+Which auth method\?\s+2 options/);
-		expect(text).toMatch(/Feat\s+writing/);
-		expect(draw(renderCall({ questions: [AUTH] }, plain, false)).trimEnd()).toBe("ask 1 question");
+		expect(text.split("\n").map((line) => line.trimEnd())).toEqual([
+			"Auth  Which auth method?                                                         2 options",
+			"Feat  \u258d",
+		]);
+		const feat = { header: "Feat", question: "Which ones?", options: [{ label: "Search" }] };
+		const live = draw(renderCall({ questions: [AUTH, feat as Question] }, plain, true));
+		// The question being written shows whole, its options under it, and a cursor where it writes.
+		expect(live.split("\n").slice(1)).toEqual(["Feat  Which ones?", "      1 Search\u258d"]);
+		// Written, every question takes one line.
+		expect(draw(renderCall({ questions: [AUTH, feat as Question] }, plain, false))).toMatch(
+			/^Auth {2}Which auth method\? +2 options\nFeat {2}Which ones\? +1 option$/,
+		);
 	});
 
-	test("each question keeps its answer, the notes on it, and the notes on what you did not pick", () => {
+	test("each question, numbered, keeps its answer, the notes on it, and the notes on what you did not pick", () => {
 		const result = {
 			content: [],
 			details: {
@@ -481,12 +525,14 @@ describe("in the transcript", () => {
 			},
 		};
 		expect(draw(renderResult(result, false, plain, [AUTH, FEATURES])).split("\n")).toEqual([
-			"Auth  Which auth method?",
-			"  \u2713 OAuth",
-			"    \u203a we have it",
-			"  \u203a on API key: leaks",
-			"Features  Which features?",
-			"  \u25cb not answered",
+			"1  Auth",
+			"   Which auth method?",
+			"   \u2713 OAuth",
+			"     note  we have it",
+			"   note on API key  leaks",
+			"2  Features",
+			"   Which features?",
+			"   \u25cb not answered",
 		]);
 	});
 
