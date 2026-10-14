@@ -9,6 +9,8 @@ import {
 	closeIssues,
 	details,
 	fileIssue,
+	filesChanged,
+	logTail,
 	openIssues,
 	openPullRequest,
 	setOutputs,
@@ -71,7 +73,6 @@ async function report(): Promise<void> {
 	const changes = notes ? details(`What pi ${version} changed`, notes) : [];
 
 	if (!passed) {
-		const log = readFileSync("verify.log", "utf-8").split("\n").slice(-120).join("\n");
 		const lead =
 			pinnedVersion === version
 				? `\`bun run verify\` failed twice in a row against \`${version}\`, the version already pinned here. The pin did not move, so this is the check running red on its own, not a release that arrived. The two runs are in the history of this issue.`
@@ -85,20 +86,12 @@ async function report(): Promise<void> {
 				trailingNewline: false,
 				skipWhenMentions: `\`${version}\``,
 			},
-			[
-				lead,
-				"",
-				...links,
-				"",
-				...details("Tail of the log", `\`\`\`text\n${log}\n\`\`\``),
-				"",
-				...changes,
-			],
+			[lead, "", ...links, "", ...logTail(), "", ...changes],
 		);
 		return;
 	}
 
-	const bumped = (await $`git diff --quiet -- package.json`.nothrow()).exitCode !== 0;
+	const bumped = await filesChanged(["package.json"]);
 	if (bumped) {
 		await openPullRequest(
 			{

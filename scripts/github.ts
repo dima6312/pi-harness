@@ -1,7 +1,7 @@
 // What the two release checks share when they talk to GitHub: the step outputs a workflow reads back,
 // the issue a red run files, and the pull request that bumps a pin. `pushArgs` and `trailingNewline`
 // are per workflow, since `claude-code` and `newest-pi` differ there on purpose.
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 
 import { $ } from "bun";
 
@@ -21,14 +21,25 @@ export function details(summary: string, body: string): string[] {
 	return [`<details><summary>${summary}</summary>`, "", body, "", "</details>"];
 }
 
-/** The open issues under a label, oldest first. Both workflows keep one at a time. */
+/** The last lines of `verify.log`, as the collapsible block both reports paste. */
+export function logTail(): string[] {
+	const tail = readFileSync("verify.log", "utf-8").split("\n").slice(-120).join("\n");
+	return details("Tail of the log", `\`\`\`text\n${tail}\n\`\`\``);
+}
+
+/** Whether the working tree changed any of `files`, the check before opening a pull request. */
+export async function filesChanged(files: string[]): Promise<boolean> {
+	return (await $`git diff --quiet -- ${files}`.nothrow()).exitCode !== 0;
+}
+
+/** The open issues under a label: both workflows keep at most one at a time. */
 export async function openIssues(label: string): Promise<number[]> {
 	const json = await $`gh issue list --label ${label} --state open --json number`.text();
 	return (JSON.parse(json) as { number: number }[]).map((issue) => issue.number);
 }
 
 /** The label an issue lives under, the title it carries, and how its body file is written. */
-export interface IssueRequest {
+interface IssueRequest {
 	label: string;
 	description: string;
 	color: string;
@@ -66,7 +77,7 @@ export async function closeIssues(label: string, comment: string): Promise<void>
 }
 
 /** The branch a bump goes up on, the files it commits, and how that branch is pushed. */
-export interface PullRequest {
+interface PullRequest {
 	branch: string;
 	title: string;
 	files: string[];

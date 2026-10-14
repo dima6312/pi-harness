@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
-// The steps of `.github/workflows/claude-code.yml`: `compare` says whether the release moved, `bump`
-// re-runs the eval against it and rewrites the pin, and `report` opens the pull request or an issue.
-// No Anthropic account is involved, since the release is public and the turn is answered locally.
+// The steps of `.github/workflows/claude-code.yml`. No Anthropic account is involved, since the
+// release is public and the turn is answered locally.
 import { readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,7 +13,16 @@ import {
 	capture,
 	channelVersion,
 } from "../packages/providers/eval/claude-code/contract.ts";
-import { closeIssues, details, fileIssue, openPullRequest, setOutputs } from "./github.ts";
+import { CLAUDE_CODE_VERSION } from "../packages/providers/src/subscription/claude-code.ts";
+import {
+	closeIssues,
+	details,
+	fileIssue,
+	filesChanged,
+	logTail,
+	openPullRequest,
+	setOutputs,
+} from "./github.ts";
 
 const LABEL = "claude-code";
 const BRANCH = "claude-code";
@@ -24,16 +32,9 @@ const GENERATED = "packages/providers/src/subscription/claude-code.ts";
 const GOLDEN = "packages/providers/eval/claude-code/golden.json";
 const NOTES = "contract.md";
 
-/** The version the harness reports, as the generated file pins it. */
-function pinned(): string {
-	const found = /CLAUDE_CODE_VERSION = "([^"]+)"/.exec(readFileSync(GENERATED, "utf-8"));
-	if (found?.[1] === undefined) throw new Error(`${GENERATED} has no version`);
-	return found[1];
-}
-
 async function compare(): Promise<void> {
 	const newest = await channelVersion(CHANNEL);
-	const now = pinned();
+	const now = CLAUDE_CODE_VERSION;
 	setOutputs({ test: String(newest !== now), pinned: now, newest });
 	console.log(newest === now ? `${now} is current` : `${now} -> ${newest}`);
 }
@@ -134,13 +135,12 @@ async function bump(): Promise<void> {
 
 async function report(): Promise<void> {
 	const passed = process.env.VERIFY === "success";
-	const version = process.env.NEWEST ?? pinned();
+	const version = process.env.NEWEST ?? CLAUDE_CODE_VERSION;
 	const run = process.env.RUN_URL ?? "";
 	const links = [`- [run](${run})`, `- [releases](${WEB}/releases)`];
 	const changed = details(`What Claude Code ${version} changed`, readFileSync(NOTES, "utf-8"));
 
 	if (!passed) {
-		const log = readFileSync("verify.log", "utf-8").split("\n").slice(-120).join("\n");
 		await fileIssue(
 			{
 				label: LABEL,
@@ -154,7 +154,7 @@ async function report(): Promise<void> {
 				"",
 				...links,
 				"",
-				...details("Tail of the log", `\`\`\`text\n${log}\n\`\`\``),
+				...logTail(),
 				"",
 				...changed,
 			],
@@ -162,7 +162,7 @@ async function report(): Promise<void> {
 		return;
 	}
 
-	const moved = (await $`git diff --quiet -- ${GENERATED} ${GOLDEN}`.nothrow()).exitCode !== 0;
+	const moved = await filesChanged([GENERATED, GOLDEN]);
 	if (moved) {
 		await openPullRequest(
 			{
