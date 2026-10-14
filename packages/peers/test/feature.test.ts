@@ -206,6 +206,19 @@ test("the tool reads the board and refuses names nobody has", async () => {
 	});
 });
 
+test("a subagent stays out of the room, so its prompt and a woke note cannot collide", async () => {
+	process.env.PI_SUBAGENT_CHILD = "1";
+	try {
+		const { fake } = await mounted("child");
+		expect(fake.tools.map((tool) => tool.name)).not.toContain("peers");
+		expect(fake.shortcuts).not.toContain("alt+g");
+		expect(new FolderFeed(eventsDir("/repo")).read()).toHaveLength(0);
+		expect(fake.messages).toHaveLength(0);
+	} finally {
+		delete process.env.PI_SUBAGENT_CHILD;
+	}
+});
+
 test("a commit line is read from git's output, with or without a root-commit note", () => {
 	expect(committed("[main (root-commit) abc1234] First")).toEqual({
 		sha: "abc1234",

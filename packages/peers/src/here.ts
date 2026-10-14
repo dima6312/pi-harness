@@ -566,7 +566,8 @@ function sendOptions(mode: Delivery): {
 } {
 	switch (mode) {
 		case "woke":
-			return { triggerTurn: true };
+			// A run that starts now refuses a message with no delivery, so this wakes it with the words.
+			return { triggerTurn: true, deliverAs: "followUp" };
 		case "after-run":
 			return { triggerTurn: true, deliverAs: "followUp" };
 		case "steered":

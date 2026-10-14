@@ -68,6 +68,11 @@ const EVENTS = "harness/events";
 const WRITES =
 	/(>>?|\btee\b|\brm\b|\bmv\b|\bcp\b|\btruncate\b|\bdd\b|\binstall\b|\btouch\b|\bchmod\b|\bsed -i\b|\bpython3? -c\b|\bnode -e\b|\bbun -e\b)/;
 
+/** Whether this session is a subagent's, which lives inside another session and stays out of the room. */
+function inSubagent(): boolean {
+	return process.env.PI_SUBAGENT_CHILD === "1";
+}
+
 export interface SentDetails {
 	id: string;
 	to: string[];
@@ -81,6 +86,10 @@ export const peers = defineFeature({
 		"Agents in the same folder see each other's work, talk in a room, and split what you ask everyone",
 	settings: PEERS_SETTINGS,
 	setup(scope) {
+		// A subagent holds a session of its own inside this one. It never joins the room, publishes a
+		// board or reads the notes, because a woke message would collide with the prompt that already
+		// started its run, and pi refuses the message.
+		if (inSubagent()) return;
 		let session: ExtensionContext | undefined;
 		// Tool rows that show receipts, redrawn when the folder changes.
 		const rows = new Set<() => void>();

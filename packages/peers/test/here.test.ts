@@ -113,7 +113,10 @@ describe("a message", () => {
 		a.here.post(["b"], "are you in auth.ts?", "agent");
 		b.here.sync();
 		expect(b.sent).toEqual([
-			expect.objectContaining({ kind: "custom", options: { triggerTurn: true } }),
+			expect.objectContaining({
+				kind: "custom",
+				options: { triggerTurn: true, deliverAs: "followUp" },
+			}),
 		]);
 		expect(b.sent[0]?.text).toContain("It is not the operator");
 
@@ -144,7 +147,7 @@ describe("a message", () => {
 		for (let i = 0; i < 6; i++) a.here.post(["b"], `ping ${i}`, "agent");
 		b.here.sync();
 		expect(b.sent).toHaveLength(1);
-		expect(b.sent[0]?.options).toEqual({ triggerTurn: true });
+		expect(b.sent[0]?.options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
 		for (let i = 0; i < 6; i++) expect(b.sent[0]?.text).toContain(`ping ${i}`);
 	});
 
@@ -158,7 +161,7 @@ describe("a message", () => {
 		for (let reply = 1; reply <= QUIET_AFTER; reply++) {
 			const reader = sessions[1 - writer];
 			reader?.here.sync();
-			expect(reader?.sent.at(-1)?.options).toEqual({ triggerTurn: true });
+			expect(reader?.sent.at(-1)?.options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
 			writer = 1 - writer;
 			reader?.here.post([writer === 0 ? "b" : "a"], `reply ${reply}`, "agent");
 		}
@@ -170,7 +173,7 @@ describe("a message", () => {
 		last?.here.post([writer === 0 ? "b" : "a"], "you prompted, so this wakes", "agent");
 		const other = sessions[writer];
 		other?.here.sync();
-		expect(other?.sent.at(-1)?.options).toEqual({ triggerTurn: true });
+		expect(other?.sent.at(-1)?.options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
 	});
 });
 
@@ -259,7 +262,9 @@ describe("a request to anyone", () => {
 		now += 5_000;
 		b.here.open({ getCwd: () => "/repo", getSessionId: () => "b" }, undefined);
 		await settle(a, b);
-		expect(b.sent.map((sent) => sent.options)).toEqual([{ triggerTurn: true }]);
+		expect(b.sent.map((sent) => sent.options)).toEqual([
+			{ triggerTurn: true, deliverAs: "followUp" },
+		]);
 	});
 
 	test("an agent handing work to anyone does not bid on it, and the taker hears it is from a peer", async () => {
