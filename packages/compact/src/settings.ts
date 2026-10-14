@@ -17,13 +17,13 @@ export const prune = setting({
 
 export const onServer = setting({
 	id: "compact.server",
-	default: true,
+	default: false,
 	decoder: boolean,
 	ui: {
 		section: PRUNE_SECTION,
 		label: "On Anthropic's side",
 		description:
-			"On Anthropic models, Anthropic clears old tool output itself and keeps the last 10 calls whole, so the agent keeps its thinking. Off, the prune edits the context there too, which drops the thinking of every later turn.",
+			"On Anthropic models, Anthropic clears old tool output itself and keeps the agent's thinking. Each clear makes the next request write the whole prompt again for little it frees, since thinking stays, so it is off: the prune runs when a run ends, and also drops the thinking of later turns.",
 	},
 });
 

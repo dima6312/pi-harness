@@ -37,7 +37,7 @@ interface Part {
 	text?: string;
 	id?: string;
 	name?: string;
-	arguments?: { command?: string };
+	arguments?: { command?: string; _pruned?: string };
 }
 
 function entry(id: string, message: unknown): ProjectedSessionEntry {
@@ -144,9 +144,10 @@ describe("what a prune hides", () => {
 		const parts = partsOf(plan.edits.find((candidate) => candidate.targetId === "t1")?.replacement);
 		expect(parts[0]).toEqual({ type: "text", text: "Running the migration." });
 		expect(parts[1]).toMatchObject({ type: "toolCall", id: "c-t1", name: "bash" });
-		expect(parts[1]?.arguments?.command).toBe(
-			`python3 - <<'EOF' (${SCRIPT.length} characters, hidden to save context)`,
-		);
+		// The long value leaves whole: a value cut short is what the model learned to copy.
+		expect(parts[1]?.arguments).toEqual({
+			_pruned: `Removed from the context to save space: command (${SCRIPT.length} characters). The call ran with them in full.`,
+		});
 		expect(plan.freed).toBeGreaterThan(5000);
 	});
 
@@ -236,18 +237,32 @@ async function mounted(
 		const [answer] = await fake.fire("turn_end", event, ctx);
 		return answer as { entries: Proposed[] } | undefined;
 	};
+	// The last turn of a run, then the run settling: what either proposed.
+	const runEnd = async (context: number, entries = session(KEEP_TURNS + 10)) => {
+		const atTurn = await turnEnd(context, entries);
+		const others = [{ type: "custom", customType: "other", data: 1 }];
+		const settle = {
+			type: "agent_before_settle",
+			entries: others,
+			continue: false,
+			outcome: "completed",
+			context: { contextEntries: entries },
+		};
+		const [answer] = await fake.fire("agent_before_settle", settle, ctx);
+		return (answer as { entries: Proposed[] } | undefined) ?? atTurn;
+	};
 	const prune = () => fake.commands.get("prune")?.handler("", ctx as never);
-	return { fake, ctx, notes, turnEnd, prune };
+	return { fake, ctx, notes, turnEnd, runEnd, prune };
 }
 
-describe("at the end of a turn", () => {
+describe("at the end of a run", () => {
 	test("past the line it hides old output, keeps what other extensions proposed, and says where things stand", async () => {
 		const tasks = applyTaskOps(emptyTasks(), [{ op: "ask", text: "Fix the login" }], {
 			at: 1,
 			origin: "you",
 		});
-		const { turnEnd } = await mounted([tasksEntry(tasks)], { pruneAbove: 20_000 });
-		const answer = await turnEnd(25_000);
+		const { runEnd } = await mounted([tasksEntry(tasks)], { pruneAbove: 20_000 });
+		const answer = await runEnd(25_000);
 		const kinds = answer?.entries.map((proposed) => proposed.customType ?? proposed.type);
 		expect(kinds?.[0]).toBe("other");
 		expect(kinds?.filter((kind) => kind === "context_edit").length).toBe(9);
@@ -261,32 +276,53 @@ describe("at the end of a turn", () => {
 	});
 
 	test("below the line, or with pruning off, nothing changes", async () => {
-		expect(await (await mounted()).turnEnd(100_000)).toBeUndefined();
+		expect(await (await mounted()).runEnd(100_000)).toBeUndefined();
 		expect(
-			await (await mounted([], { prune: false, pruneAbove: 20_000 })).turnEnd(25_000),
+			await (await mounted([], { prune: false, pruneAbove: 20_000 })).runEnd(25_000),
 		).toBeUndefined();
 	});
 
-	test("/prune hides at the next turn whatever the size, and says when nothing is old enough", async () => {
-		const { notes, turnEnd, prune } = await mounted([], { prune: false });
+	test("a turn in the middle of a run waits for the end, unless pi's compaction is close", async () => {
+		const near = { ...ANTHROPIC, contextWindow: 30_000 };
+		const { turnEnd } = await mounted([], { pruneAbove: 20_000 }, near);
+		expect(await turnEnd(22_000)).toBeUndefined();
+		const answer = await turnEnd(25_000);
+		expect(answer?.entries.some((proposed) => proposed.type === "context_edit")).toBe(true);
+	});
+
+	test("/prune hides when the run ends whatever the size, and says when nothing is old enough", async () => {
+		const { notes, runEnd, prune } = await mounted([], { prune: false });
 		await prune();
-		expect((await turnEnd(1_000))?.entries.length).toBeGreaterThan(2);
+		expect((await runEnd(1_000))?.entries.length).toBeGreaterThan(2);
 		await prune();
-		expect(await turnEnd(1_000, session(KEEP_TURNS))).toBeUndefined();
+		expect(await runEnd(1_000, session(KEEP_TURNS))).toBeUndefined();
 		expect(notes.at(-1)).toBe(
 			`Nothing to hide: no tool output is older than the last ${KEEP_TURNS} turns.`,
 		);
 	});
 
 	test("a call that repeats a hidden one counts once as a re-read", async () => {
-		const { fake, ctx, turnEnd } = await mounted([], { pruneAbove: 20_000 });
-		await turnEnd(25_000);
+		const { fake, ctx, runEnd } = await mounted([], { pruneAbove: 20_000 });
+		await runEnd(25_000);
 		const read = { type: "tool_call", toolName: "read", input: { path: "src/file0.ts" } };
 		await fake.fire("tool_call", read, ctx);
 		await fake.fire("tool_call", read, ctx);
 		expect(fake.entries).toEqual([
 			{ customType: REREAD_ENTRY, data: { call: "read src/file0.ts" } },
 		]);
+	});
+
+	test("a call that copies a pruned call's note, or a value cut the old way, does not run", async () => {
+		const { fake, ctx } = await mounted();
+		const callWith = (input: unknown) =>
+			fake.fire("tool_call", { type: "tool_call", toolName: "peers", input }, ctx);
+		expect(await callWith({ text: "Thanks. (1597 characters, hidden to save context)" })).toEqual([
+			expect.objectContaining({ block: true }),
+		]);
+		expect(await callWith({ _pruned: "Removed from the context to save space" })).toEqual([
+			expect.objectContaining({ block: true }),
+		]);
+		expect(await callWith({ text: "Thanks, all of it here." })).toEqual([undefined]);
 	});
 });
 
@@ -317,8 +353,8 @@ function request(payload: unknown) {
 }
 
 describe("on Anthropic models", () => {
-	test("each request asks Anthropic to clear old output on its side", async () => {
-		const { fake, ctx } = await mounted([], { pruneAbove: 150_000 }, ANTHROPIC);
+	test("with the setting on, each request asks Anthropic to clear old output on its side", async () => {
+		const { fake, ctx } = await mounted([], { server: true, pruneAbove: 150_000 }, ANTHROPIC);
 		const [payload] = await fake.fire(
 			"before_provider_request",
 			request({ betas: ["other"] }),
@@ -341,22 +377,22 @@ describe("on Anthropic models", () => {
 		expect(withServerClearing(payload, 150_000)).toBeUndefined();
 	});
 
-	test("another endpoint that speaks Anthropic's API, or the setting off, gets the prune instead", async () => {
-		const elsewhere = await mounted([], {}, { ...ANTHROPIC, provider: "kimi" });
+	test("by default, or on another endpoint that speaks Anthropic's API, the prune runs instead", async () => {
+		const elsewhere = await mounted([], { server: true }, { ...ANTHROPIC, provider: "kimi" });
 		expect(
 			await elsewhere.fake.fire("before_provider_request", request({}), elsewhere.ctx),
 		).toEqual([undefined]);
-		const off = await mounted([], { server: false, pruneAbove: 20_000 }, ANTHROPIC);
+		const off = await mounted([], { pruneAbove: 20_000 }, ANTHROPIC);
 		expect(await off.fake.fire("before_provider_request", request({}), off.ctx)).toEqual([
 			undefined,
 		]);
 		expect(
-			(await off.turnEnd(25_000))?.entries.some((proposed) => proposed.type === "context_edit"),
+			(await off.runEnd(25_000))?.entries.some((proposed) => proposed.type === "context_edit"),
 		).toBe(true);
 	});
 
 	test("the context is never edited, and a request that shrank records what Anthropic cleared", async () => {
-		const { turnEnd } = await mounted([], { pruneAbove: 20_000 }, ANTHROPIC);
+		const { turnEnd } = await mounted([], { server: true, pruneAbove: 20_000 }, ANTHROPIC);
 		expect(await turnEnd(25_000)).toBeUndefined();
 		const answer = await turnEnd(12_000);
 		expect(answer?.entries.some((proposed) => proposed.type === "context_edit")).toBe(false);
@@ -374,11 +410,11 @@ describe("on Anthropic models", () => {
 
 	test("after a reload, the first clear is measured from the last request on the branch", async () => {
 		const answered = { type: "message", message: { role: "assistant", usage: usage(25_000) } };
-		const { turnEnd } = await mounted([answered], { pruneAbove: 20_000 }, ANTHROPIC);
+		const { turnEnd } = await mounted([answered], { server: true, pruneAbove: 20_000 }, ANTHROPIC);
 		expect((await turnEnd(12_000))?.entries.at(-1)).toMatchObject({
 			data: { before: 25_000, server: true },
 		});
-		const edited = await mounted([answered, { type: "context_edit" }], {}, ANTHROPIC);
+		const edited = await mounted([answered, { type: "context_edit" }], { server: true }, ANTHROPIC);
 		expect(await edited.turnEnd(12_000)).toBeUndefined();
 	});
 });

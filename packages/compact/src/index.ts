@@ -18,7 +18,14 @@ import {
 	type TurnEndEvent,
 } from "@earendil-works/pi-coding-agent";
 
-import { describeCall, KEEP_TURNS, planServerClear, pruneNow, sizeAfter } from "./prune.ts";
+import {
+	copiedPrune,
+	describeCall,
+	KEEP_TURNS,
+	planServerClear,
+	pruneNow,
+	sizeAfter,
+} from "./prune.ts";
 import {
 	type Billed,
 	clearedEntries,
@@ -47,6 +54,9 @@ import {
 	SUMMARY_SECTION,
 } from "./settings.ts";
 import { summarize } from "./summary.ts";
+
+/** Past this share of the model's window a turn prunes at once, before pi's own compaction. */
+const NEAR_WINDOW = 0.8;
 
 export const compact = defineFeature({
 	id: "compact",
@@ -80,7 +90,9 @@ export const compact = defineFeature({
 			onServerFor(ctx) ? withServerClearing(event.payload, pruneAbove.get(scope)) : undefined,
 		);
 
-		// Pi checks its own compaction right after turn_end, so pruning here usually spares it.
+		/** The last answer's usage, measured at the end of the run. */
+		let lastUsage: Billed | undefined;
+
 		scope.on("turn_end", (event, ctx) => {
 			if (!forced && !prune.get(scope)) return undefined;
 			const message = event.message;
@@ -94,6 +106,7 @@ export const compact = defineFeature({
 			const prompt = input + cacheRead + cacheWrite;
 			const previous = lastPrompt;
 			lastPrompt = prompt;
+			lastUsage = message.usage;
 			if (!forced && onServerFor(ctx)) {
 				if (previous === undefined || !serverCleared(previous, prompt, pruneAbove.get(scope)))
 					return undefined;
@@ -101,11 +114,41 @@ export const compact = defineFeature({
 					entries: [...event.entries, ...clearedOnServer(event, ctx, previous, message.usage)],
 				};
 			}
+			// A prune makes the next request write the whole prompt again. At the end of the run that
+			// lands on your next message, which pays it anyway when the cache went cold. Mid-run only
+			// when pi's own compaction is close, which a prune here usually spares.
+			const window = ctx.model?.contextWindow ?? 0;
+			if (forced || window === 0 || prompt < NEAR_WINDOW * window) return undefined;
 			const outputs = event.toolResults.reduce((sum, result) => sum + estimateTokens(result), 0);
-			const before = prompt + outputs;
+			return pruneNowAt(
+				event.entries,
+				event.context.contextEntries,
+				prompt + outputs,
+				message.usage,
+				ctx,
+			);
+		});
+
+		scope.on("agent_before_settle", (event, ctx) => {
+			const usage = lastUsage;
+			lastUsage = undefined;
+			if (event.outcome !== "completed" || usage === undefined) return undefined;
+			if (!forced && (!prune.get(scope) || onServerFor(ctx))) return undefined;
+			const before = usage.input + usage.cacheRead + usage.cacheWrite;
+			return pruneNowAt(event.entries, event.context.contextEntries, before, usage, ctx);
+		});
+
+		/** Hides old output if it pays, or always after /prune, and records what it hid. */
+		function pruneNowAt(
+			entries: readonly SessionBoundaryDraft[],
+			context: TurnEndEvent["context"]["contextEntries"],
+			before: number,
+			usage: Billed,
+			ctx: ExtensionContext,
+		): { entries: SessionBoundaryDraft[] } | undefined {
 			const asked = forced;
 			forced = false;
-			const plan = pruneNow(event.context.contextEntries, before, pruneAbove.get(scope), asked);
+			const plan = pruneNow(context, before, pruneAbove.get(scope), asked);
 			if (plan === undefined) {
 				if (asked)
 					ctx.ui.notify(
@@ -116,7 +159,7 @@ export const compact = defineFeature({
 			}
 			const after = sizeAfter(plan, before);
 			const cost = priced(
-				message.usage,
+				usage,
 				ctx.model?.cost.cacheRead ?? 0,
 				before - after,
 				// Only the system prompt stays cached, so the next request writes all of this again.
@@ -134,17 +177,24 @@ export const compact = defineFeature({
 			lastPrompt = undefined;
 			return {
 				entries: [
-					...event.entries,
+					...entries,
 					...plan.edits,
 					note(tasksNow(ctx), false),
 					{ type: "custom", customType: PRUNE_ENTRY, data: record },
 				],
 			};
-		});
+		}
 
 		scope.on("tool_call", (event) => {
+			const copied = copiedPrune(event.input);
+			if (copied !== undefined)
+				return {
+					block: true,
+					reason: `Not run: its arguments carry ${copied}, copied from an old call whose arguments left the context. Write every argument out in full.`,
+				};
 			const call = describeCall(event.toolName, event.input);
 			if (hidden.delete(call)) scope.appendEntry(REREAD_ENTRY, { call });
+			return undefined;
 		});
 
 		scope.on("session_before_compact", async (event, ctx) => {
@@ -163,13 +213,13 @@ export const compact = defineFeature({
 		});
 
 		scope.registerCommand("prune", {
-			description: "Hide old tool output at the end of the next turn, whatever the context's size",
+			description: "Hide old tool output when this run ends, whatever the context's size",
 			handler: async (_args, ctx) => {
 				forced = true;
 				ctx.ui.notify(
 					onServerFor(ctx)
-						? "Old tool output goes at the end of the next turn. On Anthropic models this edit drops the agent's earlier thinking, which Anthropic's own clearing keeps."
-						: "Old tool output goes at the end of the next turn.",
+						? "Old tool output goes when this run ends. On Anthropic models this edit drops the agent's earlier thinking, which Anthropic's own clearing keeps."
+						: "Old tool output goes when this run ends. The edit drops the agent's earlier thinking.",
 					"info",
 				);
 			},

@@ -34,7 +34,6 @@ type ToolCall = Extract<
 	Extract<AgentMessage, { role: "assistant" }>["content"][number],
 	{ type: "toolCall" }
 >;
-type JsonValue = ToolCall["arguments"][string];
 
 interface Visible {
 	id: string;
@@ -205,20 +204,42 @@ export function describeCall(name: string, args: unknown): string {
 	return `${name} ${clip(target ?? JSON.stringify(fields))}`.trim();
 }
 
+/**
+ * An old call without its long arguments, and a note on what went. The model copies what it sees
+ * in its context: a value cut short with a note in it once taught it to cut its own arguments,
+ * and the call ran with them cut. A value that is gone makes a copied call fail, out loud.
+ */
 function shortened(args: ToolCall["arguments"]): ToolCall["arguments"] {
-	return Object.fromEntries(
-		Object.entries(args).map(([key, value]) => [key, shortenedValue(value)]),
-	);
+	const kept: ToolCall["arguments"] = {};
+	const gone: string[] = [];
+	for (const [key, value] of Object.entries(args)) {
+		const size = typeof value === "string" ? value.length : JSON.stringify(value).length;
+		if (size <= LONG_STRING) kept[key] = value;
+		else gone.push(`${key} (${size} characters)`);
+	}
+	return {
+		...kept,
+		[PRUNED_KEY]: `Removed from the context to save space: ${gone.join(", ")}. The call ran with them in full.`,
+	};
 }
 
-function shortenedValue(value: JsonValue): JsonValue {
-	if (typeof value === "string")
-		return value.length <= LONG_STRING
-			? value
-			: `${clip(value)} (${value.length} characters, hidden to save context)`;
-	if (Array.isArray(value)) return value.map(shortenedValue);
-	if (typeof value === "object" && value !== null) return shortened(value as ToolCall["arguments"]);
-	return value;
+/** The key of the note an old call carries in place of its long arguments. */
+export const PRUNED_KEY = "_pruned";
+/** How cut values read before: an agent that saw them wrote its own arguments that way. */
+const OLD_MARKER = /characters, hidden to save context\)/u;
+
+/**
+ * Why a call must not run: it carries a pruned call's note, or a value cut the old way, which
+ * means the model copied a pruned call instead of writing its arguments.
+ */
+export function copiedPrune(args: unknown): string | undefined {
+	if (typeof args === "string") return OLD_MARKER.test(args) ? "a value cut short" : undefined;
+	if (Array.isArray(args)) return args.map(copiedPrune).find((reason) => reason !== undefined);
+	if (typeof args !== "object" || args === null) return undefined;
+	if (PRUNED_KEY in args) return `the ${PRUNED_KEY} note of a pruned call`;
+	return Object.values(args)
+		.map(copiedPrune)
+		.find((reason) => reason !== undefined);
 }
 
 function clip(text: string): string {
