@@ -19,3 +19,9 @@ export function formatCost(amount: number): string {
 function trim(fixed: string): string {
 	return fixed.endsWith(".0") ? fixed.slice(0, -2) : fixed;
 }
+
+/** The time of day, hours and minutes, in the machine's own zone. */
+export function formatClock(at: number): string {
+	const date = new Date(at);
+	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { callTarget, formatCost, formatTokens, mergeBetas } from "../src/index.ts";
+import { callTarget, formatClock, formatCost, formatTokens, mergeBetas } from "../src/index.ts";
 
 describe("how a number reads", () => {
 	test("a token count keeps its precision while it is small", () => {
@@ -12,17 +12,29 @@ describe("how a number reads", () => {
 		expect(formatTokens(44_000_000)).toBe("44M");
 	});
 
-	test("a whole thousand loses its zero, and a negative never reads as a count", () => {
-		expect(formatTokens(1_000)).toBe("1k");
-		expect(formatTokens(10_000)).toBe("10k");
+	test("a faixa vira na fronteira, sem depender do arredondamento de dentro dela", () => {
+		expect(
+			[999, 1000, 9999, 10_000, 999_999, 1_000_000, 9_999_999, 10_000_000].map(formatTokens),
+		).toEqual(["999", "1k", "10k", "10k", "1000k", "1M", "10M", "10M"]);
 		expect(formatTokens(-5)).toBe("0");
 	});
 
-	test("a price shows cents under ten dollars, and none above", () => {
-		expect(formatCost(0)).toBe("$0.00");
-		expect(formatCost(0.5)).toBe("$0.500");
-		expect(formatCost(9.999)).toBe("$9.999");
-		expect(formatCost(12.345)).toBe("$12.35");
+	test("a price shows cents under ten dollars, and none from ten up", () => {
+		expect([0, 0.0004, 0.5, 9.9999, 10, 12.345].map(formatCost)).toEqual([
+			"$0.00",
+			"$0.000",
+			"$0.500",
+			"$10.000",
+			"$10.00",
+			"$12.35",
+		]);
+	});
+});
+
+describe("the time of day", () => {
+	test("reads as hours and minutes, with a leading zero", () => {
+		expect(formatClock(new Date(2026, 8, 29, 9, 5).getTime())).toBe("09:05");
+		expect(formatClock(new Date(2026, 8, 29, 23, 59).getTime())).toBe("23:59");
 	});
 });
 

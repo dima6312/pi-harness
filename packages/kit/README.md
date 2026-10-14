@@ -59,6 +59,18 @@ Each extension a package declares is one app with one or more features. The app'
 
 A `setup` that throws turns into a warning and the other features still mount. If two apps in one Pi process mount the same feature id, the first runs it and the second logs who has it.
 
+## What else it shares
+
+Besides the app and the settings, the kit holds what every package would otherwise write twice.
+
+| Module                                                       | What it gives                                                                                                    |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `ui/frame.ts`, `ui/entry.ts`, `ui/glyphs.ts`, `ui/scroll.ts` | The frame an entry wears, the lines and glyphs it is drawn with, and where a scroll bar's thumb sits             |
+| `format.ts`                                                  | How a token count, a price and a time of day read, the same in a footer, a panel and a table                     |
+| `betas.ts`                                                   | Merging the betas an Anthropic request carries, keeping the payload untouched when nothing had to be added       |
+| `events/log.ts`                                              | The folder log every session appends to and reads                                                                |
+| `contracts/`, `tasks/`                                       | The names this suite writes into a pi session and the events that cross packages, plus the task list's own types |
+
 ## Settings
 
 Every app reads `~/.pi/agent/extensions/pi-harness/settings.json`. A setting's `id` is its path in that file. A store reads only the settings its own features declared, so keys belonging to another app never produce a warning.

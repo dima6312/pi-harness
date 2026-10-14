@@ -23,6 +23,7 @@ import {
 import type { Layer } from "../settings/store.ts";
 import { frameBottom, type KeyHint } from "../ui/frame.ts";
 import { CUT, GLYPH, LINE } from "../ui/glyphs.ts";
+import { thumbRange } from "../ui/scroll.ts";
 import { applyRow, listTabs, runRow } from "./client.ts";
 import { keyOf, type Line, type ScreenModel } from "./model.ts";
 
@@ -750,10 +751,12 @@ function widestOf(texts: readonly (string | undefined)[]): number {
 
 /** True where the thumb is. Empty when everything fits. */
 function scrollbar(total: number, height: number, scroll: number): (boolean | undefined)[] {
-	if (total <= height) return [];
-	const size = Math.max(1, Math.round((height * height) / total));
-	const start = Math.round((scroll / (total - height)) * (height - size));
-	return Array.from({ length: height }, (_, index) => index >= start && index < start + size);
+	const thumb = thumbRange(total, height, scroll);
+	if (thumb === undefined) return [];
+	return Array.from(
+		{ length: height },
+		(_, index) => index >= thumb.start && index < thumb.start + thumb.size,
+	);
 }
 
 function rowMeta(row: RowView): string {

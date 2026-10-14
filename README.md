@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Pi runs every command without asking. This makes it ask.</strong><br>
-  A set of extensions on top of <a href="https://pi.dev">Pi</a>, in one install: they ask before running something, they ask you before guessing, and the screen tells you what is happening.
+  A set of extensions on top of <a href="https://pi.dev">Pi</a>, in one install: they ask before a command runs, and they ask you when the model would otherwise guess.
 </p>
 
 <p align="center"><code>pi install npm:@adeildo/pi-harness</code></p>
@@ -29,7 +29,7 @@
 
 **One dialog answers both.** A permission ask and a question from the model look the same and take the same keys: yes, always yes or no, with a note you can leave on any answer. Saying no to `npm install` with "use pnpm instead" reaches the model.
 
-**Nothing is hidden, and nothing is final.** The time, the cost and how fast the model writes change without moving the line you type on. Every answer can be undone, and `Alt+S` shows what each piece is set to.
+**The line you type on never moves.** The time, the cost and how fast the model writes change around it, every answer can be undone, and `Alt+S` shows what each piece is set to.
 
 ## What you get
 
@@ -44,7 +44,7 @@
 | [Look](packages/look)                 | The start screen, the editor with the branch and the model on its borders, and a box around each command with its output and how long it took                                                              |
 | [Providers](packages/providers)       | Bills Anthropic requests to the Claude plan you already pay for, keeps several accounts with a switch to the next one when a limit hits, and keeps the prompt cache warm while you are likely to come back |
 
-Two dialogs stand between the model and the two things that need you: the permission to run something, and a question it would otherwise guess at.
+Both dialogs open in the same frame and take the same keys, and a note on any answer reaches the model.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/harness/assets/permission.png" alt="The permission dialog for npm install, narrow: the command, the reason it asks, the three answers, the note on no, and the keys." width="380">
@@ -64,7 +64,7 @@ There is no fork. Everything installs on top of Pi, and `pi remove` puts Pi back
 | You want                        | Read                                                 |
 | ------------------------------- | ---------------------------------------------------- |
 | Use a piece                     | The page of the piece, linked in the table above     |
-| Look up a setting or a key      | `docs/reference.md` in the permission and look pages |
+| Look up a setting or a key      | The piece's own `docs/reference.md`, where it has one |
 | Know what is planned            | [ROADMAP.md](ROADMAP.md)                             |
 | Know what changed               | [CHANGELOG.md](CHANGELOG.md)                         |
 | Build a piece, or send a change | [CONTRIBUTING.md](CONTRIBUTING.md)                   |

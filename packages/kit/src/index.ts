@@ -5,6 +5,7 @@ export * from "./app/feature.ts";
 export * from "./contracts/accounts.ts";
 export * from "./contracts/ask.ts";
 export * from "./contracts/calls.ts";
+export * from "./contracts/entries.ts";
 export * from "./contracts/screen.ts";
 export * from "./contracts/skills.ts";
 export * from "./card.ts";
@@ -24,6 +25,7 @@ export * from "./typing.ts";
 export * from "./ui/entry.ts";
 export * from "./ui/glyphs.ts";
 export * from "./ui/frame.ts";
+export * from "./ui/scroll.ts";
 export {
 	globalSettingsPath,
 	projectSettingsPath,
