@@ -105,14 +105,16 @@ Open:
 
 ## Accounts. `@adeildo/pi-providers`
 
-| Item              | Status  | Note                                                                                                              |
-| ----------------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
-| Subscription      | done    | an Anthropic OAuth request is billed to the Claude plan, and an API key goes out untouched                        |
-| Several accounts  | done    | every credential of a provider with accounts is a named account, `/accounts` manages them and `Alt+A` switches    |
-| Switch on limit   | done    | an account that hits a limit hands over to the next one, asking first by default                                  |
-| Quota per plan    | next    | what is left and when it resets, read from the endpoints below. A feature of its own, because three items read it |
-| Account by quota  | planned | the switch moves to the account with the most left, instead of the next in the list. Needs the quota              |
-| Quota on the look | planned | a segment in the footer, in percent and reset time. Needs the quota                                               |
+| Item               | Status                                                                                                                  | Note                                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Subscription       | done                                                                                                                    | an Anthropic OAuth request is billed to the Claude plan, and an API key goes out untouched                                               |
+| Several accounts   | done                                                                                                                    | every credential of a provider with accounts is a named account, `/accounts` manages them and `Alt+A` switches                           |
+| Switch on limit    | done                                                                                                                    | an account that hits a limit hands over to the next one, asking first by default                                                         |
+| Cache between runs | done                                                                                                                    | pi's idle refreshes go out while the chance you come back, learned from a month of sessions, pays for them. About 23 minutes on Opus 5.5 |
+| Cache misses       | next the Providers tab names why each miss happened: a pause, a restart, a changed system prompt, the server's clearing |
+| Quota per plan     | next                                                                                                                    | what is left and when it resets, read from the endpoints below. A feature of its own, because three items read it                        |
+| Account by quota   | planned                                                                                                                 | the switch moves to the account with the most left, instead of the next in the list. Needs the quota                                     |
+| Quota on the look  | planned                                                                                                                 | a segment in the footer, in percent and reset time. Needs the quota                                                                      |
 
 The quota endpoints are not official, and each needs the token pi already stores.
 

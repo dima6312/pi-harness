@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>The plan you already pay for, and more than one login per provider.</strong><br>
-  Bill Anthropic requests to your Claude plan, and keep several accounts with a switch to the next one when a limit hits.
+  Bill Anthropic requests to your Claude plan, keep several accounts with a switch to the next one when a limit hits, and keep the prompt cache warm while you are likely to come back.
 </p>
 
 <p align="center"><code>pi install npm:@adeildo/pi-providers</code></p>
@@ -66,6 +66,34 @@ Only a limit that arrives before anything was shown switches, so a retry never r
 
 A quota belongs to the account, so an account that refused is skipped until it answers again, and the same dialog is not asked twice in a session. A credential the provider refuses instead opens `accounts.onAuthFailure`, whose dialog can run the provider's own login again under the same account, keeping its name and the session pin.
 
+## Prompt cache
+
+Anthropic keeps a prompt in cache for 5 minutes. With pi's `cacheWarming` setting on `idle`, pi sends the last request again before the 5 minutes end, while the agent waits for you. Your next message then reads the prompt from cache instead of writing all of it again. On Opus 5.5 a refresh reads the prompt at 5% of the input price, and a miss writes it at 125%.
+
+Pi assumes a fixed 15% chance that you come back before each refresh, and refreshes only when that saves 5 cents. On Opus 5.5 it skips every prompt under about 96k tokens, and refreshes the rest for 30 minutes. The chance falls the longer you are away, so `cache.strategy` picks how refreshes are decided:
+
+| Value     | Refreshes                                                                                    |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `learned` | While the chance you come back pays for the refresh, whatever the prompt's size. The default |
+| `pi`      | As pi decides on its own                                                                     |
+| `minutes` | Every time in the first `cache.upTo` minutes after the last request, then never              |
+| `off`     | Never while you are away                                                                     |
+
+`learned` measures how long you took to answer after each run, in the last 30 days of sessions of every project. It reads them once a day, in the background. Runs that ended on a question to you are counted apart, because you answer those sooner. Until it has learned, it uses the chances measured on 1,688 runs:
+
+| Away for         | Chance of a message before the next refresh |
+| ---------------- | ------------------------------------------- |
+| 4.5 to 9 min     | 28%                                         |
+| 9 to 13.5 min    | 12%                                         |
+| 13.5 to 18 min   | 7.4%                                        |
+| 18 to 22.5 min   | 6%                                          |
+| 22.5 to 31.5 min | 3.5%                                        |
+| more             | 1.5%                                        |
+
+A refresh goes out when that chance times the cost of a miss is more than the cost of the refresh. That is about 23 minutes on Opus 5.5, which reads cache at 5% of its input price, and about 14 on Sonnet 4.6, which reads at 10%. The Providers tab of `Alt+S` shows what was learned and how long it keeps the current model warm.
+
+A restart or `/reload` stops the refreshes, since they run inside pi.
+
 ## Settings
 
 In `~/.pi/agent/extensions/pi-harness/settings.json`:
@@ -75,6 +103,8 @@ In `~/.pi/agent/extensions/pi-harness/settings.json`:
 | `subscription.claudeCodeVersion` | `"2.1.280"` | The version Pi reports. Anthropic will not serve newer models to a version it considers old    |
 | `accounts.onLimit`               | `"ask"`     | What a quota or a rate limit does when another account exists: `"ask"`, `"switch"` or `"stop"` |
 | `accounts.onAuthFailure`         | `"ask"`     | What a refused credential does: `"ask"` (sign in again or switch), `"switch"` or `"stop"`      |
+| `cache.strategy`                 | `"learned"` | How refreshes between runs are decided: `"learned"`, `"pi"`, `"minutes"` or `"off"`            |
+| `cache.upTo`                     | `20`        | Minutes `"minutes"` keeps refreshing after the last request                                    |
 
 The Claude plan billing comes from [pi-claude-max](https://github.com/bradennss/pi-claude-max) by Braden Lamb, MIT. This is a rewrite: it reads the version from settings, carries pi's cache breakpoints over instead of dropping the one-hour TTL, moves every system block after the identity instead of only the second, and checks for an OAuth token instead of the provider name.
 

@@ -1,7 +1,7 @@
 {
 	"name": "@adeildo/pi-providers",
 	"version": "5.9.2",
-	"description": "Provider features for Pi. Bills Anthropic OAuth requests to the Claude Pro or Max plan instead of extra usage.",
+	"description": "Provider features for Pi. Bills Anthropic OAuth requests to the Claude Pro or Max plan, keeps several accounts per provider, and keeps the prompt cache warm while you are away.",
 	"keywords": [
 		"anthropic",
 		"claude",
@@ -9,6 +9,7 @@
 		"pi-coding-agent",
 		"pi-extension",
 		"pi-package",
+		"prompt-caching",
 		"subscription"
 	],
 	"homepage": "https://github.com/felipeadeildo/pi-harness/tree/main/packages/providers#readme",

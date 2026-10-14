@@ -49,4 +49,11 @@ export const PI_SETTINGS: readonly PiSetting[] = [
 		why: "a cache miss is money, and the look already shows how much of the prompt was cached",
 		read: (settings) => settings.getShowCacheMissNotices(),
 	},
+	{
+		key: "cacheWarming",
+		value: "idle",
+		piDefault: "streaming",
+		why: "a third of the cache misses came after a pause of 5 to 30 minutes, and the providers piece decides when a refresh between runs pays",
+		read: (settings) => settings.getCacheWarmingMode(),
+	},
 ];
