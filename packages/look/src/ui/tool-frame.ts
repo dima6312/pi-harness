@@ -116,6 +116,9 @@ function framed(
 				set: frame.set,
 				elapsed: elapsedOf(clock, context),
 				progress: writing ? stream.progress : undefined,
+				clock,
+				executing: context.isPartial && context.executionStarted,
+				runningAs: RUNNING_WORDS[frame.name],
 			});
 			inner.set(box, own);
 			return box;
@@ -127,6 +130,7 @@ function framed(
 			// Pi draws the pictures of a result right below the frame, so the frame counts them.
 			const images = shown.content.filter((block) => block.type === "image").length;
 			if (!options.isPartial) clock.endedAt ??= Date.now();
+			clock.resulted = true;
 			const body = result(shown, options, theme, {
 				...context,
 				lastComponent: passed(context.lastComponent),
@@ -157,6 +161,11 @@ const genericCall: NonNullable<ToolRenderers["renderCall"]> = (args, theme, cont
 
 const genericResult: NonNullable<ToolRenderers["renderResult"]> = (result, options, theme) =>
 	new Text(resultText(result, options.expanded, theme), 0, 0);
+
+/** What a running call is doing, for tools whose running means something else. */
+const RUNNING_WORDS: Readonly<Record<string, string>> = {
+	ask_questions: "waiting for your answer",
+};
 
 /**
  * The phase the call closes with while it still has no result: writing the arguments, then waiting
@@ -243,10 +252,15 @@ class CallFrame implements Component {
 	}
 
 	render(width: number): string[] {
-		const { theme, icon, label, ruling, expanded, phase } = this.parts;
+		const { theme, icon, label, ruling, expanded, clock } = this.parts;
+		// A running call closes too until its result draws the rest of the frame, as a call that
+		// waits for you does while its dialog is open.
+		const running = this.parts.executing === true && clock?.resulted !== true;
+		const phase = this.parts.phase ?? (running ? "running" : undefined);
+		const time = running && clock !== undefined ? ranFor(clock, true) : this.parts.elapsed;
 		const body = this.parts.body.render(room(width));
 		const progress = this.parts.progress?.join("\u0000");
-		const drawn = { width, body, rest: [ruling, expanded, phase, this.parts.elapsed, progress] };
+		const drawn = { width, body, rest: [ruling, expanded, phase, time, progress] };
 		if (unchanged(this.#drawn, drawn)) return this.#drawn.lines;
 
 		const title = `${theme.fg("toolTitle", icon)} ${theme.fg("toolTitle", theme.bold(label))}`;
@@ -257,10 +271,10 @@ class CallFrame implements Component {
 		// The call has nothing else to show yet, so the frame closes with what it is doing.
 		if (phase !== undefined) {
 			const mark = this.parts.mark(phase, this.parts.set());
-			const times = [this.parts.elapsed, ...(this.parts.progress ?? [])];
-			lines.push(
-				rule("bottom", phaseLabel(theme, mark, phase, times), width, theme, PHASE_COLORS[phase]),
-			);
+			const times = [time, ...(this.parts.progress ?? [])];
+			const word = phase === "running" ? this.parts.runningAs : undefined;
+			const closing = phaseLabel(theme, mark, phase, times, word);
+			lines.push(rule("bottom", closing, width, theme, PHASE_COLORS[phase]));
 		}
 		this.#drawn = { ...drawn, lines };
 		return lines;
@@ -278,6 +292,11 @@ interface CallParts {
 	elapsed?: string;
 	/** What the model has written so far, while it writes. */
 	progress?: readonly string[];
+	clock?: Clock;
+	/** The call runs and its result is not final. */
+	executing?: boolean;
+	/** The word for running, when the tool's running means something else. */
+	runningAs?: string;
 }
 
 /** Lines that are already drawn. The frame cuts the ones too wide for it. */
@@ -381,13 +400,12 @@ function phaseLabel(
 	mark: string,
 	phase: Phase,
 	times: readonly (string | undefined)[],
+	word: string = phase,
 ): string {
 	const cells = times
 		.filter((time) => time !== undefined)
 		.map((time) => theme.fg("dim", time ?? ""));
-	return [`${theme.fg(PHASE_COLORS[phase], mark)} ${theme.fg("muted", phase)}`, ...cells].join(
-		"  ",
-	);
+	return [`${theme.fg(PHASE_COLORS[phase], mark)} ${theme.fg("muted", word)}`, ...cells].join("  ");
 }
 
 function inside(lines: readonly string[], width: number, theme: Theme): string[] {
@@ -438,6 +456,8 @@ interface Clock {
 	/** When the call started running, and when it answered. */
 	startedAt?: number;
 	endedAt?: number;
+	/** Pi drew the result half, which closes the frame from then on. */
+	resulted?: boolean;
 }
 
 /** Pi shares one state object between the two halves of a call. */

@@ -151,9 +151,24 @@ describe("the frame around a tool call", () => {
 		const waiting = framed(undefined, "bash", { executionStarted: false, argsComplete: true });
 		expect(waiting.call.at(-1)).toMatch(/^\u2570\u2500 \S+ waiting  0\.0s \u2500+\u256f$/);
 
-		// Once it runs, the result half owns the bottom rule and this one stops drawing it.
+		// Running with no result yet, as while a dialog waits for you, it still closes.
 		const running = framed(undefined, "bash", { executionStarted: true });
-		expect(running.call.some((line) => /\u2570\u2500/u.test(line))).toBe(false);
+		expect(running.call.at(-1)).toMatch(/^\u2570\u2500 \S+ running  0\.0s \u2500+\u256f$/);
+	});
+
+	test("stops closing once the result half draws the bottom rule", () => {
+		const shared = context({ executionStarted: true, state: { startedAt: Date.now() } });
+		const { chain } = framed();
+		const call = chain.renderCall?.({ command: "ls" }, theme, shared);
+		chain.renderResult?.(toolResult(), { expanded: false, isPartial: true }, theme, shared);
+		expect(call?.render(60).some((line) => line.startsWith("\u2570"))).toBe(false);
+	});
+
+	test("a call that waits for you says so", () => {
+		const shared = context({ executionStarted: true, state: { startedAt: Date.now() - 4_000 } });
+		const { chain } = framed(undefined, "ask_questions");
+		const call = chain.renderCall?.({ questions: [] }, theme, shared);
+		expect(call?.render(60).at(-1)).toMatch(/waiting for your answer {2}4\.0s/);
 	});
 
 	test("closes a call that is still running with the time so far", () => {
