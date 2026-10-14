@@ -105,7 +105,11 @@ Sessions recorded by `@adeildo/pi-goal` open as tasks: the step under way is `do
 
 ## Measuring it
 
-`bun run tasks:eval` runs the cases in [`eval/cases.ts`](eval/cases.ts) against Claude Haiku, three times each (`--runs 5` for five), and says which ones the tasks got right. The cases come from real sessions. The main one is a 30-minute run during which six of your messages arrived, and the goal timeline left it as one closed step and five items in `later`. `bun packages/tasks/eval/replay.ts <session.jsonl>` plays a recorded session through the tasks, message by message and run by run, and prints what they would have kept, with the line each refused close cited. `bun packages/tasks/eval/extract.ts <session.jsonl>` prints a session as the model reads it, to cut new cases from. It signs in with an Anthropic account of [`@adeildo/pi-providers`](../providers).
+`bun run tasks:eval` runs the cases in [`eval/cases.ts`](eval/cases.ts) against Claude Haiku, three times each (`--runs 5` for five), and says which ones the tasks got right. The cases come from real sessions. The main one is a 30-minute run during which six of your messages arrived, and the goal timeline left it as one closed step and five items in `later`. It signs in with an Anthropic account of [`@adeildo/pi-providers`](../providers).
+
+`bun packages/tasks/eval/replay.ts <session.jsonl>` plays a recorded session through the tasks, message by message and run by run, and prints what they would have kept, with the line each refused close cited.
+
+`bun packages/tasks/eval/extract.ts <session.jsonl>` prints a session as the model reads it, to cut new cases from.
 
 ## Settings
 

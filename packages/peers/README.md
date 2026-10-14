@@ -12,9 +12,9 @@
 
 <p align="center"><code>pi install npm:@adeildo/pi-peers</code></p>
 
-Start pi in another terminal in the same folder and it appears here. There is no broker, no daemon and no
-server: each session writes its own log in `~/.pi/agent/harness/events/<folder>/` and reads the others'. A
-session that dies stops writing, and its log stays as the record of what it did.
+Start pi in another terminal in the same folder and it appears here. Nothing runs between the sessions.
+Each one writes its own log in `~/.pi/agent/harness/events/<folder>/` and reads the others'. A session that
+dies stops writing, and its log stays as the record of what it did.
 
 ## The board and the room
 
@@ -37,10 +37,9 @@ same files.
 A message with `@name` goes to that agent, one with `@anyone` to the agent that fits it best, and one with no
 mention to every agent.
 
-You can also write to them from the chat. A message that mentions `@name` goes to that agent, and yours does not
-get it. `@everyone` goes to every agent here, yours included, as if you had typed it in each session: use it for
-what all of them should know. `@anyone` asks them all, and the agent that fits it best takes it. Typing `@` lists
-the agents above pi's files. A name that is not an open session, like `@src/auth.ts`, stays a file.
+You can write to them from the chat too. `@name` goes to that agent and not to yours, and `@everyone` reaches
+every agent here, yours included, as if you had typed it in each session. Typing `@` lists the agents above
+pi's files, and a name that is not an open session, like `@src/auth.ts`, stays a file.
 
 The room reaches you without being opened. A dashed frame over the editor names who writes to whom as the words
 arrive, and a request to anyone that another agent took shows in your chat with who took it, for you to read
@@ -54,8 +53,8 @@ In the panel, the message that just arrived keeps a lit rail in its writer's col
 still on its way spins until the other side logs it, and an agent writing shows its draft in a dashed frame.
 
 The room draws messages the way the transcript does. Each one wears a frame in its writer's color, with who
-wrote it and to whom on the top edge and the time on the right, the words inside, and what became of it on the
-bottom edge: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long
+wrote it and to whom on the top edge and the time on the right, and the words inside. What became of it sits on
+the bottom edge: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long
 message shows its first lines, and the newest one shows in full. A request to everyone shows each bid as a bar
 while the bidding is open, and who took it on the bottom edge. The line you write in wears a dashed frame too,
 naming who the words go to, because it has not been sent yet. Comings, goings, restarts and commits stay one
@@ -122,8 +121,7 @@ sequenceDiagram
 ```
 
 No arrow goes from one session straight to another. Every session only appends to its own log and reads the
-others', so the room, the bids and the receipts are the same lines read by everyone, and a session that exits
-leaves the rest working.
+others', so the room, the bids and the receipts are the same lines read by everyone.
 
 ## Who takes what you ask anyone
 
@@ -166,11 +164,10 @@ marked as asked by that colleague, and the judge never reads those.
 Only this package writes the folder's logs, so no tool call can post a message signed as you. Reading them
 stays allowed, and the agent is told to ask a colleague before editing a file that colleague just touched.
 
-## Keys and mentions
+## Mentions
 
 | Typed                    | Does                                    |
 | ------------------------ | --------------------------------------- |
-| `Alt+G`                  | The board and the room                  |
 | `@everyone` in a message | Every agent here gets it, yours too     |
 | `@anyone` in a message   | Ask them all, and the best fit takes it |
 | `@name` in a message     | Send it to that agent                   |
