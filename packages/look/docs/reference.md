@@ -27,31 +27,19 @@ Syntax tokens are borrowed on purpose: a theme spends its hues there, so they gi
 
 ## Settings
 
-They live in the file every piece shares, `~/.pi/agent/extensions/pi-harness/settings.json`, under `look.`. The ones marked _project_ are also read from a trusted project.
+They live in the file every piece shares, `~/.pi/agent/extensions/pi-harness/settings.json`, under `look.`.
 
-| Key                 | Default                                                | Does                                                                                                                                                             |
-| ------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `strip`             | `["elapsed", "last"]`                                  | The line above the editor. _project_                                                                                                                             |
-| `stripRight`        | `["tasks"]`                                            | The right of that line. When it does not fit beside the strip, it gets its own line under it, on the left. _project_                                             |
-| `frame.topLeft`     | `["branch", "session"]`                                | After the spinner. _project_                                                                                                                                     |
-| `frame.topRight`    | `["path", "host"]`                                     | _project_                                                                                                                                                        |
-| `frame.bottomLeft`  | `["status:pi-ask-permission:mode", "model", "effort"]` | _project_                                                                                                                                                        |
-| `frame.bottomRight` | `["context"]`                                          | _project_                                                                                                                                                        |
-| `below`             | `["cost", "tokens", "cache", "average", "statuses"]`   | The line below the editor. _project_                                                                                                                             |
-| `belowRight`        | `["quota"]`                                            | The other side of that line, on the right edge. _project_                                                                                                        |
-| `labels`            | `true`                                                 | A short word before each number: `out`, `in`, `ttft`, `wait`, `thought`, `server`, `time`, `ctx`, `cache`. Off is denser, with only the glyphs. _project_        |
-| `frame.style`       | `"rounded"`                                            | `rounded`, `square`, `heavy`, `line` (pi's two rules, written into), or `off`, which leaves pi's editor alone and moves the frame slots to the footer. _project_ |
-| `frame.cursor`      | `"bar"`                                                | `block`, `bar` or `underline`. The last two use the terminal's own cursor                                                                                        |
-| `header`            | `"card"`                                               | `card`, `compact` (two lines) or `off` (pi's own). _project_                                                                                                     |
-| `icons`             | `"auto"`                                               | `nerd`, `unicode` or `ascii`. Auto uses Nerd Font glyphs locally and plain Unicode over SSH, where the font lives on the other machine                           |
-| `separator`         | `"space"`                                              | `dot`, `bar`, `slash` or `space`. _project_                                                                                                                      |
-| `pathLength`        | `40`                                                   | Longest the folder may be before it loses folders from the left. _project_                                                                                       |
-| `gaugeCells`        | `8`                                                    | Cells in the context gauge. `0` hides it. _project_                                                                                                              |
-| `peek`              | `true`                                                 | The spinner names the state. Off, it says what pi says                                                                                                           |
+| Key           | Default     | Does                                                                                                                                   |
+| ------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `icons`       | `"auto"`    | `nerd`, `unicode` or `ascii`. Auto uses Nerd Font glyphs locally and plain Unicode over SSH, where the font lives on the other machine |
+| `frame.style` | `"rounded"` | `rounded`, `square`, `heavy` or `line` (pi's two rules, written into)                                                                  |
+| `userFrame`   | `true`      | Your messages in a frame named `you`. Off, pi draws them its own way                                                                   |
+
+The rest is fixed. The line above the editor shows `elapsed` and `last`, with `tasks` on its right. The frame shows `branch` and `session` at the top left, `path` and `host` at the top right, the permission mode, `model` and `effort` at the bottom left, and `context` at the bottom right. The line below the editor shows `cost`, `tokens`, `cache`, `average` and `statuses`, with `quota` on its right. Every number has its word.
 
 ### Segments
 
-Any segment goes in any slot, in the order the slot lists them.
+What each piece of the screen shows.
 
 | Id             | Shows                                                                                                                                                                |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

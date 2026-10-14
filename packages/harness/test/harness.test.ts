@@ -52,7 +52,7 @@ describe("the harness", () => {
 
 		expect(permission.commands.has("harness")).toBe(true);
 		expect(look.commands.has("harness")).toBe(false);
-		expect(look.shortcuts).toEqual([]);
+		expect(look.shortcuts).not.toContain("alt+s");
 	});
 
 	test("with a standalone package installed too, only the first copy runs", async () => {

@@ -43,6 +43,7 @@ The strip above the editor is calm on purpose. Nothing moves while the model str
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | `0:12  3 calls`                                  | How long the agent has worked on this prompt, and how many calls to the model it made                   |
 | `last call 1.7s wait  900ms thought  ↓906 tok/s` | The last call: how long the model took to start, how long it thought then wrote, and how fast it writes |
+| `answered in 0:47  2 calls  $0.31`               | Once the run ends: how long it took, how many calls to the model, and what it cost                      |
 
 The border around the editor carries the branch with its distance and changes, the folder, the permission mode, the model with an effort meter, and the context. It takes pi's own effort colour, so it warms up as the model thinks harder and turns to the shell colour in bash mode.
 
@@ -58,7 +59,9 @@ Pi's own entries sit in the same frame as the tool calls: compactions and branch
 
 While the model writes an `edit` or a `write`, its frame shows the end of what has arrived, with a cursor where the model is writing. A write shows its last 8 lines with their numbers, and says whether it makes a new file or how many lines it replaces. An edit shows the lines it takes out and puts in. The lines it repeats around the change stay as context. The bottom rule counts the lines and the size, or the edits and the lines changed. Once the call is written, pi's own view takes over, with the diff read from the file.
 
-The footer is the session: the cost, the tokens sent and received, the cache of the last prompt, the average speeds, and last what other packages report, because that changes the most.
+The footer is the session, each number with its word: the cost, the tokens sent and received, how much of the last prompt was cached, the average speeds, the plan's windows with when they reset, and last what other packages report, because that changes the most.
+
+`Alt+O` opens the session's tool output in a frame you scroll, one call at a time, newest first. The arrows up and down scroll it, left and right move to older and newer calls, and the bottom edge says which lines you are on. Pi shows a long output cut in the transcript, and `Ctrl+O` opens every call at once.
 
 ## It holds still
 
@@ -78,7 +81,7 @@ The look never names a colour. Every piece names a theme token, so it follows wh
 
 ## Settings
 
-`Alt+S` opens them on the Look tab. You can reorder every piece of the strip, the frame and the footer, pick the frame style, the icons and the separator, and switch off what you do not want. The [reference](docs/reference.md#settings) lists every key and every segment.
+`Alt+S` opens them on the Look tab. The look is opinionated, so three things are yours: the icons (Nerd Font, Unicode or ASCII, which depend on your terminal's font), the style of the editor's frame, and whether your messages sit in a frame. Each shows a preview of what it changes as you pick it. The [reference](docs/reference.md#settings) lists them.
 
 The framed editor, and the idea of writing into its borders, come from [pi-open-tui](https://github.com/OldSuns/pi-open-tui), which this replaces. The segments with priorities come from [oh-my-pi](https://github.com/can1357/oh-my-pi).
 

@@ -8,6 +8,7 @@ import {
 	defineFeature,
 	drawSkillRefs,
 	type FeatureScope,
+	hideImagesUnderOverlays,
 	SKILL_REF,
 	skillNames,
 } from "@adeildo/pi-kit";
@@ -16,7 +17,7 @@ import type {
 	ExtensionContext,
 	ReadonlyFooterDataProvider,
 } from "@earendil-works/pi-coding-agent";
-import type { TUI } from "@earendil-works/pi-tui";
+import { Key, type TUI } from "@earendil-works/pi-tui";
 
 import { type GitState, readGit } from "./data/git.ts";
 import { type GithubState, readGithub } from "./data/github.ts";
@@ -54,6 +55,7 @@ import {
 import { applyCursor, LookEditor } from "./ui/editor.ts";
 import { FooterComponent, StripComponent } from "./ui/footer.ts";
 import { HARNESS_VERSION, HeaderComponent, type LoadedCounts } from "./ui/header.ts";
+import { OutputView, outputsOf } from "./ui/outputs.ts";
 import { framePiEntries } from "./ui/pi-entries.ts";
 import { frameQueue } from "./ui/queue.ts";
 import type { Screen, SlotName } from "./ui/screen.ts";
@@ -122,6 +124,11 @@ export const look = defineFeature({
 		const visitsFile = join(dirname(scope.settings.globalPath), "look-visits.json");
 		let visited = false;
 		let lastVisit: LastVisit | undefined;
+
+		scope.registerShortcut(Key.alt("o"), {
+			description: "A tool call's whole output, to scroll; the arrows move between calls",
+			handler: (ctx) => openOutputs(ctx),
+		});
 
 		scope.onSessionStart((ctx) => {
 			live.ctx = ctx;
@@ -489,4 +496,25 @@ function stopTicking(live: Live): void {
 
 export default function piLook(pi: ExtensionAPI): void {
 	createApp(pi, { name: "pi-look" }).use(look).build();
+}
+
+/** Alt+O: the session's tool output, one call at a time, newest first. */
+async function openOutputs(ctx: ExtensionContext): Promise<void> {
+	if (ctx.mode !== "tui") return;
+	const outputs = outputsOf(ctx.sessionManager.getBranch());
+	await ctx.ui.custom<void>(
+		(tui, theme, _keybindings, done) => {
+			hideImagesUnderOverlays(tui);
+			return new OutputView({
+				theme,
+				outputs,
+				rows: () => Math.floor(tui.terminal.rows * 0.85),
+				close: () => done(),
+			});
+		},
+		{
+			overlay: true,
+			overlayOptions: { anchor: "center", width: "90%", minWidth: 60, maxHeight: "85%" },
+		},
+	);
 }
