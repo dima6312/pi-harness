@@ -27,7 +27,7 @@
 
 **Every command says who let it run.** A small model reads it first. When it is sure the command is fine it runs and says how sure it was; when it is not, the command comes to you with the reason it is asking.
 
-**One dialog answers both.** A permission ask and a question from the model look the same and take the same keys: yes, always yes or no, with a note you can leave on any answer. Saying no to `npm install` with "use pnpm instead" reaches the model, so it stops guessing what you meant.
+**One dialog answers both.** A permission ask and a question from the model look the same and take the same keys: yes, always yes or no, with a note you can leave on any answer. Saying no to `npm install` with "use pnpm instead" reaches the model.
 
 **Nothing is hidden, and nothing is final.** The time, the cost and how fast the model writes change without moving the line you type on. Every answer can be undone, and `Alt+S` shows what each piece is set to.
 
@@ -64,7 +64,6 @@ There is no fork. Everything installs on top of Pi, and `pi remove` puts Pi back
 | You want                        | Read                                                 |
 | ------------------------------- | ---------------------------------------------------- |
 | Use a piece                     | The page of the piece, linked in the table above     |
-| See a piece in pictures         | Its own page, each one has its own screenshots       |
 | Look up a setting or a key      | `docs/reference.md` in the permission and look pages |
 | Know what is planned            | [ROADMAP.md](ROADMAP.md)                             |
 | Know what changed               | [CHANGELOG.md](CHANGELOG.md)                         |
