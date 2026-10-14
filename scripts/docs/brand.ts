@@ -5,13 +5,12 @@ import { join, resolve } from "node:path";
 
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { colorToHex } from "@earendil-works/pi-tui";
-import { $ } from "bun";
 
 import { entryFrame, rule } from "../../packages/kit/src/index.ts";
 import { EFFORT_LEVELS, themePaint } from "../../packages/look/src/render/paint.ts";
 import { halfBlocks, PIXELS } from "../../packages/look/src/ui/header.ts";
 import { settingsLines } from "./settings.ts";
-import { toSvg } from "./svg.ts";
+import { terminalGroup } from "./svg.ts";
 
 const WIDTH = 1600;
 const HEIGHT = 1040;
@@ -19,37 +18,40 @@ const MARGIN = 56;
 const GUTTER = 32;
 const FONT = "JetBrainsMono Nerd Font Mono, JetBrains Mono, DejaVu Sans Mono, monospace";
 const BACKGROUND = "#18181e";
+const FOREGROUND = "#dee0e1";
 const LOGO_RAMP = EFFORT_LEVELS.slice(1);
 const root = resolve(import.meta.dir, "../..");
 
-interface Media {
-	href: string;
+interface Picture {
 	width: number;
 	height: number;
+	/** Drawn at its own size from the corner, moved and scaled by `place`. */
+	body: string;
+	/** A screenshot: never blown up past its own pixels. */
+	raster: boolean;
 }
 
 interface Screen {
 	title: string;
-	/** The settings have no picture of their own before this run, so they are drawn on the spot. */
-	media(theme: Theme): Promise<Media>;
+	media(theme: Theme): Promise<Picture>;
 }
 
 const SCREENS: Screen[] = [
 	{
 		title: "the start card",
-		media: async () => fileMedia(join(root, "packages/look/assets/preview.png")),
+		media: async () => filePicture(join(root, "packages/look/assets/preview.png")),
 	},
 	{
 		title: "a session",
-		media: async () => fileMedia(join(root, "packages/harness/assets/conversation.png")),
+		media: async () => filePicture(join(root, "packages/harness/assets/conversation.png")),
 	},
 	{
 		title: "the settings, alt+s",
-		media: (theme) => settingsLines(theme).then((lines) => terminalImage(lines, 2)),
+		media: async (theme) => terminalPicture(await settingsLines(theme)),
 	},
 	{
 		title: "the room, alt+g",
-		media: async () => fileMedia(join(root, "packages/peers/assets/room.png")),
+		media: async () => filePicture(join(root, "packages/peers/assets/room.png")),
 	},
 ];
 
@@ -57,7 +59,7 @@ export async function brandSvg(theme: Theme): Promise<string> {
 	const palette = Object.fromEntries(
 		Object.entries(theme.colors).map(([name, value]) => [name, colorToHex(value)]),
 	) as Record<string, string>;
-	const tone = (name: string): string => palette[name] ?? "#dee0e1";
+	const tone = (name: string): string => palette[name] ?? FOREGROUND;
 	const c = {
 		text: tone("text"),
 		dim: tone("dim"),
@@ -67,8 +69,8 @@ export async function brandSvg(theme: Theme): Promise<string> {
 		userMessageBg: tone("userMessageBg"),
 		scrollbarThumb: tone("scrollbarThumb"),
 	};
-	const mark = await terminalImage(markLines(theme), 2, 24);
-	const structure = await terminalImage(structureLines(theme), 2);
+	const mark = terminalPicture(markLines(theme), 24);
+	const structure = terminalPicture(structureLines(theme));
 	const screens = await Promise.all(
 		SCREENS.map(async (screen) => ({ title: screen.title, media: await screen.media(theme) })),
 	);
@@ -97,7 +99,7 @@ export async function brandSvg(theme: Theme): Promise<string> {
 
 		// The mark, and what the board is for.
 		panel(MARGIN, top, leftWidth, topHeight),
-		image(mark, MARGIN + 40, top + 26, leftWidth - 80, 220),
+		place(mark, MARGIN + 40, top + 26, leftWidth - 80, 220),
 		text(MARGIN + 40, top + 296, "the π rises from its feet once per launch", 15, c.dim),
 		text(MARGIN + 40, top + 348, "π-harness", 50, c.text, 700),
 		text(MARGIN + 40, top + 390, "Pi runs every command without asking.", 20, c.muted),
@@ -107,7 +109,7 @@ export async function brandSvg(theme: Theme): Promise<string> {
 
 		// The structure: the frames, the rules, and the π that rises.
 		panel(rightX, top, rightWidth, topHeight),
-		image(structure, rightX + 30, top + 26, rightWidth - 60, topHeight - 52),
+		place(structure, rightX + 30, top + 26, rightWidth - 60, topHeight - 52),
 	];
 
 	// What it looks like on screen.
@@ -115,7 +117,7 @@ export async function brandSvg(theme: Theme): Promise<string> {
 		const x = MARGIN + index * (screenWidth + GUTTER);
 		parts.push(panel(x, bottom, screenWidth, bottomHeight));
 		parts.push(text(x + 26, bottom + 38, screen.title, 20, c.muted));
-		parts.push(image(screen.media, x + 22, bottom + 52, screenWidth - 44, bottomHeight - 74));
+		parts.push(place(screen.media, x + 22, bottom + 52, screenWidth - 44, bottomHeight - 74));
 	}
 
 	parts.push(right(HEIGHT - 18, "github.com/felipeadeildo/pi-harness", 18, c.scrollbarThumb));
@@ -167,45 +169,46 @@ function markLines(theme: Theme): string[] {
 	return art.map((_, row) => states.map((state) => state[row] ?? "").join("      "));
 }
 
-/** One terminal drawing as a PNG, so the frames stay the ones the product draws. */
-async function terminalImage(
-	lines: readonly string[],
-	zoom: number,
-	fontSize = 20,
-): Promise<Media> {
-	const svg = toSvg([...lines], {
+function terminalPicture(lines: readonly string[], fontSize = 20): Picture {
+	const drawn = terminalGroup([...lines], {
 		background: BACKGROUND,
-		foreground: "#dee0e1",
+		foreground: FOREGROUND,
 		font: FONT,
 		fontSize,
 	});
-	const png = new Uint8Array(
-		await $`rsvg-convert --zoom ${zoom} - < ${new Response(svg)}`.arrayBuffer(),
-	);
-	return media(png);
+	return { width: drawn.width, height: drawn.height, body: drawn.group, raster: false };
 }
 
-function fileMedia(file: string): Media {
-	return media(readFileSync(file));
-}
-
-function media(png: Uint8Array): Media {
+/** A screenshot kept as a PNG: a terminal drawing in a font would not be the same screen. */
+function filePicture(file: string): Picture {
+	const png = readFileSync(file);
 	const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+	const width = view.getUint32(16);
+	const height = view.getUint32(20);
+	const href = `data:image/png;base64,${png.toString("base64")}`;
 	return {
-		href: `data:image/png;base64,${Buffer.from(png).toString("base64")}`,
-		width: view.getUint32(16),
-		height: view.getUint32(20),
+		width,
+		height,
+		body: `<image x="0" y="0" width="${width}" height="${height}" href="${href}"/>`,
+		raster: true,
 	};
 }
 
-/** Fits a picture inside a box, keeping its ratio, and centres it there. */
-function image(media: Media, x: number, y: number, boxWidth: number, boxHeight: number): string {
-	const scale = Math.min(boxWidth / media.width, boxHeight / media.height);
-	const width = Math.round(media.width * scale);
-	const height = Math.round(media.height * scale);
-	const left = x + Math.round((boxWidth - width) / 2);
-	const top = y + Math.round((boxHeight - height) / 2);
-	return `<image x="${left}" y="${top}" width="${width}" height="${height}" href="${media.href}"/>`;
+/** Fits a picture in a box, keeping its ratio, and centres it there. */
+function place(
+	picture: Picture,
+	x: number,
+	y: number,
+	boxWidth: number,
+	boxHeight: number,
+): string {
+	const fit = Math.min(boxWidth / picture.width, boxHeight / picture.height);
+	const scale = picture.raster ? Math.min(1, fit) : fit;
+	const width = picture.width * scale;
+	const height = picture.height * scale;
+	const left = x + (boxWidth - width) / 2;
+	const top = y + (boxHeight - height) / 2;
+	return `<g transform="translate(${left.toFixed(1)} ${top.toFixed(1)}) scale(${scale.toFixed(4)})">${picture.body}</g>`;
 }
 
 function escapeXml(text: string): string {
