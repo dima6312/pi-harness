@@ -1,10 +1,10 @@
-import { formatCost, formatTokens, isObject, GLYPH } from "@adeildo/pi-kit";
+import { formatCost, formatTokens, isObject, GLYPH, PRUNE_ENTRY } from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 import type { Hidden } from "./prune.ts";
 
-export const PRUNE_ENTRY = "pi-compact:prune";
+export { PRUNE_ENTRY };
 export const REREAD_ENTRY = "pi-compact:reread";
 export const NOTE_MESSAGE = "pi-compact:note";
 

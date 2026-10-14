@@ -2,7 +2,7 @@
 // A request reads the cache up to where the last one wrote it, as long as nothing before that point
 // changed and the cache was still alive. So each miss has one of a few causes, and the entries
 // between it and the request before it say which.
-import { formatCost, formatTokens } from "@adeildo/pi-kit";
+import { formatCost, formatTokens, PRUNE_ENTRY } from "@adeildo/pi-kit";
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 
 /** A request that wrote at least this much again counts as a miss: a turn only writes its tail. */
@@ -11,8 +11,6 @@ export const MISS_TOKENS = 30_000;
 export const CACHE_LIFE_MS = 5 * 60_000;
 /** A context smaller than the request before by this much was cut, by a prune or a server clear. */
 const SHRANK = 5_000;
-/** What pi-compact records for a prune, or for a clear Anthropic made on its side. */
-const PRUNE_ENTRY = "pi-compact:prune";
 
 export type MissCause =
 	| "first request"

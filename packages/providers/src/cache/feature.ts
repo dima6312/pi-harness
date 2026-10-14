@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { defineFeature, type FeatureScope, type ScreenEntry } from "@adeildo/pi-kit";
+import { defineFeature, type FeatureScope, formatClock, type ScreenEntry } from "@adeildo/pi-kit";
 import type { ExtensionContext, TurnEndEvent } from "@earendil-works/pi-coding-agent";
 
 import { missesOf, missesSummary, missLine } from "./misses.ts";
@@ -114,18 +114,13 @@ function registerScreen(scope: FeatureScope, learned: () => Learned | undefined)
 				kind: "info",
 				id: `cache.miss.${index}`,
 				section: WARM_SECTION,
-				label: clockOf(miss.at),
+				label: formatClock(miss.at),
 				description: "A miss, newest first.",
 				indent: 1,
 				text: () => missLine(miss, prices),
 			})),
 		];
 	});
-}
-
-function clockOf(at: number): string {
-	const date = new Date(at);
-	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 export function learnedText(
