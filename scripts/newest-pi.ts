@@ -17,6 +17,7 @@ import {
 } from "./github.ts";
 
 const PACKAGES = ["pi-ai", "pi-coding-agent", "pi-tui"];
+const TRACKED = "pi-coding-agent";
 const LABEL = "newest-pi";
 const BRANCH = "newest-pi";
 const PI = "https://github.com/earendil-works/pi";
@@ -38,13 +39,14 @@ async function newest(name: string): Promise<string> {
 // open so the day it turns green closes it.
 async function compare(): Promise<void> {
 	const versions = await Promise.all(PACKAGES.map(newest));
+	const tracked = PACKAGES.indexOf(TRACKED);
 	const moved = PACKAGES.some((name, index) => pinned(name) !== versions[index]);
 	const event = process.env.GITHUB_EVENT_NAME;
 	const open = (await openIssues(LABEL)).length > 0;
 	setOutputs({
 		test: String(moved || event === "workflow_dispatch" || (event === "schedule" && open)),
-		pinned: pinned("pi-coding-agent"),
-		newest: await newest("pi-coding-agent"),
+		pinned: pinned(TRACKED),
+		newest: versions[tracked] ?? "",
 	});
 }
 
@@ -55,12 +57,17 @@ async function releaseNotes(version: string): Promise<string> {
 	return result.exitCode === 0 ? result.stdout.toString().trim() : "";
 }
 
+/** The release notes as a collapsible block, read only when a body is about to carry it. */
+async function piChanges(version: string): Promise<string[]> {
+	const notes = await releaseNotes(version);
+	return notes ? details(`What pi ${version} changed`, notes) : [];
+}
+
 async function report(): Promise<void> {
 	const passed = process.env.VERIFY === "success";
 	const version = process.env.NEWEST ?? "";
 	const pinnedVersion = process.env.PINNED ?? "";
 	const run = process.env.RUN_URL ?? "";
-	const notes = await releaseNotes(version);
 	const range =
 		pinnedVersion === version
 			? `pinned here: \`${version}\` already, so this only re-ran the check`
@@ -70,7 +77,6 @@ async function report(): Promise<void> {
 		`- [run](${run})`,
 		`- [release notes](${PI}/releases/tag/v${version})`,
 	];
-	const changes = notes ? details(`What pi ${version} changed`, notes) : [];
 
 	if (!passed) {
 		const lead =
@@ -86,7 +92,7 @@ async function report(): Promise<void> {
 				trailingNewline: false,
 				skipWhenMentions: `\`${version}\``,
 			},
-			[lead, "", ...links, "", ...logTail(), "", ...changes],
+			[lead, "", ...links, "", ...logTail(), "", ...(await piChanges(version))],
 		);
 		return;
 	}
@@ -106,7 +112,7 @@ async function report(): Promise<void> {
 				"",
 				...links,
 				"",
-				...changes,
+				...(await piChanges(version)),
 				"",
 				"The `CI` run on this PR waits in `action_required` until a maintainer approves it, which is how GitHub treats a pull request opened by `github-actions[bot]`.",
 			],
