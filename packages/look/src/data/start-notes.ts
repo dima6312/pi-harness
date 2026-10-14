@@ -1,6 +1,6 @@
 // What the start screen says under the folder and the model: only what changed or waits on you since
 // the last session here. On a quiet day the list is empty and the screen says so in one line.
-import { GLYPH } from "@adeildo/pi-kit";
+import { formatClock, GLYPH } from "@adeildo/pi-kit";
 
 import type { GithubState } from "./github.ts";
 import type { Snapshot } from "./snapshot.ts";
@@ -101,7 +101,7 @@ function peerState(state: "running" | "idle" | "waiting"): string {
 /** Local time, hours and minutes, or the day when it was not today. */
 export function since(at: number, now: number): string {
 	const then = new Date(at);
-	const time = `${String(then.getHours()).padStart(2, "0")}:${String(then.getMinutes()).padStart(2, "0")}`;
+	const time = formatClock(at);
 	if (new Date(now).toDateString() === then.toDateString()) return time;
 	const days = Math.round((now - at) / 86_400_000);
 	return days <= 1 ? `yesterday ${time}` : `${days} days ago`;

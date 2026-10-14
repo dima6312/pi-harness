@@ -1,4 +1,4 @@
-import { type AccountWindow, type PeerMark, tasksWith } from "@adeildo/pi-kit";
+import { type AccountWindow, formatClock, type PeerMark, tasksWith } from "@adeildo/pi-kit";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
 import type { Snapshot } from "../data/snapshot.ts";
@@ -233,8 +233,7 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 		priority: 15,
 		describe: "the time of day",
 		render: ({ snapshot, glyphs, paint }) => {
-			const now = new Date(snapshot.now);
-			const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+			const time = formatClock(snapshot.now);
 			return { text: `${mark(glyphs.clock, paint, "clock")}${paint.role("clock", time)}` };
 		},
 	},
@@ -615,8 +614,4 @@ function speedCell(value: number | undefined): string {
 
 function tokenCell(value: number): string {
 	return cell(value === 0 ? UNKNOWN : count(value), CELL.count);
-}
-
-function pad(value: number): string {
-	return String(value).padStart(2, "0");
 }

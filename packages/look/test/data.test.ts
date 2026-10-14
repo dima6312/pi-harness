@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { TASKS_ENTRY, TASKS_USAGE_ENTRY } from "@adeildo/pi-kit";
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 
+import { readGit } from "../src/data/git.ts";
 import { emptyGit, parseStatus } from "../src/data/git.ts";
 import { Telemetry } from "../src/data/telemetry.ts";
 import {
@@ -284,5 +285,19 @@ describe("totals", () => {
 
 	test("no records, no speeds", () => {
 		expect(averagesOf([])).toEqual({ decode: undefined, prefill: undefined });
+	});
+});
+
+describe("the git state, read through a runner", () => {
+	test("parses what the command answers", async () => {
+		const state = await readGit("/repo", async () => "# branch.ab +2 -1\n1 M. N... a.ts\n");
+		expect(state).toEqual({ ...emptyGit(), ahead: 2, behind: 1, staged: 1 });
+	});
+
+	test("a command that fails is a card with no git line, not a crash", async () => {
+		const failing = async (): Promise<string> => {
+			throw new Error("not a repository");
+		};
+		expect(await readGit("/repo", failing)).toBeUndefined();
 	});
 });

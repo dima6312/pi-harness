@@ -2,8 +2,9 @@ import { execFile } from "node:child_process";
 
 /** How long one command may take before it is given up on. The start card is never worth a longer wait. */
 const TIMEOUT_MS = 3000;
-/** Room for a page of an answer, like your open pull requests with their comments. */
-const MAX_OUTPUT = 1_000_000;
+/** Room for a page of an answer, like your open pull requests with their comments. Node's own
+ * default, so a command that answered before keeps answering. */
+const MAX_OUTPUT = 1024 * 1024;
 
 /** Runs one command in the folder and returns its stdout. Rejects when it fails or takes too long. */
 export type Runner = (file: string, args: readonly string[]) => Promise<string>;
