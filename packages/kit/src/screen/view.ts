@@ -483,12 +483,9 @@ export class ScreenView implements Component {
 	 */
 	#withPreview(listed: string[], width: number): string[] {
 		const mode = this.#mode;
-		const row =
-			mode.kind === "browse"
-				? this.#options.model.selected()?.row
-				: mode.kind === "pick"
-					? mode.row
-					: undefined;
+		// Only browsing and picking have a highlighted row; the other modes have no preview.
+		if (mode.kind !== "browse" && mode.kind !== "pick") return listed;
+		const row = mode.kind === "pick" ? mode.row : this.#options.model.selected()?.row;
 		if (row?.preview === undefined) return listed;
 		const value = mode.kind === "pick" ? mode.items[mode.index]?.value : row.value;
 		if (value === undefined) return listed;

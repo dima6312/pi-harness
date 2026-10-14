@@ -54,8 +54,6 @@ export const GLYPH = {
 	cursor: "\u258d",
 	/** ▌ the bar on a selected row. */
 	bar: "\u258c",
-	/** … cut text. */
-	ellipsis: "\u2026",
 	/** ⋮ lines hidden above. */
 	ellipsisUp: "\u22ee",
 	/** ⋯ a gap between parts, as between two edits. */

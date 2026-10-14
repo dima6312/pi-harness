@@ -573,7 +573,10 @@ function cacheParts(
 	options: SegmentOptions,
 	fixed = false,
 ): string {
-	const value = (tokens: number) => (fixed ? tokenCell(tokens) : tokens > 0 ? count(tokens) : "");
+	const value = (tokens: number): string => {
+		if (fixed) return tokenCell(tokens);
+		return tokens > 0 ? count(tokens) : "";
+	};
 	const read = value(usage.cacheRead);
 	const write = value(usage.cacheWrite);
 	if (options.labels) {
