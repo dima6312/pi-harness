@@ -119,7 +119,18 @@ export const look = defineFeature({
 		const visitsFile = join(dirname(scope.settings.globalPath), "look-visits.json");
 		let visited = false;
 		let lastVisit: LastVisit | undefined;
-		header.listen(scope, () => live.ctx && installHeader(live.ctx, screen, scope, () => lastVisit, () => live.github));
+		header.listen(
+			scope,
+			() =>
+				live.ctx &&
+				installHeader(
+					live.ctx,
+					screen,
+					scope,
+					() => lastVisit,
+					() => live.github,
+				),
+		);
 		cursor.listen(scope, (style) => live.tui && applyCursor(live.tui, style));
 		peek.listen(scope, (on) => !on && live.ctx?.ui.setWorkingMessage());
 
