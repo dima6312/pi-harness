@@ -25,13 +25,14 @@ export interface LogEventMap {
 	"tasks.changed": { state: SessionTasks };
 	activity: Activity;
 	/**
-	 * A message in the folder's room. `to` lists session ids, or "all" for a request to whoever
-	 * fits it best. `from: "you"` only comes from what you typed in that session.
+	 * A message in the folder's room. `to` lists session ids, "all" for every session (`@everyone`),
+	 * or "any" for a request the one that fits it best takes (`@anyone`). `from: "you"` only comes
+	 * from what you typed in that session.
 	 */
 	"message.posted": {
 		id: string;
 		from: "you" | "agent";
-		to: string[] | "all";
+		to: string[] | "all" | "any";
 		text: string;
 		urgent?: boolean;
 		/**

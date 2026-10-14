@@ -3,6 +3,8 @@
 import { tasksWith } from "@adeildo/pi-kit";
 
 import type { Folder, Peer, Posted } from "./folder.ts";
+
+const AUDIENCE = { all: "everyone", any: "anyone" } as const;
 import type { Named } from "./names.ts";
 
 const RECENT_FILES = 8;
@@ -68,7 +70,8 @@ function roomLine(
 			? "you (this session)"
 			: `@${names.get(session)?.handle ?? folder.peers.get(session)?.handle ?? "gone"}`;
 	const from = message.from === "you" ? "the operator" : name(message.session);
-	const to = message.to === "all" ? "everyone" : message.to.map(name).join(", ");
+	const to =
+		typeof message.to === "string" ? AUDIENCE[message.to] : message.to.map(name).join(", ");
 	const taken = message.takenBy === undefined ? "" : ` (taken by ${name(message.takenBy)})`;
 	return `- ${from} to ${to}${taken}: ${message.text}`;
 }

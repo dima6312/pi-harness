@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>Agents in one folder, aware of each other.</strong><br>
-  The board, the room, and the auction for what you ask everyone.
+  The board, the room, word to everyone, and the auction for what you ask anyone.
 </p>
 
 <p align="center"><code>pi install npm:@adeildo/pi-peers</code></p>
@@ -34,15 +34,16 @@ reads it with the `peers` tool, and nothing arrives in its context unless it ask
 same files.
 
 **The room** is a conversation. Everyone in the folder reads it, you included, and you type in it with `Alt+G`.
-A message with `@name` goes to that agent. A message with no mention goes to everyone, and the ones that fit it
-best take it.
+A message with `@name` goes to that agent, one with `@anyone` to the agent that fits it best, and one with no
+mention to every agent.
 
-You can also write to them from the chat. A message that mentions `@name` goes to that agent. A message that
-mentions `@everyone` goes to every agent, and the best fit takes it. Your own agent does not get either. Typing
-`@` lists the agents above pi's files. A name that is not an open session, like `@src/auth.ts`, stays a file.
+You can also write to them from the chat. A message that mentions `@name` goes to that agent, and yours does not
+get it. `@everyone` goes to every agent here, yours included, as if you had typed it in each session: use it for
+what all of them should know. `@anyone` asks them all, and the agent that fits it best takes it. Typing `@` lists
+the agents above pi's files. A name that is not an open session, like `@src/auth.ts`, stays a file.
 
 The room reaches you without being opened. A dashed frame over the editor names who writes to whom as the words
-arrive, and a request to everyone that another agent took shows in your chat with who took it, for you to read
+arrive, and a request to anyone that another agent took shows in your chat with who took it, for you to read
 only: your agent never gets it, so two of them do not start the same work. The footer keeps one mark per other
 agent, filled while it works, hollow while it is idle, a flag when it waits on you, and `@N` for what your agent
 has not read yet.
@@ -64,7 +65,7 @@ quiet line each.
 | ------------- | ----------------------------------------------------------------- | --------------------------- |
 | `↑` `↓`       | Scroll the room; it stops following new lines until the end       | Select an agent             |
 | `PgUp` `PgDn` | Scroll a page                                                     | Scroll the room a page      |
-| `Enter`       | Send to everyone, or to the agents you `@` mention                | Write to the selected agent |
+| `Enter`       | Send to everyone, or to whom you `@` mention                      | Write to the selected agent |
 | `@`           | List the agents as you type a name; `Tab` or `Enter` completes it |                             |
 | `Tab`         | Go to the agents                                                  | Back to the room            |
 | `Ctrl+F`      | Show only what the selected agent wrote, was sent or took         | Same                        |
@@ -124,9 +125,9 @@ No arrow goes from one session straight to another. Every session only appends t
 others', so the room, the bids and the receipts are the same lines read by everyone, and a session that exits
 leaves the rest working.
 
-## Who takes what you ask everyone
+## Who takes what you ask anyone
 
-A request to everyone goes to the idle agent that fits it best, and every session works out the same winner
+A request to anyone goes to the idle agent that fits it best, and every session works out the same winner
 from the same logs. No session coordinates the others, so if one exits the rest keep going.
 
 Each session bids with its own side model, which reads its tasks, the files it touched and its decisions. The
@@ -148,12 +149,12 @@ for colleagues' messages.
 | ------------------------------------------------- | --------------------------------------- | --------------------------------- |
 | Board changes                                     | never sent                              | never sent                        |
 | A colleague joins or leaves                       | next prompt                             | next prompt                       |
-| A room message without a mention                  | not sent                                | not sent                          |
+| A message to everyone                             | wakes it                                | attaches between calls            |
 | A mention, or an answer to its question           | wakes it                                | attaches between calls            |
 | A colleague marks it urgent                       | wakes it                                | attaches between calls            |
 | What you send with `@name` from the chat          | wakes it                                | attaches between calls            |
-| A request to everyone that it won                 | wakes it                                | waits for the next idle candidate |
-| A request to everyone another agent took          | shown in your chat, not sent            | same                              |
+| A request to anyone that it won                   | wakes it                                | waits for the next idle candidate |
+| A request to anyone another agent took            | shown in your chat, not sent            | same                              |
 | An agent answering the one that woke it, 4th time | stops waking, waits for the next prompt | same                              |
 
 ## What the others can and cannot do
@@ -170,7 +171,8 @@ stays allowed, and the agent is told to ask a colleague before editing a file th
 | Typed                    | Does                                    |
 | ------------------------ | --------------------------------------- |
 | `Alt+G`                  | The board and the room                  |
-| `@everyone` in a message | Ask everyone, and the best fit takes it |
+| `@everyone` in a message | Every agent here gets it, yours too     |
+| `@anyone` in a message   | Ask them all, and the best fit takes it |
 | `@name` in a message     | Send it to that agent                   |
 
 ## Settings

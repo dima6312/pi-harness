@@ -143,13 +143,21 @@ test("a message that mentions another agent goes to it instead of yours", async 
 	expect(a.notes).toEqual(["Sent to @new-b."]);
 });
 
-test("@everyone asks every agent, and a file or an unknown name stays yours", async () => {
+test("@everyone tells every agent, yours too, @anyone asks for one, and a file stays yours", async () => {
 	const a = await mounted("a");
-	await mounted("b");
+	const b = await mounted("b");
 	const fire = (text: string) => a.fake.fire("input", { text, source: "interactive" }, a.ctx);
 	expect(await fire("read @src/new-b.ts and @nobody")).toEqual([{ action: "continue" }]);
-	expect(await fire("@everyone who takes the deploy?")).toEqual([{ action: "handled" }]);
-	expect(posted()).toMatchObject([{ to: "all", text: "@everyone who takes the deploy?" }]);
+	expect(await fire("@everyone deploy at six, keep off main")).toEqual([{ action: "handled" }]);
+	expect(await fire("@anyone who takes the deploy?")).toEqual([{ action: "handled" }]);
+	expect(posted()).toMatchObject([
+		{ to: "all", text: "@everyone deploy at six, keep off main" },
+		{ to: "any", text: "@anyone who takes the deploy?" },
+	]);
+	expect(a.fake.userMessages).toEqual(["@everyone deploy at six, keep off main"]);
+	// Typing in b reads the folder, as its watcher would.
+	await b.fake.fire("input", { text: "go on", source: "interactive" }, b.ctx);
+	expect(b.fake.userMessages).toEqual(["@everyone deploy at six, keep off main"]);
 });
 
 test("@everyone alone in the folder puts your words back in the editor", async () => {

@@ -2,7 +2,7 @@ import { type Delivery, ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
-import type { Happening, Peer, Posted, RoomItem } from "../folder.ts";
+import { addressees, type Happening, type Peer, type Posted, type RoomItem } from "../folder.ts";
 import type { Typing } from "../here.ts";
 import type { Named } from "../names.ts";
 import { award, TAKE_MS, turnToTake } from "../rules.ts";
@@ -164,9 +164,11 @@ interface Receipts {
 
 function receiptLines(message: Posted, options: FeedOptions, room: number): Receipts {
 	const { theme, now, live } = options;
-	if (message.to === "all") return requestLines(message, options, room);
-	const many = message.to.length > 1;
-	const parts = message.to.map((session) => {
+	if (message.to === "any") return requestLines(message, options, room);
+	if (message.to === "all") return { bottom: tally(message, options), inside: [] };
+	const to = addressees(message, live);
+	const many = to.length > 1;
+	const parts = to.map((session) => {
 		const who = many ? ` ${name(session, options)}` : "";
 		if (message.read.has(session))
 			return `${theme.fg("accent", `${GLYPH.check}${GLYPH.check}`)}${who} ${theme.fg("muted", "read")}`;
@@ -180,6 +182,28 @@ function receiptLines(message: Posted, options: FeedOptions, room: number): Rece
 			: `${theme.fg("dim", GLYPH.check)}${who} ${theme.fg("dim", "sent")}`;
 	});
 	return { bottom: parts.join("   "), inside: [] };
+}
+
+/** Where a message to everyone got: how many read it, got it, and still have it on its way. */
+function tally(message: Posted, options: FeedOptions): string {
+	const { theme, live } = options;
+	const to = addressees(message, live);
+	const read = to.filter((session) => message.read.has(session)).length;
+	const got = to.filter(
+		(session) => !message.read.has(session) && message.received.has(session),
+	).length;
+	const sent = to.length - read - got;
+	const parts = [];
+	if (read > 0)
+		parts.push(
+			`${theme.fg("accent", `${GLYPH.check}${GLYPH.check}`)} ${theme.fg("muted", `${read} read`)}`,
+		);
+	if (got > 0)
+		parts.push(
+			`${theme.fg("muted", `${GLYPH.check}${GLYPH.check}`)} ${theme.fg("dim", `${got} got it`)}`,
+		);
+	if (sent > 0) parts.push(`${theme.fg("dim", GLYPH.check)} ${theme.fg("dim", `${sent} sent`)}`);
+	return parts.join("   ");
 }
 
 function requestLines(message: Posted, options: FeedOptions, room: number): Receipts {
@@ -326,7 +350,7 @@ function answers(room: readonly RoomItem[]): Map<string, Posted> {
 	for (const item of room) {
 		if (item.kind !== "message") continue;
 		const message = item.message;
-		if (message.to !== "all" && message.to.length === 1) {
+		if (Array.isArray(message.to) && message.to.length === 1) {
 			const to = message.to[0] ?? "";
 			const question = asked.get(`${to}>${message.session}`);
 			if (question !== undefined && question.at <= message.at) {
@@ -335,7 +359,7 @@ function answers(room: readonly RoomItem[]): Map<string, Posted> {
 			}
 			asked.set(`${message.session}>${to}`, message);
 		}
-		if (message.to === "all" && message.takenBy !== undefined)
+		if (message.to === "any" && message.takenBy !== undefined)
 			asked.set(`${message.session}>${message.takenBy}`, message);
 	}
 	return found;
@@ -345,7 +369,8 @@ function involves(item: RoomItem, session: string): boolean {
 	if (item.kind === "happening") return item.happening.session === session;
 	const message = item.message;
 	if (message.session === session || message.takenBy === session) return true;
-	return message.to === "all" ? message.bids.has(session) : message.to.includes(session);
+	if (message.to === "any") return message.bids.has(session);
+	return message.to === "all" || message.to.includes(session);
 }
 
 function speaker(message: Posted, options: FeedOptions, bold = true): string {
@@ -362,6 +387,7 @@ function speakerColor(message: Posted, options: FeedOptions): ThemeColor {
 function recipients(message: Posted, options: FeedOptions): string {
 	const { theme } = options;
 	if (message.to === "all") return theme.fg("muted", "everyone");
+	if (message.to === "any") return theme.fg("muted", "anyone");
 	return message.to
 		.map((session) => {
 			const color = (options.names.get(session)?.color ?? "muted") as ThemeColor;
@@ -415,11 +441,11 @@ export function feedMoving(room: readonly RoomItem[], live: readonly Peer[], now
 		const message = item.message;
 		if (now - message.at >= ON_ITS_WAY_MS) break;
 		if (isFresh(message.at, now)) return true;
-		if (message.to === "all") {
+		if (message.to === "any") {
 			const kind = award(message, live, now).kind;
 			if (kind === "bidding" || kind === "ranked") return true;
 		} else if (
-			message.to.some(
+			addressees(message, live).some(
 				(session) =>
 					!message.received.has(session) && live.some((peer) => peer.session === session),
 			)

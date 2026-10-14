@@ -174,12 +174,12 @@ describe("a message", () => {
 	});
 });
 
-describe("a request to everyone", () => {
+describe("a request to anyone", () => {
 	test("every session bids, and only the one all agree on takes it", async () => {
 		const a = session("a", { fit: 0.2, reason: "on docs" });
 		const b = session("b", { fit: 0.9, reason: "already in auth.ts" });
 		const c = session("c", { fit: 0.6, reason: "near it" });
-		a.here.post("all", "switch the login to OAuth", "you");
+		a.here.post("any", "switch the login to OAuth", "you");
 		await settle(a, b, c);
 		const request = [...a.here.folder.messages.values()][0];
 		expect(request?.takenBy).toBe("b");
@@ -194,7 +194,7 @@ describe("a request to everyone", () => {
 		const a = session("a", { fit: 0.2, reason: "" });
 		const b = session("b", { fit: 0.9, reason: "" });
 		const c = session("c", { fit: 0.6, reason: "" });
-		a.here.post("all", "switch the login to OAuth", "agent");
+		a.here.post("any", "switch the login to OAuth", "agent");
 		await settle(a, b, c);
 		const taker = b.here.names().get("b")?.handle;
 		expect(c.shown.map((one) => [one.text, one.takenBy])).toEqual([
@@ -210,7 +210,7 @@ describe("a request to everyone", () => {
 		const b = session("b", { fit: 0.3, reason: "" });
 		a.here.started();
 		b.here.started();
-		a.here.post("all", "write the changelog", "you");
+		a.here.post("any", "write the changelog", "you");
 		await settle(a, b);
 		now += BID_WINDOW_MS;
 		await settle(a, b);
@@ -221,11 +221,52 @@ describe("a request to everyone", () => {
 		expect(b.sent.map((sent) => sent.text)).toEqual(["write the changelog"]);
 	});
 
-	test("an agent handing work to everyone does not bid on it, and the taker hears it is from a peer", async () => {
+	test("a bid that comes after the window, from a busy agent, takes it once that agent is idle", async () => {
+		const a = session("a", { fit: 1, reason: "" });
+		const b = session("b", { fit: 0.1, reason: "" });
+		b.here.started();
+		a.here.post("any", "the room uses the new frames", "agent");
+		now += BID_WINDOW_MS + 3_000;
+		await settle(a, b);
+		expect([...b.here.folder.messages.values()][0]?.takenBy).toBeUndefined();
+		now += 26_000;
+		b.here.settled();
+		await settle(a, b);
+		expect([...b.here.folder.messages.values()][0]?.takenBy).toBe("b");
+	});
+
+	test("two requests taken at once arrive together, the older first", async () => {
+		const a = session("a", { fit: 1, reason: "" });
+		const b = session("b", { fit: 0.4, reason: "" });
+		b.here.started();
+		a.here.post("any", "first, the room", "agent");
+		now += 1_000;
+		a.here.post("any", "second, the board", "agent");
+		now += BID_WINDOW_MS;
+		await settle(a, b);
+		b.here.settled();
+		await settle(a, b);
+		expect(b.sent).toHaveLength(1);
+		const text = b.sent[0]?.text ?? "";
+		expect(text.indexOf("first, the room")).toBeLessThan(text.indexOf("second, the board"));
+	});
+
+	test("what arrived while a session reloaded still wakes it", async () => {
+		const a = session("a");
+		const b = session("b");
+		b.here.close();
+		a.here.post(["b"], "the room is in", "agent");
+		now += 5_000;
+		b.here.open({ getCwd: () => "/repo", getSessionId: () => "b" }, undefined);
+		await settle(a, b);
+		expect(b.sent.map((sent) => sent.options)).toEqual([{ triggerTurn: true }]);
+	});
+
+	test("an agent handing work to anyone does not bid on it, and the taker hears it is from a peer", async () => {
 		const a = session("a", { fit: 1, reason: "" });
 		const b = session("b", { fit: 0.4, reason: "" });
 		name(a.here, "oauth");
-		a.here.post("all", "add tests for the callback", "agent");
+		a.here.post("any", "add tests for the callback", "agent");
 		now += BID_WINDOW_MS;
 		await settle(a, b);
 		expect([...b.here.folder.messages.values()][0]?.takenBy).toBe("b");
@@ -253,12 +294,12 @@ describe("what the footer shows", () => {
 		expect(statusLine(a.here.summary(), plain)).toBe("\u25c7");
 	});
 
-	test("a request to everyone is not on the footer, and neither is your own message", async () => {
+	test("a request to anyone is not on the footer, and neither is your own message", async () => {
 		const a = session("a");
 		const b = session("b");
 		name(a.here, "migration");
 		name(b.here, "oauth");
-		b.here.post("all", "who wants the tests?", "agent");
+		b.here.post("any", "who wants the tests?", "agent");
 		b.here.post(["a"], "and you?", "you");
 		await settle(a, b);
 		expect(a.here.summary().unread).toBe(0);

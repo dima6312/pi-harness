@@ -1,5 +1,6 @@
 // A message you type that mentions another agent goes to that agent and not to yours. `@name` sends
-// it to one agent. `@everyone` asks all of them, and the one that fits best takes it. Pi also uses
+// it to one agent. `@everyone` sends it to every agent in the folder, yours included. `@anyone` asks
+// them all, and the one that fits it best takes it while the others see who did. Pi also uses
 // `@` to attach files, so only the name of an open session counts, and the list that opens after
 // `@` shows the agents above the files.
 import {
@@ -11,31 +12,40 @@ import {
 import { mentionedNames, mentionsIn, type Named } from "./names.ts";
 
 export const EVERYONE_MENTION = "everyone";
+export const ANYONE_MENTION = "anyone";
+
+/** What each group mention does, under its name in the list. */
+const GROUPS: Record<string, string> = {
+	[EVERYONE_MENTION]: "every agent here gets it",
+	[ANYONE_MENTION]: "the agent that fits it best takes it",
+};
 
 /** An `@` and the start of a name, right before the cursor. */
 const TYPING_PATTERN = /(?:^|[\s([{<`])(@[a-z0-9-]*)$/i;
 
 /**
- * The agents a message goes to, or "all" for `@everyone`. Undefined when it mentions no other
- * agent, so it goes to yours.
+ * The agents a message goes to: "all" for `@everyone`, "any" for `@anyone`. Undefined when it
+ * mentions no other agent, so it goes to yours.
  */
 export function recipientsOf(
 	names: ReadonlyMap<string, Named>,
 	me: string | undefined,
 	text: string,
-): Named[] | "all" | undefined {
-	if (mentionedNames(text).includes(EVERYONE_MENTION)) return "all";
+): Named[] | "all" | "any" | undefined {
+	const mentioned = mentionedNames(text);
+	if (mentioned.includes(EVERYONE_MENTION)) return "all";
+	if (mentioned.includes(ANYONE_MENTION)) return "any";
 	const named = mentionsIn(names, text).filter((one) => one.session !== me);
 	return named.length === 0 ? undefined : named;
 }
 
-/** Puts the other agents, and `@everyone`, above pi's files in the list that opens after an `@`. */
+/** Puts the other agents, `@everyone` and `@anyone` above pi's files in the list that opens after an `@`. */
 export function completeMentions(
 	current: AutocompleteProvider,
 	others: () => readonly Named[],
 ): AutocompleteProvider {
 	function isMention(item: AutocompleteItem): boolean {
-		if (item.value === `@${EVERYONE_MENTION}`) return true;
+		if (item.value === `@${EVERYONE_MENTION}` || item.value === `@${ANYONE_MENTION}`) return true;
 		return others().some((named) => item.value === `@${named.handle}`);
 	}
 
@@ -72,7 +82,7 @@ export function completeMentions(
 	};
 }
 
-/** The agents whose names match what follows the `@`, then `@everyone`. None when you are alone. */
+/** The agents whose names match what follows the `@`, then `@everyone` and `@anyone`. None alone. */
 function mentionItems(others: readonly Named[], query: string): AutocompleteItem[] {
 	if (others.length === 0) return [];
 	const agents = fuzzyFilter([...others], query, (named) => named.handle).map((named) => ({
@@ -80,10 +90,12 @@ function mentionItems(others: readonly Named[], query: string): AutocompleteItem
 		label: `@${named.handle}`,
 		description: "agent in this folder",
 	}));
-	const everyone = fuzzyFilter([EVERYONE_MENTION], query, (name) => name).map((name) => ({
-		value: `@${name}`,
-		label: `@${name}`,
-		description: "every agent here, the best fit takes it",
-	}));
-	return [...agents, ...everyone];
+	const groups = fuzzyFilter([EVERYONE_MENTION, ANYONE_MENTION], query, (name) => name).map(
+		(name) => ({
+			value: `@${name}`,
+			label: `@${name}`,
+			description: GROUPS[name] ?? "",
+		}),
+	);
+	return [...agents, ...groups];
 }

@@ -17,7 +17,7 @@ import type { PeerMark } from "@adeildo/pi-kit";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "./bid.ts";
-import { Folder, isAlive, livePeers, type Peer, type Posted } from "./folder.ts";
+import { Folder, isAlive, livePeers, type Peer, type Posted, reaches } from "./folder.ts";
 import { type Named, namesOf } from "./names.ts";
 
 export type BoardMark = PeerMark;
@@ -139,9 +139,8 @@ export class Here {
 		}
 		let unread = 0;
 		for (const message of this.#folder.messages.values()) {
-			if (message.from === "you" || message.to === "all") continue;
-			if (!message.to.includes(this.session ?? "") || message.read.has(this.session ?? ""))
-				continue;
+			if (message.from === "you" || !reaches(message, this.session ?? "")) continue;
+			if (message.read.has(this.session ?? "")) continue;
 			unread++;
 		}
 		return { others, unread };
@@ -154,12 +153,13 @@ export class Here {
 		this.#feed = new FolderFeed(this.#target.dir);
 		this.#folder = new Folder();
 		this.#folder.apply(this.#feed.read());
-		this.#openedAt = this.#now();
 		this.log("session.started", {
 			pid: process.pid,
 			host: HOST,
 			...(model === undefined ? {} : { model }),
 		});
+		// A reload opens the session again, and what arrived while it reloaded is still for this run.
+		this.#openedAt = this.#folder.peers.get(this.session ?? "")?.startedAt ?? this.#now();
 		this.#stopWatching = this.#feed.watch(() => this.sync());
 		for (const message of this.#folder.messages.values()) this.#consider(message);
 		this.#evaluate();
@@ -208,7 +208,7 @@ export class Here {
 	}
 
 	/** Posts to the room and returns the message's id. */
-	post(to: string[] | "all", text: string, from: "you" | "agent", urgent = false): string {
+	post(to: string[] | "all" | "any", text: string, from: "you" | "agent", urgent = false): string {
 		const id = `m${this.#now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 		const depth = from === "agent" ? this.#depth : 0;
 		this.log("message.posted", {
@@ -282,6 +282,11 @@ export class Here {
 	settled(): void {
 		this.#busy = false;
 		this.log("session.state", { state: "idle" });
+		// All the new bids go in before any request closes, so what it takes arrives together.
+		this.#holding(() => this.#bidIdle());
+	}
+
+	#bidIdle(): void {
 		for (const message of this.#openRequests()) {
 			const bid = message.bids.get(this.session ?? "");
 			const fit = this.#fits.get(message.id);
@@ -347,7 +352,7 @@ export class Here {
 	}
 
 	#consider(message: Posted): void {
-		if (message.to !== "all" || this.#now() - message.at > RECENT_MS) return;
+		if (message.to !== "any" || this.#now() - message.at > RECENT_MS) return;
 		// An agent asking everyone does not bid on its own request.
 		if (message.from === "agent" && message.session === this.session) return;
 		void this.#bid(message);
@@ -356,7 +361,7 @@ export class Here {
 	/** A request to everyone, once someone else took it, goes in this transcript for you to read. */
 	#showTaken(message: Posted): void {
 		const taker = message.takenBy;
-		if (message.to !== "all" || taker === undefined) return;
+		if (message.to !== "any" || taker === undefined) return;
 		if (taker === this.session || message.session === this.session) return;
 		if (message.at < this.#openedAt || this.#shown.has(message.id)) return;
 		this.#shown.add(message.id);
@@ -384,12 +389,38 @@ export class Here {
 		const now = this.#now();
 		return [...this.#folder.messages.values()].filter(
 			(message) =>
-				message.to === "all" && message.takenBy === undefined && now - message.at <= RECENT_MS,
+				message.to === "any" && message.takenBy === undefined && now - message.at <= RECENT_MS,
 		);
 	}
 
 	/** Delivers what is due, takes what is this session's turn, and waits for the next deadline. */
+	/** Taking a request logs it, and logging reads the folder and evaluates again: that waits. */
+	#evaluating = false;
+	#evaluateAgain = false;
+
 	#evaluate(): void {
+		if (this.#evaluating) {
+			this.#evaluateAgain = true;
+			return;
+		}
+		this.#holding(() => this.#evaluateOnce());
+	}
+
+	/** Runs `work` with evaluating held, then evaluates once if anything asked for it meanwhile. */
+	#holding(work: () => void): void {
+		const outer = this.#evaluating;
+		this.#evaluating = true;
+		try {
+			work();
+		} finally {
+			this.#evaluating = outer;
+		}
+		if (outer || !this.#evaluateAgain) return;
+		this.#evaluateAgain = false;
+		this.#evaluate();
+	}
+
+	#evaluateOnce(): void {
 		if (this.#timer !== undefined) clearTimeout(this.#timer);
 		this.#timer = undefined;
 		const me = this.session;
@@ -400,7 +431,6 @@ export class Here {
 		const due = [...this.#folder.messages.values()].filter((message) =>
 			this.#due(message, me, now),
 		);
-		if (due.length > 0) this.#deliver(due);
 
 		const live = this.live();
 		for (const message of this.#openRequests()) {
@@ -411,16 +441,18 @@ export class Here {
 			if (ranking.kind === "bidding") next = Math.min(next, ranking.until);
 			const turn = turnToTake(ranking, me);
 			if (turn === undefined) continue;
-			if (now >= turn) this.#take(message);
-			else next = Math.min(next, turn);
+			if (now < turn) next = Math.min(next, turn);
+			else if (this.#take(message)) due.push(message);
 		}
+		// Messages and the requests taken now arrive together, in the order they were written.
+		if (due.length > 0) this.#deliver(due.toSorted((a, b) => a.at - b.at));
 
 		if (next !== Number.POSITIVE_INFINITY)
 			this.#timer = setTimeout(() => this.#evaluate(), Math.max(0, next - now) + 5);
 	}
 
 	#due(message: Posted, me: string, now: number): boolean {
-		if (message.to === "all" || !message.to.includes(me)) return false;
+		if (!reaches(message, me)) return false;
 		if (message.received.has(me) || this.#delivered.has(message.id)) return false;
 		return now - message.at <= RECENT_MS;
 	}
@@ -475,12 +507,11 @@ export class Here {
 	}
 
 	/** This session won the request: say so first, so nobody else takes it, then start on it. */
-	#take(message: Posted): void {
+	/** Claims the request, and says whether this session got it: another one may have been first. */
+	#take(message: Posted): boolean {
 		const me = this.session;
 		this.log("request.taken", { request: message.id });
-		if (me === undefined || message.takenBy !== me) return;
-		if (message.from === "you") this.#handYou([message], this.#modeFor([message]));
-		else this.#handPeer([message], this.#modeFor([message]));
+		return me !== undefined && message.takenBy === me;
 	}
 
 	#details(message: Posted): PeerMessageDetails {
@@ -494,7 +525,7 @@ export class Here {
 					: (sender?.handle ?? this.#folder.peers.get(message.session)?.handle ?? "an agent"),
 			color: sender?.color ?? "accent",
 			fromYou: message.from === "you",
-			toYou: message.to !== "all",
+			toYou: Array.isArray(message.to),
 			text: message.text,
 			at: message.at,
 		};

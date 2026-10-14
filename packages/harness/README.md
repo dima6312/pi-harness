@@ -24,16 +24,16 @@
 
 ## What comes in it
 
-| Piece                           | What it does                                                                                                             |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| [Permission](../ask-permission) | Asks before a command runs, with a note the model reads. A model answers the easy ones for you                           |
-| [Questions](../ask-questions)   | The model asks instead of guessing, with options, a preview of each, a note on any and your own answer                   |
-| [Tasks](../tasks)               | Keeps what the session is doing, what it did and with what result, what waits on you, and what was decided               |
-| [Compact](../compact)           | Hides old tool output in long sessions to cut what each request costs, and writes pi's compaction summary from the tasks |
-| [Peers](../peers)               | Agents in the same folder see each other's work, talk in a room, and split what you ask everyone                         |
-| [Skill calls](../skills)        | Call the skills you already have from anywhere in a message, several at once, shown as chips                             |
-| [Look](../look)                 | The start screen, the editor with the branch and the model on its borders, and a box around each command                 |
-| [Providers](../providers)       | Bills Anthropic OAuth requests to your Claude plan, and keeps several accounts per provider                              |
+| Piece                           | What it does                                                                                                                |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| [Permission](../ask-permission) | Asks before a command runs, with a note the model reads. A model answers the easy ones for you                              |
+| [Questions](../ask-questions)   | The model asks instead of guessing, with options, a preview of each, a note on any and your own answer                      |
+| [Tasks](../tasks)               | Keeps what the session is doing, what it did and with what result, what waits on you, and what was decided                  |
+| [Compact](../compact)           | Hides old tool output in long sessions to cut what each request costs, and writes pi's compaction summary from the tasks    |
+| [Peers](../peers)               | Agents in the same folder see each other's work, talk in a room, hear what you tell everyone, and split what you ask anyone |
+| [Skill calls](../skills)        | Call the skills you already have from anywhere in a message, several at once, shown as chips                                |
+| [Look](../look)                 | The start screen, the editor with the branch and the model on its borders, and a box around each command                    |
+| [Providers](../providers)       | Bills Anthropic OAuth requests to your Claude plan, and keeps several accounts per provider                                 |
 
 All of them are on once the package is installed.
 

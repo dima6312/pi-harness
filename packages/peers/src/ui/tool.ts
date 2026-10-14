@@ -5,6 +5,7 @@ import type { Delivery } from "@adeildo/pi-kit";
 import type { AgentToolResult, Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
+import { addressees } from "../folder.ts";
 import type { Here } from "../here.ts";
 import type { SentDetails } from "../index.ts";
 import { award } from "../rules.ts";
@@ -120,7 +121,7 @@ function resultLines(
 		return theme.fg((named?.color ?? "muted") as ThemeColor, handle);
 	};
 
-	if (message.to === "all") {
+	if (message.to === "any") {
 		const bids = [...message.bids]
 			.filter(([session]) => session !== here.session || message.from === "you")
 			.map(
@@ -140,7 +141,7 @@ function resultLines(
 		return lines.map((line) => truncateToWidth(line, width, "..."));
 	}
 
-	return message.to.map((session) => {
+	return addressees(message, here.live()).map((session) => {
 		const received = message.received.get(session);
 		if (message.read.has(session))
 			return `${theme.fg("accent", `${GLYPH.check}${GLYPH.check}`)} ${nameOf(session)} ${theme.fg("muted", "read it")}`;

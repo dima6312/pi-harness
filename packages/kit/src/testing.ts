@@ -49,6 +49,8 @@ export interface FakePi {
 	toolRenderers: ToolRendererResolver[];
 	entries: { customType: string; data: unknown }[];
 	messages: unknown[];
+	/** What the extension sent as if you typed it. */
+	userMessages: unknown[];
 	sessionName: string | undefined;
 	/** Runs every handler registered for `name`, in order, and returns what each returned. */
 	fire(name: string, event: unknown, ctx: ExtensionContext): Promise<unknown[]>;
@@ -71,6 +73,7 @@ export function fakePi(bus: EventBus = createEventBus()): FakePi {
 		toolRenderers: [],
 		entries: [],
 		messages: [],
+		userMessages: [],
 		sessionName: undefined,
 		async fire(name, event, ctx) {
 			const results: unknown[] = [];
@@ -105,6 +108,7 @@ export function fakePi(bus: EventBus = createEventBus()): FakePi {
 		appendEntry: (customType: string, data?: unknown) =>
 			void fake.entries.push({ customType, data }),
 		sendMessage: (message: unknown) => void fake.messages.push(message),
+		sendUserMessage: (content: unknown) => void fake.userMessages.push(content),
 		setSessionName: (name: string) => void (fake.sessionName = name),
 		getSessionName: () => fake.sessionName,
 	} as unknown as ExtensionAPI;

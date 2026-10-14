@@ -142,12 +142,31 @@ describe("the room", () => {
 
 	test("narrowed to one agent, the room shows only what it wrote or was sent", () => {
 		const lines = draw(
-			[said("1", "a", ["b"], "to migration", 1_000), said("2", "c", "all", "to everyone", 2_000)],
+			[
+				said("1", "a", ["b"], "to migration", 1_000),
+				said("2", "c", "all", "to everyone", 2_000),
+				said("3", "c", "any", "to anyone", 3_000),
+			],
 			"b",
 		);
 		expect(lines.join("\n")).toContain("to migration");
-		expect(lines.join("\n")).not.toContain("to everyone");
+		// Everyone includes it; a request it did not bid on does not.
+		expect(lines.join("\n")).toContain("to everyone");
+		expect(lines.join("\n")).not.toContain("to anyone");
 		expect(draw([], "b")).toEqual(["Nothing from or to migration yet."]);
+	});
+
+	test("a message to everyone says how many got it, and its frame stays closed", () => {
+		const message = said("1", "c", "all", "deploy at six", 1_000);
+		if (message.kind === "message") {
+			message.message.received.set("a", { mode: "woke", at: 1_100 });
+			message.message.read.add("b");
+		}
+		const lines = draw([message], undefined);
+		const bottom = lines.find((line) => line.startsWith("\u2570")) ?? "";
+		expect(bottom).toContain("1 read");
+		expect(bottom).toContain("1 got it");
+		expect(bottom.endsWith("\u256f")).toBe(true);
 	});
 
 	test("a message moves while it is new or on its way, and stops after", () => {

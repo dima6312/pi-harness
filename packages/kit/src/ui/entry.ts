@@ -43,8 +43,11 @@ export function entryFrame(
 	const pad = " ".repeat(frame.pad ?? 1);
 	const inner = Math.max(1, width - 2 - pad.length * 2);
 	const edge = (corners: [string, string], left?: string, right?: string) => {
-		const start = paint(corners[0] + lines.h) + (left ? ` ${left} ` : "");
 		const end = (right ? ` ${right} ` : "") + paint(lines.h + corners[1]);
+		// A label too long is cut, never the corner, so the frame stays closed.
+		const room = Math.max(0, width - 2 - visibleWidth(end) - 2);
+		const label = left ? ` ${truncateToWidth(left, room, "...")} ` : "";
+		const start = paint(corners[0] + lines.h) + label;
 		const fill = Math.max(0, width - visibleWidth(start) - visibleWidth(end));
 		return truncateToWidth(start + paint(lines.h.repeat(fill)) + end, width, "");
 	};

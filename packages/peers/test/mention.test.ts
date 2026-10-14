@@ -50,7 +50,7 @@ describe("the list after an @", () => {
 	const provider = completeMentions(files, () => [probe]);
 	const signal = new AbortController().signal;
 
-	test("shows the agents and everyone above the files", async () => {
+	test("shows the agents, everyone and anyone above the files", async () => {
 		const found = await provider.getSuggestions(["ask @cl"], 0, 7, { signal });
 		expect(found?.prefix).toBe("@cl");
 		expect(found?.items.map((item) => item.value)).toEqual(["@claude-probe", "@client.ts"]);
@@ -58,6 +58,7 @@ describe("the list after an @", () => {
 		expect(all?.items.map((item) => item.value)).toEqual([
 			"@claude-probe",
 			"@everyone",
+			"@anyone",
 			"@client.ts",
 		]);
 	});

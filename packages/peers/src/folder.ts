@@ -39,7 +39,8 @@ export interface Posted {
 	id: string;
 	session: string;
 	from: "you" | "agent";
-	to: string[] | "all";
+	/** Session ids, "all" for every session, or "any" for a request one of them takes. */
+	to: string[] | "all" | "any";
 	text: string;
 	urgent: boolean;
 	/** How many agent replies, each waking the next writer, led to it. */
@@ -49,6 +50,27 @@ export interface Posted {
 	read: Set<string>;
 	bids: Map<string, Bid>;
 	takenBy?: string;
+}
+
+/**
+ * Whether a message reaches the session: one sent to it, or one sent to everyone. An agent's message
+ * to everyone does not come back to its own session; yours does, so the agent there knows it too.
+ */
+export function reaches(message: Posted, session: string): boolean {
+	if (message.to === "any") return false;
+	if (message.to === "all") return !(message.from === "agent" && message.session === session);
+	return message.to.includes(session);
+}
+
+/**
+ * The sessions a message went to. One to everyone went to every session it reaches: those that got
+ * it, and those open now.
+ */
+export function addressees(message: Posted, live: readonly Peer[]): string[] {
+	if (message.to === "any") return [];
+	if (message.to !== "all") return message.to;
+	const sessions = new Set([...message.received.keys(), ...live.map((peer) => peer.session)]);
+	return [...sessions].filter((session) => reaches(message, session));
 }
 
 /** A line of the room that is not a message: someone came, left, committed or finished a task. */

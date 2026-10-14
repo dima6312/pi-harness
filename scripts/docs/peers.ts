@@ -83,8 +83,8 @@ export async function peersRoom(
 			state: tasks("Rewrite the README", [{ op: "ask", text: "Rewrite the README" }]),
 		});
 
-		// You ask everyone, both agents bid, and the best fit takes it.
-		me.post("all", "Switch the login to OAuth", "you");
+		// You ask anyone, both agents bid, and the best fit takes it.
+		me.post("any", "Switch the login to OAuth", "you");
 		now += 4 * SECOND;
 		await bid(oauth, migration);
 		now += 8 * SECOND;
