@@ -162,8 +162,7 @@ async function report(): Promise<void> {
 		return;
 	}
 
-	const moved = await filesChanged([GENERATED, GOLDEN]);
-	if (moved) {
+	if (await filesChanged([GENERATED, GOLDEN])) {
 		await openPullRequest(
 			{
 				branch: BRANCH,

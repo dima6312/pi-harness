@@ -8,7 +8,7 @@
 // bun packages/providers/eval/claude-code/contract.ts [--version 2.1.299] [--channel latest]
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createHash } from "node:crypto";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -180,7 +180,7 @@ export async function capture(version: string, workdir: string): Promise<Contrac
 	const declared = declarations(source);
 	const gated = gates(source, declared);
 	const system = blocks(turn.body.system);
-	const betas = new Set(betasOf(turn.headers, "anthropic-beta"));
+	const betas = new Set(betasOf(turn.headers));
 	const features = declared.map(({ name, header }) => ({
 		name,
 		header,
@@ -191,7 +191,7 @@ export async function capture(version: string, workdir: string): Promise<Contrac
 	return {
 		version,
 		userAgent: headerOf(turn.headers, "user-agent"),
-		entrypoint: (billing(system)?.match(/cc_entrypoint=([^;]+)/) ?? [])[1] ?? "",
+		entrypoint: billing(system)?.match(/cc_entrypoint=([^;]+)/)?.[1] ?? "",
 		identity: system[1]?.text ?? "",
 		system: system.map((block) => ({
 			length: block.text.length,
@@ -233,7 +233,7 @@ async function download(version: string, workdir: string): Promise<string> {
 		if (!plain.ok) throw new Error(`${entry.binary}: ${plain.status} ${plain.statusText}`);
 		await writeFile(binary, Buffer.from(await plain.arrayBuffer()));
 	}
-	await exec("chmod", ["+x", binary]);
+	await chmod(binary, 0o755);
 
 	const digest = createHash("sha256")
 		.update(await readFile(binary))
@@ -266,21 +266,24 @@ interface Declaration {
  *
  * The list right after the string `"claude_code"` is a list of those variables, so this reads the
  * same set from the side that also gives the variable a gate names. A header a build spelled as a
- * constant resolves from that constant's own assignment.
+ * constant resolves from that constant's own assignment. The minifier renames the function that
+ * builds them between builds (`z` in 2.1.299, `k` in 2.1.301), so its name is read off the call that
+ * declares `"claude_code"` itself.
  */
 function declarations(source: string): Declaration[] {
 	const anchor = source.indexOf('"claude_code"');
 	if (anchor < 0) throw new Error("this build has no feature registry");
 
+	const factory = /=([A-Za-z_$][\w$]*)\($/.exec(source.slice(anchor - 40, anchor))?.[1];
+	if (factory === undefined) throw new Error("this build declares its features with no call");
+
 	const window = source.slice(anchor - 200, anchor + 6_000);
 	const pair =
-		/([A-Za-z_$][\w$]*)=z\("([a-z][a-z0-9_]*)",\s*("[a-z0-9][a-z0-9.-]*"|[A-Za-z_$][\w$]*)\)/g;
+		/([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)\("([a-z][a-z0-9_]*)",\s*("[a-z0-9][a-z0-9.-]*"|[A-Za-z_$][\w$]*)\)/g;
 	const found: Declaration[] = [];
-	for (const match of window.matchAll(pair)) {
-		const variable = match[1];
-		const name = match[2];
-		const spelled = match[3];
-		if (variable === undefined || name === undefined || spelled === undefined) continue;
+	for (const [, variable, callee, name, spelled] of window.matchAll(pair)) {
+		if (callee !== factory || variable === undefined || name === undefined || spelled === undefined)
+			continue;
 		const header = spelled.startsWith('"') ? spelled.slice(1, -1) : constant(source, spelled);
 		// `x-cc-internal-` headers are latches between Claude Code's own processes, not features.
 		if (header === undefined || header.startsWith("x-cc-internal-")) continue;
@@ -293,8 +296,7 @@ function declarations(source: string): Declaration[] {
 
 /** The string a build assigned to a name, for a header the registry spelled as a constant. */
 function constant(source: string, name: string): string | undefined {
-	const found = new RegExp(`${name.replace("$", "\\$")}="([a-z0-9][a-z0-9.-]*)"`).exec(source);
-	return found?.[1];
+	return new RegExp(`${name.replaceAll("$", "\\$")}="([a-z0-9][a-z0-9.-]*)"`).exec(source)?.[1];
 }
 
 interface Turn {
@@ -369,8 +371,8 @@ async function probeTurn(binary: string, prompt: string): Promise<Turn> {
 	try {
 		await settled(child, READY, QUIET);
 		child.stdin?.write(`${prompt}\r`);
-		if (!(await arrived(() => turn !== undefined, Date.now() + TURN)) || turn === undefined)
-			throw new Error(`no turn arrived within ${TURN} ms`);
+		await waitFor(() => turn !== undefined, Date.now() + TURN);
+		if (turn === undefined) throw new Error(`no turn arrived within ${TURN} ms`);
 		return turn;
 	} finally {
 		if (child.pid !== undefined) {
@@ -450,12 +452,8 @@ function redact(headers: Record<string, string | string[] | undefined>): Record<
 	const keep: Record<string, string> = {};
 	for (const [name, value] of Object.entries(headers)) {
 		if (value === undefined) continue;
-		keep[name] =
-			name === "authorization" || name === "x-api-key"
-				? "<redacted>"
-				: Array.isArray(value)
-					? value.join(", ")
-					: value;
+		if (name === "authorization" || name === "x-api-key") keep[name] = "<redacted>";
+		else keep[name] = Array.isArray(value) ? value.join(", ") : value;
 	}
 	return keep;
 }
@@ -466,8 +464,8 @@ function headerOf(headers: Record<string, string>, name: string): string {
 	return value;
 }
 
-function betasOf(headers: Record<string, string>, name: string): string[] {
-	return headerOf(headers, name)
+function betasOf(headers: Record<string, string>): string[] {
+	return headerOf(headers, "anthropic-beta")
 		.split(",")
 		.map((entry) => entry.trim())
 		.filter((entry) => entry !== "");
@@ -517,9 +515,8 @@ async function exists(path: string): Promise<boolean> {
 }
 
 /** Waits for `ready` to hold, up to `deadline`. */
-async function arrived(ready: () => boolean, deadline: number): Promise<boolean> {
+async function waitFor(ready: () => boolean, deadline: number): Promise<void> {
 	while (Date.now() < deadline && !ready()) await sleep(POLL);
-	return ready();
 }
 
 function sleep(ms: number): Promise<void> {
