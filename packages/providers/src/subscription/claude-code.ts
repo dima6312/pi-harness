@@ -4,7 +4,7 @@
 // and it refuses newer models to a version it considers too old. `turn` marks the features a turn
 // of Claude Code's TUI asks for, which is the side the settings screen offers.
 
-export const CLAUDE_CODE_VERSION = "2.1.299";
+export const CLAUDE_CODE_VERSION = "2.1.301";
 
 export const CLAUDE_CODE_FEATURES = [
 	{
