@@ -2,6 +2,15 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.10.1](https://github.com/felipeadeildo/pi-harness/compare/v5.10.0...v5.10.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **docs:** the pictures pin the harness version, so a release no longer makes them stale ([376a5f6](https://github.com/felipeadeildo/pi-harness/commit/376a5f6f8dd3a638b5f5e295d2c54a9a59117c6a))
+* **providers:** the Claude Code eval reads the feature factory's name off the build, since 2.1.301 renamed it ([a0fb1fd](https://github.com/felipeadeildo/pi-harness/commit/a0fb1fd7ff818d999cf915c171cf19c8ab90dd76))
+* **release:** the release PR redraws the docs pictures with the lockfile, instead of the docs pinning a version ([0f2a512](https://github.com/felipeadeildo/pi-harness/commit/0f2a512327e853e306d699ba79d71ad446fb9c6a))
+
 ## [5.10.0](https://github.com/felipeadeildo/pi-harness/compare/v5.9.2...v5.10.0) (2026-10-14)
 
 
