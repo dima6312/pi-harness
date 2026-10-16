@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>The plan you already pay for, and more than one login per provider.</strong><br>
-  Bill Anthropic requests to your Claude plan, keep several accounts with a switch to the next one when a limit hits, and keep the prompt cache warm while you are likely to come back.
+  Bill Anthropic requests to your Claude plan, keep several accounts with a switch to the next one when a limit hits, keep the prompt cache warm while you are likely to come back, and add any OpenAI-compatible endpoint from <code>/login</code>.
 </p>
 
 <p align="center"><code>pi install npm:@adeildo/pi-providers</code></p>
@@ -82,6 +82,28 @@ Pi assumes a fixed 15% chance that you come back, which on Opus 5.5 skips every 
 `learned` reads once a day how long you took to answer after each run, over the last 30 days of sessions, apart for runs that ended on a question to you. That keeps Opus 5.5 warm for about 23 minutes and Sonnet 4.6 for about 14. A restart or `/reload` stops the refreshes, since they run inside pi.
 
 The Prompt cache section of the Providers tab shows what was learned, and lists this session's misses: each request that wrote the cache again, what that cost over reading it, and why. The causes are a pause past the cache's life, a prune or a server clear, a compaction, a new model, or a changed system prompt or tool list.
+
+## OpenAI-compatible endpoints
+
+An endpoint that speaks OpenAI's chat completions, like DeepInfra, a vLLM box or an Ollama server, is added through `/login`. Pick `Sign in with an API key`, then `OpenAI-compatible endpoint`, and answer three prompts:
+
+```text
+Name       DeepInfra
+Base URL   https://api.deepinfra.com/v1/openai
+API key    sk-...   or $DEEPINFRA_API_KEY, or empty for a server without one
+```
+
+A URL copied from a `curl` works as is, since a trailing `/chat/completions` is cut. Before saving, the login reads the endpoint's `GET /models` and refuses an endpoint that lists no chat model. The endpoint then becomes a provider of its own, named after it (`deepinfra`). Its chat models appear in `/model`, and `pi update --models` reads them again.
+
+| The catalog gives                                              | The model gets                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------ |
+| DeepInfra's `metadata`: context, prices, `reasoning`, `vision` | Those limits, prices and capabilities                  |
+| OpenRouter's or vLLM's `context_length`, `max_model_len`       | That context                                           |
+| Only ids                                                       | 128k of context, 32k of output, no price, no reasoning |
+
+Embedding, speech and image models are left out. An output limit equal to the context is capped at 32k, since endpoints refuse a request for that much.
+
+The endpoints and their keys live in pi's `auth.json`, under one `openai-compatible` entry. `/login` on that entry again adds another endpoint, replaces one with the same name, or removes one, and `/logout` of the entry removes them all. `/login` on an endpoint's own provider stores a new key for it alone. A `$NAME` key is read from the environment on every request.
 
 ## Settings
 
