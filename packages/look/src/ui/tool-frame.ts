@@ -45,6 +45,7 @@ const RESULT_PREVIEW_LINES = 10;
 
 export function registerToolFrames(scope: FeatureScope): void {
 	const redraws = new Map<string, () => void>();
+	const written = new Map<string, number>();
 	// The set is asked for on every drawing of every frame, and it changes only with the setting.
 	const set = glyphsOf(() => icons.get(scope));
 	scope.events.on(FRAMED, (data) => {
@@ -53,12 +54,20 @@ export function registerToolFrames(scope: FeatureScope): void {
 	scope.events.on(RULING_CHANGED, (data) => {
 		if (isObject(data) && typeof data.toolCallId === "string") redraws.get(data.toolCallId)?.();
 	});
+	// Pi completes every call of a message only when the message ends, so a call the model finished
+	// before writing the next one would go on writing. The provider says when each one ends. Pi tells
+	// the extensions first and hands every call its arguments right after, which draws the frame.
+	scope.on("message_update", (event) => {
+		const update = event.assistantMessageEvent;
+		if (update.type === "toolcall_end") written.set(update.toolCall.id, Date.now());
+	});
 
 	scope.registerToolRenderer((toolName, next) =>
 		framed(scope, next(), {
 			name: toolName,
 			set: () => set().set,
 			redraws,
+			written,
 		}),
 	);
 }
@@ -67,6 +76,8 @@ interface FrameContext {
 	name: string;
 	set: () => IconSet;
 	redraws: Map<string, () => void>;
+	/** When the model finished writing each call, until its frame reads it. */
+	written: Map<string, number>;
 }
 
 function framed(
@@ -95,37 +106,72 @@ function framed(
 			frame.redraws.set(context.toolCallId, context.invalidate);
 			const clock = clockOf(context);
 			const now = Date.now();
-			clock.writingAt ??= now;
-			if (context.argsComplete) clock.writtenAt ??= now;
+			const ended = frame.written.get(context.toolCallId);
+			frame.written.delete(context.toolCallId);
+			// A call replayed from the session, or one already running, was written long ago.
+			const done =
+				ended !== undefined ||
+				context.argsComplete ||
+				context.executionStarted ||
+				!context.isPartial;
+			// Only a call seen while the model wrote it has a time it took to write.
+			if (!done) clock.writingAt ??= now;
+			else clock.writtenAt ??= ended ?? now;
 			if (context.executionStarted) clock.startedAt ??= now;
+			const writing = clock.writtenAt === undefined;
+			const ruling = rulingOf(scope.events, context.toolCallId);
+
+			// Pi hands every call of a message its arguments again on each piece the model writes, so a
+			// call that did not change keeps the frame it has, and its renderer is not asked again.
+			const inputs = [
+				args,
+				theme,
+				ruling,
+				writing,
+				context.expanded,
+				context.isPartial,
+				context.executionStarted,
+			];
+			const last = context.lastComponent;
+			if (last instanceof CallFrame && last.drawnFrom(inputs)) return last;
+
 			const stream = streamer?.(args, theme, {
 				cwd: context.cwd,
 				expanded: context.expanded,
+				writing,
 				state: context.state as object,
 			});
-			const writing = stream !== undefined && !context.argsComplete;
-			// While the model writes, pi's renderer has nothing new to show, so it is not asked.
-			const own = writing
+			// While the model writes, pi's renderer has nothing new to show, so it is not asked. The
+			// frame pads its inside itself, so pi's renderer adds no padding of its own.
+			const streaming = writing && stream !== undefined;
+			const own = streaming
 				? undefined
-				: call(args, theme, { ...context, lastComponent: passed(context.lastComponent) });
+				: call(args, theme, {
+						...context,
+						argsComplete: !writing,
+						outputPad: 0,
+						lastComponent: passed(last),
+					});
 			const body = own === undefined ? drawnBody(stream?.lines ?? []) : orStream(own, stream);
 
-			const box = new CallFrame({
-				theme,
-				icon: toolIcon(frame.name, frame.set()),
-				label: toolLabel(frame.name),
-				body,
-				ruling: rulingOf(scope.events, context.toolCallId),
-				expanded: context.expanded,
-				phase: phaseOf(context),
-				mark: stateMark,
-				set: frame.set,
-				elapsed: elapsedOf(clock, context),
-				progress: writing ? stream.progress : undefined,
-				clock,
-				executing: context.isPartial && context.executionStarted,
-				runningAs: RUNNING_WORDS[frame.name],
-			});
+			const box = new CallFrame(
+				{
+					theme,
+					icon: toolIcon(frame.name, frame.set()),
+					label: toolLabel(frame.name),
+					body,
+					ruling,
+					expanded: context.expanded,
+					phase: phaseOf(context, writing),
+					mark: stateMark,
+					set: frame.set,
+					progress: writing ? stream?.progress : undefined,
+					clock,
+					executing: context.isPartial && context.executionStarted,
+					runningAs: RUNNING_WORDS[frame.name],
+				},
+				inputs,
+			);
 			inner.set(box, own);
 			return box;
 		},
@@ -139,6 +185,7 @@ function framed(
 			clock.resulted = true;
 			const body = result(shown, options, theme, {
 				...context,
+				outputPad: 0,
 				lastComponent: passed(context.lastComponent),
 			});
 			const phase: Phase = options.isPartial ? "running" : context.isError ? "failed" : "done";
@@ -177,13 +224,12 @@ const RUNNING_WORDS: Readonly<Record<string, string>> = {
  * The phase the call closes with while it still has no result: writing the arguments, then waiting
  * to run. A call with a result, live or replayed, stays open for the result half to close.
  */
-function phaseOf(context: {
-	isPartial: boolean;
-	executionStarted: boolean;
-	argsComplete: boolean;
-}): Phase | undefined {
+function phaseOf(
+	context: { isPartial: boolean; executionStarted: boolean },
+	writing: boolean,
+): Phase | undefined {
 	if (!context.isPartial || context.executionStarted) return undefined;
-	return context.argsComplete ? "waiting" : "writing";
+	return writing ? "writing" : "waiting";
 }
 
 function callText(args: unknown, theme: Theme, expanded: boolean): string {
@@ -245,11 +291,26 @@ interface FrameParts {
 /** The top rule, the call inside it, and the phase while the call has nothing to show yet. */
 class CallFrame implements Component {
 	#drawn?: Drawn;
+	/** Set when pi or the terminal asks for a fresh drawing, which asks the renderers again. */
+	#stale = false;
 
-	constructor(private readonly parts: FrameParts & CallParts) {}
+	constructor(
+		private readonly parts: FrameParts & CallParts,
+		private readonly inputs: readonly unknown[],
+	) {}
+
+	/** Whether this frame was made from these inputs and nothing asked for it to be made again. */
+	drawnFrom(inputs: readonly unknown[]): boolean {
+		return (
+			!this.#stale &&
+			inputs.length === this.inputs.length &&
+			inputs.every((input, index) => input === this.inputs[index])
+		);
+	}
 
 	invalidate(): void {
 		this.#drawn = undefined;
+		this.#stale = true;
 		this.parts.body.invalidate();
 	}
 
@@ -259,7 +320,8 @@ class CallFrame implements Component {
 		// waits for you does while its dialog is open.
 		const running = this.parts.executing === true && clock?.resulted !== true;
 		const phase = this.parts.phase ?? (running ? "running" : undefined);
-		const time = running && clock !== undefined ? ranFor(clock, true) : this.parts.elapsed;
+		// The time is read on every drawing, so it goes on while nothing new arrives.
+		const time = clock === undefined || phase === undefined ? undefined : timeOf(phase, clock);
 		// The mark of a phase that lasts moves, so it is picked on every drawing.
 		const mark = phase === undefined ? undefined : this.parts.mark(phase, this.parts.set());
 		const body = this.parts.body.render(room(width));
@@ -292,7 +354,6 @@ interface CallParts {
 	phase?: Phase;
 	mark: (phase: Phase, set: IconSet) => string;
 	set: () => IconSet;
-	elapsed?: string;
 	/** What the model has written so far, while it writes. */
 	progress?: readonly string[];
 	clock?: Clock;
@@ -499,11 +560,11 @@ function ranFor(clock: Clock, running: boolean): string | undefined {
 	return end === undefined ? undefined : elapsed(end - clock.startedAt);
 }
 
-/** How long the call has spent waiting to run, which only the call half of the frame asks for. */
-function elapsedOf(clock: Clock, context: { argsComplete: boolean }): string | undefined {
-	if (clock.writingAt === undefined) return undefined;
-	const from = context.argsComplete ? (clock.writtenAt ?? clock.writingAt) : clock.writingAt;
-	return elapsed(Date.now() - from);
+/** How long the call has been in the phase the call half of the frame closes with. */
+function timeOf(phase: Phase, clock: Clock): string | undefined {
+	if (phase === "running") return ranFor(clock, true);
+	const from = phase === "waiting" ? clock.writtenAt : clock.writingAt;
+	return from === undefined ? undefined : elapsed(Date.now() - from);
 }
 
 function elapsed(ms: number): string {

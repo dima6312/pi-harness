@@ -7,6 +7,7 @@ import { resolve } from "node:path";
 // where the model is writing, and what it has written so far on the bottom rule.
 import { GLYPH, isObject } from "@adeildo/pi-kit";
 import { getLanguageFromPath, highlightCode, type Theme } from "@earendil-works/pi-coding-agent";
+import { stripTerminalSequences } from "@earendil-works/pi-tui";
 
 import { tabs } from "./format.ts";
 
@@ -19,6 +20,8 @@ export interface Stream {
 export interface StreamContext {
 	cwd: string;
 	expanded: boolean;
+	/** The model is still writing the call, so the cursor shows and the last key may be cut short. */
+	writing: boolean;
 	/** Shared by every render of one call, which keeps what was read from disk. */
 	state: { streamTarget?: Target };
 }
@@ -50,26 +53,33 @@ export function writeStream(
 	theme: Theme,
 	context: StreamContext,
 ): Stream | undefined {
-	const path = pathOf(args);
+	// The model may write the content before the path, so the stream does not wait for the path.
 	const content = field(args, "content");
-	if (path === undefined || content === undefined) return undefined;
+	if (content === undefined) return undefined;
+	const path = pathOf(args);
 
-	const target = targetOf(path, context);
-	const header = `${pathLine("write", path, theme)}  ${theme.fg("muted", replaces(target))}`;
+	// A path still arriving is not read: it may name another file, or a folder, on the way.
+	const target =
+		path !== undefined && pathSettled(args, context) ? targetOf(path, context) : undefined;
+	const note = target === undefined ? "" : `  ${theme.fg("muted", replaces(target))}`;
 	const lines = content.split("\n");
 	const shown = context.expanded ? lines : lines.slice(-WRITE_TAIL);
 	const first = lines.length - shown.length;
 	const gutter = String(lines.length).length;
-	const lang = getLanguageFromPath(path);
+	const lang = path === undefined ? undefined : getLanguageFromPath(path);
 	const painted = lang
-		? highlightCode(tabs(shown.join("\n")), lang)
-		: shown.map((line) => theme.fg("toolOutput", tabs(line)));
+		? highlightCode(shown.map(printable).join("\n"), lang)
+		: shown.map((line) => theme.fg("toolOutput", printable(line)));
 	const body = shown.map(
 		(_, index) =>
 			`${theme.fg("dim", String(first + index + 1).padStart(gutter))}  ${painted[index] ?? ""}`,
 	);
 	return {
-		lines: [header, ...above(first, gutter, theme), ...withCursor(body, theme)],
+		lines: [
+			pathLine("write", path, theme) + note,
+			...above(first, gutter, theme),
+			...withCursor(body, theme, context.writing),
+		],
 		progress: [`${lines.length} line${lines.length === 1 ? "" : "s"}`, size(content)],
 	};
 }
@@ -81,7 +91,7 @@ export function editStream(
 ): Stream | undefined {
 	const path = pathOf(args);
 	const edits = editsOf(args);
-	if (path === undefined || edits.length === 0) return undefined;
+	if (edits.length === 0) return undefined;
 
 	let removed = 0;
 	let added = 0;
@@ -89,18 +99,22 @@ export function editStream(
 	for (const [index, edit] of edits.entries()) {
 		if (index > 0) diff.push(theme.fg("dim", GLYPH.ellipsisAcross));
 		// Only the last edit can still be arriving, so only the others have a known end.
-		const lines = editLines(edit, index < edits.length - 1);
-		for (const line of lines.before) diff.push(theme.fg("toolDiffContext", ` ${tabs(line)}`));
-		for (const line of lines.out) diff.push(theme.fg("toolDiffRemoved", `-${tabs(line)}`));
-		for (const line of lines.in) diff.push(theme.fg("toolDiffAdded", `+${tabs(line)}`));
-		for (const line of lines.after) diff.push(theme.fg("toolDiffContext", ` ${tabs(line)}`));
+		const lines = editLines(edit, !context.writing || index < edits.length - 1);
+		for (const line of lines.before) diff.push(theme.fg("toolDiffContext", ` ${printable(line)}`));
+		for (const line of lines.out) diff.push(theme.fg("toolDiffRemoved", `-${printable(line)}`));
+		for (const line of lines.in) diff.push(theme.fg("toolDiffAdded", `+${printable(line)}`));
+		for (const line of lines.after) diff.push(theme.fg("toolDiffContext", ` ${printable(line)}`));
 		removed += lines.out.length;
 		added += lines.in.length;
 	}
 	const shown = context.expanded ? diff : diff.slice(-EDIT_TAIL);
 	const hidden = diff.length - shown.length;
 	return {
-		lines: [pathLine("edit", path, theme), ...above(hidden, 0, theme), ...withCursor(shown, theme)],
+		lines: [
+			pathLine("edit", path, theme),
+			...above(hidden, 0, theme),
+			...withCursor(shown, theme, context.writing),
+		],
 		progress: [...(edits.length > 1 ? [`edit ${edits.length}`] : []), `-${removed} +${added}`],
 	};
 }
@@ -136,10 +150,29 @@ export function editLines(
 }
 
 /** The first line pi's own renderer draws, so nothing moves when it takes over. */
-function pathLine(tool: string, path: string, theme: Theme): string {
+function pathLine(tool: string, path: string | undefined, theme: Theme): string {
+	const title = theme.fg("toolTitle", theme.bold(tool));
+	// Pi's own stand-in for a path not written yet.
+	if (path === undefined) return `${title} ${theme.fg("toolOutput", "...")}`;
 	const home = homedir();
 	const shown = path.startsWith(home) ? `~${path.slice(home.length)}` : path;
-	return `${theme.fg("toolTitle", theme.bold(tool))} ${theme.fg("accent", shown)}`;
+	return `${title} ${theme.fg("accent", printable(shown))}`;
+}
+
+/**
+ * A line as the terminal can print it inside the frame: a carriage return would send the cursor
+ * back over the border, and a colour code or a bell in the file would reach the terminal.
+ */
+function printable(line: string): string {
+	// oxlint-disable-next-line no-control-regex -- control characters are what this removes
+	return tabs(stripTerminalSequences(line).replace(/[\u0000-\u0008\u000a-\u001f\u007f]/g, ""));
+}
+
+/** A key the model has moved past is complete, and so is every key once the call is written. */
+function pathSettled(args: unknown, context: StreamContext): boolean {
+	if (!context.writing || !isObject(args)) return true;
+	const last = Object.keys(args).at(-1);
+	return last !== "path" && last !== "file_path";
 }
 
 function above(hidden: number, gutter: number, theme: Theme): string[] {
@@ -150,8 +183,8 @@ function above(hidden: number, gutter: number, theme: Theme): string[] {
 	];
 }
 
-function withCursor(lines: readonly string[], theme: Theme): string[] {
-	if (lines.length === 0) return [];
+function withCursor(lines: readonly string[], theme: Theme, writing: boolean): string[] {
+	if (!writing || lines.length === 0) return [...lines];
 	return [...lines.slice(0, -1), `${lines.at(-1)}${theme.fg("accent", CURSOR)}`];
 }
 
