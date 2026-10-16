@@ -2,6 +2,13 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.11.0](https://github.com/felipeadeildo/pi-harness/compare/v5.10.1...v5.11.0) (2026-10-16)
+
+
+### Features
+
+* **providers:** OpenAI-compatible endpoints are added from /login, with their models read from the endpoint ([7393967](https://github.com/felipeadeildo/pi-harness/commit/7393967e6c3dfa793b7af6ef6fcd127ecc4189b3))
+
 ## [5.10.1](https://github.com/felipeadeildo/pi-harness/compare/v5.10.0...v5.10.1) (2026-10-15)
 
 
