@@ -53,9 +53,12 @@ writeFileSync(
 	)}\n`,
 );
 console.log(`Installing ${packed.length} package(s) into ${app}\n`);
-const install = await $`npm install --no-audit --no-fund --ignore-scripts --loglevel error`
-	.cwd(app)
-	.nothrow();
+// Pi installs packages with --legacy-peer-deps, so the host packages are never on disk next to them:
+// an import that only resolves through an installed peer has to fail here too.
+const install =
+	await $`npm install --no-audit --no-fund --ignore-scripts --legacy-peer-deps --loglevel error`
+		.cwd(app)
+		.nothrow();
 if (install.exitCode !== 0) {
 	console.error(install.stderr.toString());
 	process.exit(1);
