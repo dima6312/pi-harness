@@ -2,6 +2,14 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.11.1](https://github.com/felipeadeildo/pi-harness/compare/v5.11.0...v5.11.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **look:** each call stops writing when the model ends it, and the write/edit stream survives any argument order ([b5bd220](https://github.com/felipeadeildo/pi-harness/commit/b5bd220ad72229410a7b46769abbe9df0405ac5b))
+* **scripts:** the bump branch is pushed with --force, since the shallow checkout has no lease to compare against ([3b97fdf](https://github.com/felipeadeildo/pi-harness/commit/3b97fdfe4430ad908545223412967186664fa1da))
+
 ## [5.11.0](https://github.com/felipeadeildo/pi-harness/compare/v5.10.1...v5.11.0) (2026-10-16)
 
 
