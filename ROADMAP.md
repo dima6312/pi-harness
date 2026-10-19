@@ -132,9 +132,7 @@ The Anthropic side is researched in [`packages/providers/docs/quota.md`](package
 
 Sign in with ChatGPT lives on the `openai` provider now, and `openai-codex` is legacy, so the OpenAI quota reads whichever one holds the token. A third-party tool on a Claude plan spends extra usage billed per token, not the plan's windows, so the Anthropic windows show what Claude Code used.
 
-Open:
-
-- Is the 5-hour window rolling, or a block that starts at the first request?
+The 5-hour window is a block, not a rolling window: it opens with the first message sent after the last one reset, and resets 5 hours later. So the reset time is fixed from that first message, and an account with no message since its reset has no window open yet.
 
 ## What I see. `@adeildo/pi-look`
 
@@ -175,6 +173,7 @@ Open:
 
 Open:
 
+- The design is not settled. `pi-memory` does the job well today, so a replacement has to beat it at something specific before it starts.
 - One memory file with sections, or a global one and one per project?
 
 ## Many sessions, one policy
@@ -198,22 +197,29 @@ Open:
 
 ## From anywhere
 
-| Item          | Status | Needs                     | Note                                                                                                                      |
-| ------------- | ------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Remote bridge | later  | Event log                 | Forwards the kit's contracts and pi's RPC dialogs over a socket reachable through Tailscale. It never runs in `full` mode |
-| Web UI        | later  | Bridge, event log, ledger | Sessions, their state, the approvals waiting, and usage                                                                   |
-| Voice         | later  |                           | Local whisper, with the text pasted into the editor                                                                       |
+The design is in [`docs/remote.md`](docs/remote.md): the pieces, the protocol, the events each feature has to publish, background sessions, reach and login, the gaps in pi, and the prior art. The phases below are its phases.
+
+| Item                 | Status  | Needs                | Note                                                                                                                                                                                                                  |
+| -------------------- | ------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The harness's events | planned | Event log            | F0. Every contract gets a change event with its whole value in JSON, every feature writes its facts to the log, `harness:ask:cancel` closes a dialog another side answered, and a protocol package rebuilds a session |
+| Bridge and hub       | planned | The harness's events | F1 and F2. A bridge in every pi, and a hub the first pi starts that outlives it and exits after 5 minutes alone. Watch and steer every session, and answer every dialog, first answer wins                            |
+| Hosted sessions      | planned | Bridge and hub       | F3. Sessions started from the phone or `pi-remote new` run in tmux, under the allowed roots (`~` by default). `pi-remote attach` takes one back mid-run. The bridge adds the session lock pi lacks                    |
+| Reach and login      | planned | Bridge and hub       | F4. Loopback by default, then Tailscale serve, a Cloudflare tunnel, a bound interface or a reverse proxy, with device pairing, a password or API keys. Push when a session needs you and you are not typing           |
+| Native apps          | later   | Reach and login      | F5. The same Expo codebase as the web app, built for iOS and Android, with QR pairing and native push                                                                                                                 |
+| Voice                | later   |                      | Local whisper, with the text pasted into the editor                                                                                                                                                                   |
+
+A device never sets the permission mode to `full`, never grants "always yes everywhere", and never changes the Remote settings.
 
 ## Platform
 
-| Item                       | Status  | Note                                                                                                                                                      |
-| -------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The pi defaults check      | done    | `bun run pi:defaults` fails when pi moves a default a harness setting was chosen against                                                                  |
-| One frame for every dialog | done    | `pi-kit` owns the frame, the keys on its edge, the pointer and the rule (`packages/kit/src/ui/frame.ts`), with `DESIGN.md`; every dialog draws through it |
-| The typing bench           | done    | `bun run bench:typing` measures what one keystroke costs on a real session, with the profile of the window                                                |
-| `/harness setup`           | planned | Applies the pi settings listed in `packages/harness/src/setup.ts`, which a package cannot set by itself                                                   |
-| A release preflight        | planned | Refuses to release when `main` is behind, the tree is dirty, or CI is red for the commit                                                                  |
-| A local release dry run    | planned | Installs the packed tarballs outside the repository and runs a real `pi` session against them                                                             |
+| Item                       | Status | Note                                                                                                                                                      |
+| -------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The pi defaults check      | done   | `bun run pi:defaults` fails when pi moves a default a harness setting was chosen against                                                                  |
+| One frame for every dialog | done   | `pi-kit` owns the frame, the keys on its edge, the pointer and the rule (`packages/kit/src/ui/frame.ts`), with `DESIGN.md`; every dialog draws through it |
+| The typing bench           | done   | `bun run bench:typing` measures what one keystroke costs on a real session, with the profile of the window                                                |
+| `/harness setup`           | next   | Applies the pi settings listed in `packages/harness/src/setup.ts`, which a package cannot set by itself                                                   |
+| A release preflight        | next   | Refuses to release when `main` is behind, the tree is dirty, or CI is red for the commit                                                                  |
+| A local release dry run    | next   | Installs the packed tarballs outside the repository and runs a real `pi` session against them                                                             |
 
 ## Waiting on pi
 
