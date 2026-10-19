@@ -169,7 +169,6 @@ async function report(): Promise<void> {
 				title: `chore: report Claude Code ${version}`,
 				files: [GENERATED, GOLDEN],
 				trailingNewline: true,
-				pushArgs: ["--force-with-lease"],
 			},
 			[
 				`Claude Code released \`${version}\`, and the whole suite passes against what it sends. The pin and the feature list in \`${GENERATED}\` come from a turn of that release.`,

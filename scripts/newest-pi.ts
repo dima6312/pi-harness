@@ -105,7 +105,6 @@ async function report(): Promise<void> {
 				title: `chore(deps): bump the pi SDK to ${version}`,
 				files: ["package.json", "bun.lock"],
 				trailingNewline: false,
-				pushArgs: ["--force"],
 			},
 			[
 				`pi released \`${version}\`, and the whole suite passes against it, the API and the defaults included.`,

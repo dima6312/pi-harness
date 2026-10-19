@@ -1,6 +1,6 @@
 // What the two release checks share when they talk to GitHub: the step outputs a workflow reads back,
-// the issue a red run files, and the pull request that bumps a pin. `pushArgs` and `trailingNewline`
-// are per workflow, since `claude-code` and `newest-pi` differ there on purpose.
+// the issue a red run files, and the pull request that bumps a pin. `trailingNewline` is per
+// workflow, since `claude-code` and `newest-pi` differ there on purpose.
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 
 import { $ } from "bun";
@@ -76,24 +76,28 @@ export async function closeIssues(label: string, comment: string): Promise<void>
 	);
 }
 
-/** The branch a bump goes up on, the files it commits, and how that branch is pushed. */
+/** The branch a bump goes up on and the files it commits. */
 interface PullRequest {
 	branch: string;
 	title: string;
 	files: string[];
 	/** Whether `body.md` ends with a newline. `claude-code` does, `newest-pi` does not. */
 	trailingNewline: boolean;
-	/** What `git push` takes before `origin`: `claude-code` adds `--force-with-lease`. */
-	pushArgs: string[];
 }
 
-/** Commits the bump on its own branch, pushes it, and opens the pull request or edits the open one. */
+/**
+ * Commits the bump on its own branch, pushes it, and opens the pull request or edits the open one.
+ *
+ * The push is a plain `--force`: the branch belongs to the bot and is rebuilt from `main` every run.
+ * A bare `--force-with-lease` compares against `origin/<branch>`, which the shallow checkout never
+ * fetches, so it rejected every push while a bump pull request was still open ("stale info").
+ */
 export async function openPullRequest(request: PullRequest, body: string[]): Promise<void> {
 	writeFileSync("body.md", request.trailingNewline ? `${body.join("\n")}\n` : body.join("\n"));
 	await $`git checkout -B ${request.branch}`;
 	await $`git add ${request.files}`;
 	await $`git -c user.name=${BOT_NAME} -c user.email=${BOT_EMAIL} commit -m ${request.title}`;
-	await $`git push ${request.pushArgs} origin ${request.branch}`;
+	await $`git push --force origin ${request.branch}`;
 
 	const open =
 		await $`gh pr list --head ${request.branch} --state open --json number --jq ${".[0].number // empty"}`.text();
