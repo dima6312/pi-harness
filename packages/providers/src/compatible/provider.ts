@@ -1,5 +1,7 @@
 import { createProvider, type Model, type Provider } from "@earendil-works/pi-ai";
-import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+// Pi maps only the root, /compat, /oauth and /providers/all of pi-ai into an extension; a deeper
+// subpath resolves only where pi-ai is installed next to the package, which Pi's own install never does.
+import { openAICompletionsApi } from "@earendil-works/pi-ai/compat";
 
 import type { Completions } from "./catalog.ts";
 import {
