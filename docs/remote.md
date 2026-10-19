@@ -361,7 +361,7 @@ Anyone who reaches the hub and gets past its login can run code on the machine a
 
 The hub has its own login, whatever is in front of it.
 
-- **Paired devices.** `/remote pair` shows a QR code and a short code that are good for 5 minutes. The device sends its public key with the code, and gets back a token bound to that key. Each request is signed with the device key, so a token copied off the wire is useless alone. Devices are listed and revoked from `/remote devices` or the phone.
+- **Paired devices.** `/remote`, or the pair action on the Remote tab, shows a QR code and a short code that are good for 5 minutes. The device sends its public key with the code, and gets back a token bound to that key. Each request is signed with the device key, so a token copied off the wire is useless alone. Devices are listed and revoked from the Remote tab, `pi-remote devices` or the phone.
 - **Password.** For the web app on a machine whose QR code you cannot scan, like a VPS. Set with `pi-remote password`, stored as a scrypt hash, exchanged for an `HttpOnly`, `SameSite=Strict` cookie. Logins are rate limited and lock for a while after repeated failures.
 - **API keys.** For scripts. Created on the machine, shown once, stored hashed, and limited to reading or to reading and prompting.
 - **The network's identity, optionally.** On Tailscale, the `Tailscale-User-Login` header that `tailscale serve` adds can stand in for a password. Behind Cloudflare Access, the Access token can.
@@ -442,7 +442,7 @@ pi-remote serve                   # the hub in the foreground, never idles out
 pi-remote pair | devices | password | keys
 ```
 
-Inside any pi, `/remote` shows the address and the QR code, and `/remote sessions`, `/remote pair` and `/remote devices` do what the CLI does. `tmux attach -t pi-<name>` always works, with or without the CLI.
+Inside pi there is one command, `/remote`, which shows the address and the QR code. Pairing, the devices, the password and the keys are actions on the Remote tab, because the harness keeps slash commands few. `tmux attach -t pi-<name>` always works, with or without the CLI.
 
 ## A harness on a VPS
 
