@@ -2,6 +2,14 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.11.2](https://github.com/felipeadeildo/pi-harness/compare/v5.11.1...v5.11.2) (2026-10-19)
+
+
+### Bug Fixes
+
+* **providers:** the OpenAI-compatible API comes from pi-ai/compat, the subpath Pi maps into extensions ([57b0727](https://github.com/felipeadeildo/pi-harness/commit/57b072750a8a3fbfea59125ea50792d3b17e792e))
+* **scripts:** the smoke installs without peers, like Pi does, so an unmapped host import fails here first ([92b499c](https://github.com/felipeadeildo/pi-harness/commit/92b499c00faab463366b5086c876d7119b170e89))
+
 ## [5.11.1](https://github.com/felipeadeildo/pi-harness/compare/v5.11.0...v5.11.1) (2026-10-19)
 
 
