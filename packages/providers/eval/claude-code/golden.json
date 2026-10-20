@@ -1,6 +1,6 @@
 {
-	"version": "2.1.303",
-	"userAgent": "claude-cli/2.1.303 (external, cli)",
+	"version": "2.1.304",
+	"userAgent": "claude-cli/2.1.304 (external, cli)",
 	"entrypoint": "cli",
 	"identity": "You are Claude Code, Anthropic's official CLI for Claude.",
 	"system": [
@@ -74,7 +74,7 @@
 		{
 			"name": "tool_search",
 			"header": "advanced-tool-use-2025-11-20",
-			"turn": false,
+			"turn": true,
 			"description": "Tools load on demand instead of all at once."
 		},
 		{
