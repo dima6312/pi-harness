@@ -21,7 +21,6 @@ import { Key } from "@earendil-works/pi-tui";
 
 import { fitFor } from "./bid.ts";
 import { boardText } from "./board.ts";
-import { Folder } from "./folder.ts";
 import {
 	PEER_BROADCAST,
 	PEER_MESSAGE,
@@ -35,7 +34,7 @@ import { delivery, link, model, PEERS_SETTINGS } from "./settings.ts";
 import { deliveryBlock, membershipNotice, messageBlock } from "./ui/message.ts";
 import { openPanel } from "./ui/panel.ts";
 import { PEERS_STATUS, statusLine } from "./ui/status.ts";
-import { type Source, toolRenderers } from "./ui/tool.ts";
+import { toolRenderers } from "./ui/tool.ts";
 import { PEERS_TYPING, TypingWidget } from "./ui/typing.ts";
 
 export { Here, PEER_MESSAGE } from "./here.ts";
@@ -339,18 +338,6 @@ export const peers = defineFeature({
 			return command.includes(EVENTS) && WRITES.test(command.replace(HARMLESS, ""));
 		}
 
-		/** The folder's room as the receipts read it, whichever session is open now. */
-		const home: Source = {
-			get session() {
-				return rooms.home?.session;
-			},
-			get folder() {
-				return rooms.home?.folder ?? new Folder();
-			},
-			live: () => rooms.home?.live() ?? [],
-			names: () => rooms.home?.names() ?? new Map(),
-		};
-
 		scope.registerTool<typeof PARAMETERS, SentDetails | undefined>({
 			name: TOOL,
 			label: "Peers",
@@ -364,7 +351,7 @@ export const peers = defineFeature({
 				"When your work needs an agent open in another folder, ask with link, and say why: the operator decides.",
 			],
 			parameters: PARAMETERS,
-			...toolRenderers(home, rows),
+			...toolRenderers(rooms, rows),
 			execute: async (toolCallId, params, _signal, _onUpdate, ctx) => {
 				const me = rooms.session;
 				if (me === undefined) return reply("Not in a session.");

@@ -25,6 +25,9 @@ interface Args {
 	to?: string;
 	text?: string;
 	urgent?: boolean;
+	/** The shared room it goes to, by name. */
+	room?: string;
+	folder?: string;
 }
 
 interface Row {
@@ -35,6 +38,12 @@ interface Row {
 
 /** What the receipts read from this session: the same the room reads. */
 export type Source = Pick<Here, "session" | "folder" | "live" | "names">;
+
+/** The rooms this session is in: the folder's under `undefined`, a shared one by id. */
+export interface Places {
+	here(room: string | undefined): Source | undefined;
+	rooms(): readonly { id: string | undefined; name: string }[];
+}
 
 const CURSOR = GLYPH.bar;
 const INDENT = "  ";
@@ -68,7 +77,7 @@ export function audienceOf(to: string | undefined): "all" | "any" | string[] {
 }
 
 /** Rows to redraw when the folder changes, so a tick turns into two while you watch. */
-export function toolRenderers(here: Source, rows: Set<() => void>) {
+export function toolRenderers(places: Places, rows: Set<() => void>) {
 	const watch = (row: Row) => {
 		if (row.state.watching) return;
 		row.state.watching = true;
@@ -90,7 +99,10 @@ export function toolRenderers(here: Source, rows: Set<() => void>) {
 				render(width) {
 					const key = `${width}\u0000${row.argsComplete}`;
 					if (drawn?.key !== key)
-						drawn = { key, lines: callLines(here, args, theme, width, !row.argsComplete) };
+						drawn = {
+							key,
+							lines: callLines(placeOf(places, args.room), args, theme, width, !row.argsComplete),
+						};
 					return drawn.lines;
 				},
 				invalidate() {
@@ -108,9 +120,10 @@ export function toolRenderers(here: Source, rows: Set<() => void>) {
 			return {
 				render: (width) => {
 					const now = Date.now();
+					const here = places.here(result.details?.room);
 					const message =
-						result.details === undefined ? undefined : here.folder.messages.get(result.details.id);
-					if (message !== undefined && moving(here, message, now)) tick(row);
+						result.details === undefined ? undefined : here?.folder.messages.get(result.details.id);
+					if (here !== undefined && message !== undefined && moving(here, message, now)) tick(row);
 					return resultLines(here, result, options.expanded, theme, width, now);
 				},
 				invalidate() {},
@@ -119,18 +132,34 @@ export function toolRenderers(here: Source, rows: Set<() => void>) {
 	};
 }
 
+/** Where a call writes: the shared room it names, or the folder's. */
+function placeOf(places: Places, room: string | undefined): Shown {
+	const shared =
+		room === undefined ? undefined : places.rooms().find((place) => place.name === room);
+	const here = places.here(shared?.id);
+	return here === undefined ? undefined : { here, room: shared?.name };
+}
+
+/** A room as the call line shows it; `undefined` before the session has joined any. */
+type Shown = { here: Source; room: string | undefined } | undefined;
+
 export function callLines(
-	here: Source,
+	shown: Shown,
 	args: Args,
 	theme: Theme,
 	width: number,
 	writing: boolean,
 ): string[] {
+	if (args.action === "link")
+		return [
+			theme.fg("muted", `ask to talk to the agents open in ${args.folder ?? "another folder"}`),
+		];
 	if (args.action !== "send") return [theme.fg("muted", "read the board")];
 	const urgent = args.urgent === true ? theme.fg("warning", `  ${GLYPH.flag} urgent`) : "";
+	const where = shown?.room === undefined ? "" : theme.fg("dim", `  in ${shown.room}`);
 	const lines = [
 		truncateToWidth(
-			`${theme.fg("muted", GLYPH.right)} ${addressLine(here, audienceOf(args.to), theme)}${urgent}`,
+			`${theme.fg("muted", GLYPH.right)} ${addressLine(shown?.here, audienceOf(args.to), theme)}${where}${urgent}`,
 			width,
 			CUT,
 		),
@@ -142,16 +171,16 @@ export function callLines(
 }
 
 /** Who the message goes to. A group is written as the group, with what it means next to it. */
-function addressLine(here: Source, to: "all" | "any" | string[], theme: Theme): string {
+function addressLine(here: Source | undefined, to: "all" | "any" | string[], theme: Theme): string {
 	if (to === "all" || to === "any") {
 		const group = theme.fg(
 			"accent",
 			theme.bold(`@${to === "all" ? EVERYONE_MENTION : ANYONE_MENTION}`),
 		);
-		const others = here.live().filter((peer) => peer.session !== here.session).length;
+		const others = here?.live().filter((peer) => peer.session !== here.session).length ?? 0;
 		return `${group}  ${theme.fg("dim", audienceNote(to, others))}`;
 	}
-	const names = [...here.names().values()];
+	const names = [...(here?.names().values() ?? [])];
 	return to
 		.map((name) => {
 			const named = names.find((candidate) => candidate.handle === name.replace(/^@/, ""));
@@ -165,11 +194,12 @@ function addressLine(here: Source, to: "all" | "any" | string[], theme: Theme): 
 function audienceNote(to: "all" | "any", others: number): string {
 	if (others === 0) return "nobody else is here yet";
 	const agents = others === 1 ? "1 agent" : `${others} agents`;
-	return to === "all" ? `${agents} get it` : `${agents} bid, the best fit takes it`;
+	if (to === "any") return `${agents} bid, the best fit takes it`;
+	return others === 1 ? "1 agent gets it" : `${agents} get it`;
 }
 
 export function resultLines(
-	here: Source,
+	here: Source | undefined,
 	result: AgentToolResult<SentDetails | undefined>,
 	expanded: boolean,
 	theme: Theme,
@@ -184,8 +214,8 @@ export function resultLines(
 			truncateToWidth(theme.fg("muted", line), width, CUT),
 		);
 	}
-	const message = here.folder.messages.get(details.id);
-	if (message === undefined) return [theme.fg("dim", `${GLYPH.check} sent`)];
+	const message = here?.folder.messages.get(details.id);
+	if (here === undefined || message === undefined) return [theme.fg("dim", `${GLYPH.check} sent`)];
 	const receipts = new Receipts(here, message, theme, now);
 	if (message.to === "any") return receipts.request(width);
 	if (message.to === "all" && !expanded) return receipts.fanOut(width);

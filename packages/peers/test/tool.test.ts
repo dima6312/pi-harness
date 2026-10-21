@@ -6,7 +6,14 @@ import type { Peer, Posted } from "../src/folder.ts";
 import type { SentDetails } from "../src/index.ts";
 import type { Named } from "../src/names.ts";
 import { BID_WINDOW_MS } from "../src/rules.ts";
-import { audienceOf, callLines, resultLines, type Source } from "../src/ui/tool.ts";
+import {
+	audienceOf,
+	callLines,
+	type Places,
+	resultLines,
+	type Source,
+	toolRenderers,
+} from "../src/ui/tool.ts";
 
 const plain = {
 	fg: (_color: string, text: string) => text,
@@ -71,11 +78,21 @@ describe("who the call goes to", () => {
 	});
 
 	test("a group is written as the group, with how many it reaches", () => {
-		const here = source(posted("all"));
+		const here = { here: source(posted("all")), room: undefined };
 		const [all] = callLines(here, { action: "send", to: "everyone", text: "x" }, plain, 80, false);
 		expect(all).toBe("→ @everyone  3 agents get it");
 		const [any] = callLines(here, { action: "send", to: "anyone", text: "x" }, plain, 80, false);
 		expect(any).toBe("→ @anyone  3 agents bid, the best fit takes it");
+	});
+
+	test("a shared room says so, and a link names the folder", () => {
+		const shown = { here: source(posted("all"), ["me", "a"]), room: "backend+frontend" };
+		const [all] = callLines(shown, { action: "send", text: "x" }, plain, 80, false);
+		expect(all).toBe("→ @everyone  1 agent gets it  in backend+frontend");
+		const link = { action: "link", folder: "~/Projects/backend" };
+		expect(callLines(shown, link, plain, 80, false)).toEqual([
+			"ask to talk to the agents open in ~/Projects/backend",
+		]);
 	});
 });
 
@@ -135,5 +152,26 @@ describe("a request to anyone", () => {
 		});
 		const lines = resultLines(source(message), sent, false, plain, 80, 20_000);
 		expect(lines).toEqual(["✓✓ oauth took it", "  oauth ▰▰▰▰▱ .80"]);
+	});
+});
+
+describe("where the receipt looks", () => {
+	test("a message sent in a shared room is found in that room, not the folder's", () => {
+		const message = posted("all", { read: new Set(["a"]) });
+		const shared = source(message, ["me", "a"]);
+		const empty = source(posted("all", { id: "other" }), ["me"]);
+		const places: Places = {
+			here: (room) => (room === "r1" ? shared : empty),
+			rooms: () => [
+				{ id: undefined, name: "pi-harness" },
+				{ id: "r1", name: "backend+frontend" },
+			],
+		};
+		const row = { argsComplete: true, state: {}, invalidate: () => {} };
+		const result = { ...sent, details: { ...sent.details, room: "r1" } };
+		const [summary] = toolRenderers(places, new Set())
+			.renderResult(result, { expanded: false }, plain, row)
+			.render(80);
+		expect(summary).toBe("✓✓ read it");
 	});
 });
