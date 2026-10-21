@@ -89,11 +89,11 @@ describe("segments", () => {
 	test("the agents of a shared room come after the folder's, past a rule", () => {
 		const peers = [
 			{ handle: "oauth", color: "syntaxFunction", state: "idle" as const },
-			{ handle: "hedy-api", color: "syntaxString", state: "running" as const, room: "hedy-ada" },
+			{ handle: "api", color: "syntaxString", state: "running" as const, room: "backend+frontend" },
 			{ handle: "migration", color: "syntaxType", state: "idle" as const },
 		];
 		const [piece] = render(["peers"], snapshot({ peers, peersUnread: 0 }));
-		expect(plainText(piece?.text ?? "")).toBe("@ oauth  @ migration  |  @ hedy-api");
+		expect(plainText(piece?.text ?? "")).toBe("@ oauth  @ migration  |  @ api");
 	});
 
 	test("with several tasks under way, the first shows and the rest count", () => {

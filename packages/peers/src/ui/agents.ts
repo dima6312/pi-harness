@@ -75,6 +75,7 @@ export function agentLines(
 	const lines: string[] = [];
 	let selectedAt = 0;
 	let selectedEnd = 0;
+	const here = live.find((peer) => peer.session === options.me)?.cwd;
 	for (const [index, peer] of live.entries()) {
 		const named = names.get(peer.session);
 		const color = (named?.color ?? "muted") as ThemeColor;
@@ -82,10 +83,15 @@ export function agentLines(
 		const marker = pointer(theme, selected, options.focused === true);
 		const you = peer.session === options.me ? theme.fg("dim", "  you") : "";
 		const name = theme.fg(color, theme.bold(named?.handle ?? "anon"));
+		// In a shared room, an agent from another folder says which, since its files are there.
+		const where =
+			peer.cwd === undefined || here === undefined || peer.cwd === here
+				? ""
+				: theme.fg("dim", ` \u00b7 ${base(peer.cwd)}`);
 		if (selected) selectedAt = lines.length;
 		lines.push(
 			spread(
-				`${marker}${markOf(peer, color, theme, now)} ${name}${you}`,
+				`${marker}${markOf(peer, color, theme, now)} ${name}${where}${you}`,
 				stateText(peer, theme, now),
 				width,
 			),

@@ -5,6 +5,7 @@ import {
 	FRAME_Y,
 	type FrameLine,
 	frame,
+	type FrameTabs,
 	type KeyHint,
 	pointer,
 	rule,
@@ -34,6 +35,8 @@ import { spin } from "./motion.ts";
 
 /** The frame, and the row naming the two columns. */
 const CHROME_Y = FRAME_Y + 1;
+/** The tabs, and the rule under them. */
+const TABS_Y = 2;
 /** The rule over the line you write in, and the frame of that line. */
 const COMPOSER_ROWS = 4;
 const BESIDE = 90;
@@ -46,7 +49,12 @@ type Pane = "room" | "agents";
 export interface RoomOptions {
 	theme: Theme;
 	here: Here;
-	folder: string;
+	/** The top edge: the folder's name alone, or the panel's name over its tabs. */
+	title: string;
+	/** A shared room's name, for the line you write in. Absent in the folder's room. */
+	room?: string;
+	/** The panel's tabs, when this room is one of them, and how to move between them. */
+	tabs?: { line: () => FrameTabs; switch: (delta: number) => void };
 	close: () => void;
 	requestRender: () => void;
 	/** Injected so the docs pictures do not depend on when or where they are drawn. */
@@ -74,7 +82,8 @@ export class RoomView implements Component, Focusable {
 
 	constructor(options: RoomOptions) {
 		this.#options = options;
-		this.#composer = new Input({ prompt: "", placeholder: "message everyone, @ for one agent" });
+		const everyone = options.room === undefined ? "everyone" : `everyone in ${options.room}`;
+		this.#composer = new Input({ prompt: "", placeholder: `message ${everyone}, @ for one agent` });
 		this.#composer.onSubmit = (value) => this.#send(value);
 	}
 
@@ -119,6 +128,8 @@ export class RoomView implements Component, Focusable {
 		}
 		if (matchesKey(data, Key.escape)) return this.#options.close();
 		if (matchesKey(data, Key.tab)) return this.#focus("agents");
+		// The arrows move the cursor while there is text, so rooms switch only from an empty line.
+		if (this.#composer.getValue() === "" && this.#switchRoom(data)) return;
 		if (matchesKey(data, Key.up)) return this.#scroll(-1);
 		if (matchesKey(data, Key.down)) return this.#scroll(1);
 		this.#composer.handleInput(data);
@@ -129,8 +140,8 @@ export class RoomView implements Component, Focusable {
 		if (matchesKey(data, Key.up)) return this.#move(-1);
 		if (matchesKey(data, Key.down)) return this.#move(1);
 		if (matchesKey(data, Key.enter)) return this.#writeToSelected();
-		if (matchesKey(data, Key.tab) || matchesKey(data, Key.escape) || matchesKey(data, Key.right))
-			return this.#focus("room");
+		if (matchesKey(data, Key.tab) || matchesKey(data, Key.escape)) return this.#focus("room");
+		if (this.#switchRoom(data)) return;
 		// Typing in the agents column writes in the room, so the line you write in is never far.
 		if (printable(data)) {
 			this.#pane = "room";
@@ -150,7 +161,8 @@ export class RoomView implements Component, Focusable {
 		if (this.#only !== undefined && !live.some((peer) => peer.session === this.#only))
 			this.#only = undefined;
 
-		const height = Math.max(6, this.#options.rows() - CHROME_Y);
+		const chrome = this.#options.tabs === undefined ? CHROME_Y : CHROME_Y + TABS_Y;
+		const height = Math.max(6, this.#options.rows() - chrome);
 		const beside = inner >= BESIDE && live.length > 0;
 		const agentsWidth = beside
 			? Math.max(AGENTS_MIN, Math.min(AGENTS_MAX, Math.floor(inner * 0.4)))
@@ -206,7 +218,8 @@ export class RoomView implements Component, Focusable {
 			body.push(...right);
 		}
 		return frame(theme, width, body, {
-			title: this.#options.folder,
+			title: this.#options.title,
+			tabs: this.#options.tabs?.line(),
 			status: this.#counts(live),
 			keys: this.#keys(live, names),
 			split: beside ? agentsWidth + 1 : undefined,
@@ -355,6 +368,7 @@ export class RoomView implements Component, Focusable {
 			const keys: KeyHint[] = [[`${GLYPH.up}${GLYPH.down}`, "pick"]];
 			if (other && handle !== undefined) keys.push(["enter", "write"]);
 			if (handle !== undefined) keys.push(["ctrl+f", this.#only === undefined ? "filter" : "all"]);
+			if (this.#options.tabs !== undefined) keys.push(ROOMS_KEY);
 			keys.push(["tab", "room"]);
 			return keys;
 		}
@@ -364,12 +378,24 @@ export class RoomView implements Component, Focusable {
 				["tab", "mention"],
 				["esc", "keep writing"],
 			];
+		// With nothing to send, the arrows switch rooms, so the first key says so.
+		const empty = this.#options.tabs !== undefined && this.#composer.getValue() === "";
 		return [
-			["enter", "send"],
+			empty ? ROOMS_KEY : ["enter", "send"],
 			[`${GLYPH.up}${GLYPH.down}`, "scroll"],
 			["tab", "agents"],
 			["esc", "close"],
 		];
+	}
+
+	/** Left and right move between the panel's tabs, when this room is one of them. */
+	#switchRoom(data: string): boolean {
+		const { tabs } = this.#options;
+		if (tabs === undefined) return false;
+		if (matchesKey(data, Key.left)) tabs.switch(-1);
+		else if (matchesKey(data, Key.right)) tabs.switch(1);
+		else return false;
+		return true;
 	}
 
 	#nameOf(session: string): string {
@@ -486,6 +512,8 @@ export class RoomView implements Component, Focusable {
 		this.#unread = 0;
 	}
 }
+
+const ROOMS_KEY: KeyHint = [`${GLYPH.left}${GLYPH.right}`, "rooms"];
 
 function printable(data: string): boolean {
 	return !data.startsWith("\x1b") && [...data].every((char) => char >= " " && char !== "\x7f");

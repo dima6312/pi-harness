@@ -15,7 +15,15 @@ const names = new Map<string, Named>([
 	["b", { session: "b", handle: "migration", color: "syntaxType" } as Named],
 	["c", { session: "c", handle: "docs", color: "syntaxNumber" } as Named],
 ]);
-const source = { session: "c", names: () => names };
+const folder = { session: "c", names: () => names };
+const source = {
+	othersTyping: () => [],
+	here: (room: string | undefined) => (room === undefined || room === "r1" ? folder : undefined),
+	rooms: () => [
+		{ id: undefined, name: "repo", folders: [], sessions: [] },
+		{ id: "r1", name: "backend+frontend", folders: [], sessions: [] },
+	],
+};
 
 describe("someone writing to the room", () => {
 	test("a draft wears the dashed frame, who writes to whom on top", () => {
@@ -43,5 +51,16 @@ describe("someone writing to the room", () => {
 		);
 		expect(lines.join("\n")).toContain("the newest part");
 		expect(lines.every((line) => line.length <= 70)).toBe(true);
+	});
+
+	test("a draft in a shared room says which", () => {
+		const lines = typingLines(
+			[{ session: "a", to: "@docs", text: "", at: 0, room: "r1" }],
+			source,
+			plain,
+			80,
+			0,
+		);
+		expect(lines[0]).toContain("@oauth → you in backend+frontend");
 	});
 });

@@ -119,7 +119,7 @@ export async function peersRoom(
 		const view = new RoomView({
 			theme,
 			here: me,
-			folder: "pi-harness",
+			title: "pi-harness",
 			rows: () => 28,
 			now: () => now,
 			// UTC, so the picture reads the same on every machine.

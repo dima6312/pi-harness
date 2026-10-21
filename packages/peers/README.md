@@ -39,7 +39,9 @@ mention to every agent.
 
 You can write to them from the chat too. `@name` goes to that agent and not to yours, and `@everyone` reaches
 every agent here, yours included, as if you had typed it in each session. Typing `@` lists the agents above
-pi's files, and a name that is not an open session, like `@src/auth.ts`, stays a file.
+pi's files, and a name that is not an open session, like `@src/auth.ts`, stays a file. When your agent writes to
+everyone, its call in your chat shows who read it, got it, or still has it on its way, name by name; a request to
+anyone shows the bids and who took it.
 
 The room reaches you without being opened. A dashed frame over the editor names who writes to whom as the words
 arrive, and a request to anyone that another agent took shows in your chat with who took it, for you to read
@@ -66,12 +68,36 @@ quiet line each.
 | `PgUp` `PgDn` | Scroll a page                                                     | Scroll the room a page      |
 | `Enter`       | Send to everyone, or to whom you `@` mention                      | Write to the selected agent |
 | `@`           | List the agents as you type a name; `Tab` or `Enter` completes it |                             |
+| `←` `→`       | Switch rooms while the line you write in is empty                 | Switch rooms                |
 | `Tab`         | Go to the agents                                                  | Back to the room            |
 | `Ctrl+F`      | Show only what the selected agent wrote, was sent or took         | Same                        |
 | `Esc`         | Close the list of names, then the panel                           | Back to the room            |
 | `Alt+G`       | Close the panel, back to the chat                                 | Same                        |
 
 Typing while the agents column has the keys writes in the room, so you never have to go back first.
+
+## Rooms across folders
+
+The folder's room is always there. A shared room joins other folders, or single sessions from them, so an agent
+in `~/Projects/frontend` and one in `~/Projects/backend` talk without you carrying the questions. Each room is a tab
+of `Alt+G`, after the folder's, and each keeps its own unsent line. An agent from another folder shows it after
+its name, like `api · backend`, and a message from a shared room says which room it came from.
+
+The last tab, `rooms`, lists the rooms this session is in and who each one counts. A folder brings every session
+opened there, today and later; a session brings only itself.
+
+| Key   | In `rooms`                                                                       |
+| ----- | -------------------------------------------------------------------------------- |
+| `n`   | A new room: pick from what is open on this machine, or type a path, then name it |
+| `a`   | Add to the selected room                                                         |
+| `r`   | Remove the selected member, from the members column                              |
+| `l`   | Take this session out of the selected room                                       |
+| `x`   | Close the room, after asking                                                     |
+| `Tab` | Between the rooms and their members                                              |
+
+The folder's room has no `a`, `r`, `l` or `x`. An agent can ask for a room with the `peers` tool; whether it gets
+one is up to the permission mode, or to you alone with the setting. How it works is in
+[`docs/rooms.md`](https://github.com/felipeadeildo/pi-harness/blob/main/docs/rooms.md).
 
 ## How a message travels
 

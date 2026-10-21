@@ -4,30 +4,37 @@ import { ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { type Component } from "@earendil-works/pi-tui";
 
-import type { Typing } from "../here.ts";
+import type { Here } from "../here.ts";
 import { EVERYONE_MENTION } from "../mention.ts";
+import type { Room, RoomTyping } from "../model.ts";
 import { byHandle, type Named } from "../names.ts";
 import { dots, FRAME_MS, spin } from "./motion.ts";
 
 export const PEERS_TYPING = "pi-peers-typing";
 
+/** The drafts in every room, and each room's names, which only that room knows. */
 export interface TypingSource {
-	readonly session: string | undefined;
-	othersTyping(): Typing[];
-	names(): ReadonlyMap<string, Named>;
+	othersTyping(): RoomTyping[];
+	here(room: string | undefined): Pick<Here, "session" | "names"> | undefined;
+	rooms(): Room[];
 }
 
 export function typingLines(
-	typing: readonly Typing[],
-	source: Pick<TypingSource, "session" | "names">,
+	typing: readonly RoomTyping[],
+	source: TypingSource,
 	theme: Theme,
 	width: number,
 	now: number,
 ): string[] {
-	const names = source.names();
-	// A message to this session reads "to you".
-	const me = source.session === undefined ? undefined : names.get(source.session)?.handle;
+	const rooms = new Map(source.rooms().map((room) => [room.id, room.name]));
 	return typing.flatMap((one) => {
+		const here = source.here(one.room);
+		const names: ReadonlyMap<string, Named> = here?.names() ?? new Map();
+		// A message to this session reads "to you".
+		const me = here?.session === undefined ? undefined : names.get(here.session)?.handle;
+		// A draft in a shared room says which, as the room's messages do.
+		const name = one.room === undefined ? undefined : rooms.get(one.room);
+		const where = name === undefined ? "" : theme.fg("dim", ` in ${name}`);
 		const named = names.get(one.session);
 		const color = (named?.color ?? "muted") as ThemeColor;
 		// The newest words matter most while they arrive, so a long draft keeps its end.
@@ -38,7 +45,7 @@ export function typingLines(
 				? []
 				: [theme.fg("muted", words.length > room ? `...${words.slice(-room)}` : words)];
 		return entryFrame(body, width, theme, {
-			top: `${theme.fg(color, theme.bold(`@${named?.handle ?? "an agent"}`))}${theme.fg("dim", ` ${GLYPH.right} `)}${typingRecipients(one.to, names, theme, me)}`,
+			top: `${theme.fg(color, theme.bold(`@${named?.handle ?? "an agent"}`))}${theme.fg("dim", ` ${GLYPH.right} `)}${typingRecipients(one.to, names, theme, me)}${where}`,
 			topRight: `${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`,
 			color,
 			dashed: true,

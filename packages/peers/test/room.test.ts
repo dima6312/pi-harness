@@ -60,7 +60,7 @@ function room(here: Here): RoomView {
 	const view = new RoomView({
 		theme: plain,
 		here,
-		folder: "repo",
+		title: "repo",
 		close: () => {},
 		requestRender: () => {},
 		send: () => {},
