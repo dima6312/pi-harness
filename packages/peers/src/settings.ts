@@ -50,7 +50,7 @@ export const link = setting<LinkRule>({
 		section: ROOMS_SECTION,
 		label: "When an agent asks for a room",
 		description:
-			"An agent can ask to talk to the sessions open in another folder. The permission mode decides it like any call: you answer the dialog, or the judge does by your policy. Always ask me brings the dialog in every mode, full included. Only me refuses, and the agent asks you to link it from Alt+R.",
+			"An agent can ask to talk to the sessions open in another folder. The permission mode decides it like any call: you answer the dialog, or the judge does by your policy. Always ask me brings the dialog in every mode, full included. Only me refuses, and the agent asks you to link it from Alt+G.",
 		control: {
 			type: "choice",
 			options: [

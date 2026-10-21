@@ -206,9 +206,9 @@ test("the tool reads the board and refuses names nobody has", async () => {
 	});
 });
 
-test("Alt+R opens the rooms, a key pi leaves free on every platform", async () => {
+test("Alt+G opens the rooms", async () => {
 	const { fake } = await mounted("a");
-	expect(fake.shortcuts).toContain("alt+r");
+	expect(fake.shortcuts).toContain("alt+g");
 });
 
 test("a subagent stays out of the room, so its prompt and a woke note cannot collide", async () => {
@@ -216,7 +216,7 @@ test("a subagent stays out of the room, so its prompt and a woke note cannot col
 	try {
 		const { fake } = await mounted("child");
 		expect(fake.tools.map((tool) => tool.name)).not.toContain("peers");
-		expect(fake.shortcuts).not.toContain("alt+r");
+		expect(fake.shortcuts).not.toContain("alt+g");
 		expect(new FolderFeed(eventsDir("/repo")).read()).toHaveLength(0);
 		expect(fake.messages).toHaveLength(0);
 	} finally {
