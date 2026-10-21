@@ -1,6 +1,6 @@
 # Rooms: agents in different folders, talking
 
-This is the design for sessions in different folders sharing a room, and for one session being in several rooms at once. Nothing here ships yet. The items live in [`ROADMAP.md`](../ROADMAP.md#many-sessions-one-policy), and this document says how it works and why. How a room works inside one folder (the board, the bids, when a message wakes an agent) is in the [peers README](../packages/peers/README.md); this document only says what changes.
+This is the design for sessions in different folders sharing a room, and for one session being in several rooms at once. It shipped in `@adeildo/pi-peers`. The items live in [`ROADMAP.md`](../ROADMAP.md#many-sessions-one-policy), and this document says how it works and why. How a room works inside one folder (the board, the bids, when a message wakes an agent) is in the [peers README](../packages/peers/README.md); this document only says what changes.
 
 ## What it is for
 
@@ -68,14 +68,14 @@ Joining writes a snapshot, so the room sees the board it would have seen had the
 type Member = { folder: string } | { session: string; cwd: string };
 
 "session.started": { pid: number; host: string; model?: string; cwd?: string };
-"tasks.board": { title?: string; tasks: BoardTask[] }; // doing, queued, waiting, the last 3 done
+"tasks.board": { state: SessionTasks }; // doing, queued, waiting, the last 3 done
 "room.created": { name: string };
 "room.added": { member: Member; by: "you" | "agent"; why?: string; allowedBy?: string };
 "room.removed": { member: Member };
 "room.closed": Record<string, never>;
 ```
 
-`BoardTask` keeps of a task what the board and the bids read: `id`, `text`, `status`, `result` and `why`. A folder is an absolute path with symlinks resolved, compared with the session's `cwd` resolved the same way.
+`tasks.board` has the shape of `tasks.changed`, so the projection folds both the same way, but it keeps only the tasks the board shows, no decisions, and none of the entry ids of your messages, which mean nothing in another folder's room (`boardOf` in `packages/peers/src/rooms.ts`). A folder is an absolute path with symlinks resolved, compared with the session's `cwd` resolved the same way.
 
 The `room.*` events are written by the session where the change was decided, in its own file in that room's directory. That session does not have to be a member: I can make a room for backend and frontend from a session in pi-harness. It writes only the room's events and never `session.started` there, so it never counts as in the room.
 
@@ -288,20 +288,23 @@ Each session keeps `events/live/<session>.json`:
 
 ## How the code splits
 
-| Where                                       | What changes                                                                                    |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `kit/src/contracts/events.ts`               | `cwd` on `session.started`, `tasks.board`, the four `room.*` events and `Member`                |
-| `kit/src/contracts/peers.ts`                | `PeerMark.room`                                                                                 |
-| `kit/src/events/log.ts`                     | Where a shared room and the index live                                                          |
-| `peers/src/folder.ts`, `rules.ts`           | One projection per room, unchanged rules. The projection also reads `tasks.board`               |
-| `peers/src/rooms.ts` (new)                  | The membership fold, watching `rooms/`, joining and leaving                                     |
-| `peers/src/here.ts`                         | Split into the per-room part and the per-session coordinator                                    |
-| `peers/src/live.ts` (new)                   | The index                                                                                       |
-| `peers/src/board.ts`, `bid.ts`              | One section per room and another folder's paths in full; the bid's prompt says room, not folder |
-| `peers/src/names.ts`, `mention.ts`          | Names per room, the union for the chat, and the ambiguous name                                  |
-| `peers/src/index.ts`, `settings.ts`         | The tool's `room` and `link`, the adapter for the permission gate, the setting                  |
-| `peers/src/ui/room.ts`, `ui/rooms.ts` (new) | The tabs, the `rooms` tab and the picker                                                        |
-| `ask-permission`                            | `alwaysAsks` on the tool adapter                                                                |
+| Where                                  | What changed                                                                                                    |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `kit/src/contracts/events.ts`          | `cwd` on `session.started`, `tasks.board`, the four `room.*` events and `Member`                                |
+| `kit/src/contracts/peers.ts`           | `PeerMark.room`                                                                                                 |
+| `kit/src/events/log.ts`                | `roomsDir`, `roomDir` and `liveDir`                                                                             |
+| `peers/src/membership.ts` (new)        | The fold of the `room.*` events: who a room counts                                                              |
+| `peers/src/folder.ts`                  | One projection per room. It folds `room.*` into its membership and `tasks.board` like `tasks.changed`           |
+| `peers/src/here.ts`                    | One room: its log, its board, its bids and what is due in it. `join` opens a shared room with what was read     |
+| `peers/src/inbox.ts` (new)             | One per session: the depth of the chain, how a message reaches the agent, and one turn for what arrives at once |
+| `peers/src/rooms.ts` (new)             | The session's rooms together: watching, joining and leaving, the snapshot, the mirror, routing and `link`       |
+| `peers/src/model.ts` (new)             | `RoomsView`, what the screen reads and changes                                                                  |
+| `peers/src/live.ts` (new)              | The index                                                                                                       |
+| `peers/src/board.ts`, `bid.ts`         | One section per room and another folder's paths in full; the bid's prompt says room, not folder                 |
+| `peers/src/mention.ts`                 | The list after `@` says which room an agent is in                                                               |
+| `peers/src/index.ts`, `settings.ts`    | The tool's `room` and `link`, the adapter for the permission gate, the setting                                  |
+| `peers/src/ui/panel.ts`, `ui/rooms.ts` | The tabs, the `rooms` tab and the picker                                                                        |
+| `ask-permission`                       | `alwaysAsks` on the tool adapter, checked before every layer                                                    |
 
 ## What this does not do
 
