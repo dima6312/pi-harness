@@ -2,10 +2,10 @@
 // room's last words. It reads it when it wants, so nobody is interrupted to publish it.
 import { isAbsolute, join } from "node:path";
 
-import { tasksWith } from "@adeildo/pi-kit";
+import { tasksWith, tildify } from "@adeildo/pi-kit";
 
 import type { Peer, Posted } from "./folder.ts";
-import { type Here, tilde } from "./here.ts";
+import type { Here } from "./here.ts";
 import { audienceLabel } from "./mention.ts";
 import type { Named } from "./names.ts";
 
@@ -63,7 +63,7 @@ function heading(room: BoardRoom, others: number): string {
 function peerLines(peer: Peer, names: ReadonlyMap<string, Named>, cwd: string): string[] {
 	const handle = names.get(peer.session)?.handle ?? peer.session;
 	const elsewhere = peer.cwd !== undefined && peer.cwd !== cwd ? peer.cwd : undefined;
-	const where = elsewhere === undefined ? "" : ` in ${tilde(elsewhere)}`;
+	const where = elsewhere === undefined ? "" : ` in ${tildify(elsewhere)}`;
 	const lines = [
 		`@${handle} (${peer.state === "running" ? "working" : "idle"})${where}${peer.title === undefined ? "" : `: ${peer.title}`}`,
 	];
@@ -80,7 +80,7 @@ function peerLines(peer: Peer, names: ReadonlyMap<string, Named>, cwd: string): 
 		.toSorted(([, a], [, b]) => b - a)
 		.slice(0, RECENT_FILES)
 		.map(([path]) =>
-			elsewhere === undefined || isAbsolute(path) ? path : tilde(join(elsewhere, path)),
+			elsewhere === undefined || isAbsolute(path) ? path : tildify(join(elsewhere, path)),
 		);
 	if (edited.length > 0) lines.push(`  edited: ${edited.join(", ")}`);
 	const commit = peer.commits.at(-1);

@@ -1,5 +1,4 @@
 import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 
 // This session in one room, its folder's or a shared one: what it logs there, what it reads, and
@@ -14,6 +13,7 @@ import {
 	type LogTarget,
 	targetOf,
 	tasksWith,
+	tildify,
 } from "@adeildo/pi-kit";
 import type { PeerMark } from "@adeildo/pi-kit";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -395,7 +395,7 @@ export class Here implements Sender {
 			text: message.text,
 			at: message.at,
 			...(this.#room === undefined ? {} : { room: this.#room.name }),
-			...(where === undefined ? {} : { where: tilde(where) }),
+			...(where === undefined ? {} : { where: tildify(where) }),
 		};
 	}
 
@@ -451,7 +451,7 @@ export class Here implements Sender {
 		const edited = [...peer.edited.keys()].slice(-3);
 		const title = peer.title === undefined ? "" : ` on ${peer.title}`;
 		const works =
-			peer.cwd === undefined || peer.cwd === this.#cwd ? "this folder" : tilde(peer.cwd);
+			peer.cwd === undefined || peer.cwd === this.#cwd ? "this folder" : tildify(peer.cwd);
 		const room = this.#room === undefined ? "" : `, in the room ${this.#room.name}`;
 		const lines = [`${who} is working in ${works}${title}${room}.`];
 		if (doing.length > 0) lines.push(`  doing: ${doing.map((task) => task.text).join("; ")}`);
@@ -597,12 +597,6 @@ export class Here implements Sender {
 	#now(): number {
 		return this.#hooks.now?.() ?? Date.now();
 	}
-}
-
-/** A path under the home folder, the way you would type it. */
-export function tilde(path: string): string {
-	const home = homedir();
-	return path === home || path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
 }
 
 /**

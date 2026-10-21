@@ -7,6 +7,7 @@ import { readdirSync, realpathSync } from "node:fs";
 import { basename, isAbsolute, resolve } from "node:path";
 
 import {
+	expandHome,
 	FolderFeed,
 	HOST,
 	LOGGED_EVENT,
@@ -21,10 +22,11 @@ import {
 	type SessionTasks,
 	targetOf,
 	tasksWith,
+	tildify,
 } from "@adeildo/pi-kit";
 
 import { Folder, isAlive } from "./folder.ts";
-import { Here, type Hooks, PEER_NOTE, tilde } from "./here.ts";
+import { Here, type Hooks, PEER_NOTE } from "./here.ts";
 import { Inbox } from "./inbox.ts";
 import { readLive, removeLive, writeLive } from "./live.ts";
 import type { Addition } from "./membership.ts";
@@ -410,7 +412,7 @@ export class Rooms implements RoomsView {
 		const open = this.openIn(folder);
 		if (open.length === 0)
 			return {
-				text: `No session is open in ${tilde(folder)}. Tell the operator what you need there and why: they can link the folder from Alt+R.`,
+				text: `No session is open in ${tildify(folder)}. Tell the operator what you need there and why: they can link the folder from Alt+R.`,
 			};
 		const wanted = request.session?.trim().replace(/^@/, "").toLowerCase();
 		const targets =
@@ -419,7 +421,7 @@ export class Rooms implements RoomsView {
 				: open.filter((entry) => entry.handle === wanted || entry.session === wanted);
 		if (targets.length === 0)
 			return {
-				text: `No session open in ${tilde(folder)} is called ${request.session}. Open there: ${open.map(describeLive).join("; ")}.`,
+				text: `No session open in ${tildify(folder)} is called ${request.session}. Open there: ${open.map(describeLive).join("; ")}.`,
 			};
 		const members = targets.map((entry) => ({ session: entry.session, cwd: entry.cwd }));
 		const by: AddedBy = {
@@ -439,14 +441,14 @@ export class Rooms implements RoomsView {
 				};
 			this.add(room.room.id, members, by);
 			return {
-				text: `Added ${who.join(", ")} from ${tilde(folder)} to the room ${room.room.name}. They join on their next look, in a second or so.`,
+				text: `Added ${who.join(", ")} from ${tildify(folder)} to the room ${room.room.name}. They join on their next look, in a second or so.`,
 				room: room.room.id,
 			};
 		}
 		const name = [basename(this.#cwd), basename(folder)].toSorted().join("+");
 		const id = this.create(name, [{ session: me, cwd: this.#cwd }, ...members], by);
 		return {
-			text: `Made the room ${name} with ${who.join(", ")} from ${tilde(folder)}. They join on their next look, in a second or so; send to them by name.`,
+			text: `Made the room ${name} with ${who.join(", ")} from ${tildify(folder)}. They join on their next look, in a second or so; send to them by name.`,
 			room: id,
 		};
 	}
@@ -780,9 +782,7 @@ function describeLive(entry: LiveSession): string {
 
 /** A folder as the rooms compare it: absolute, with symlinks resolved. */
 export function real(path: string): string {
-	const absolute = resolve(
-		path.startsWith("~") ? `${process.env.HOME ?? ""}${path.slice(1)}` : path,
-	);
+	const absolute = resolve(expandHome(path));
 	try {
 		return realpathSync(absolute);
 	} catch {
