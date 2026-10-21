@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
+import { tildify } from "@adeildo/pi-kit";
+
 import {
 	asToolInput,
 	type CallDescriptor,
 	commandLevels,
 	pathLevels,
-	shortenHome,
 	tokenize,
 	toolAdapter,
 } from "#core/tools.ts";
@@ -108,9 +109,9 @@ describe("describe", () => {
 	});
 });
 
-describe("shortenHome", () => {
+describe("tildify", () => {
 	test("leaves other paths alone", () => {
-		expect(shortenHome("/etc/passwd")).toBe("/etc/passwd");
+		expect(tildify("/etc/passwd")).toBe("/etc/passwd");
 	});
 });
 

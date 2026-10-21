@@ -1,4 +1,6 @@
 // The first layer with an answer decides, so the order is the policy. The caller adds the judge.
+
+import { tildify } from "@adeildo/pi-kit";
 import type { ToolAnnotations } from "@earendil-works/pi-coding-agent";
 
 import type { AlwaysYes } from "#core/always-yes.ts";
@@ -20,7 +22,6 @@ import {
 	type CallDescriptor,
 	type CustomTools,
 	isBuiltInTool,
-	shortenHome,
 	type ToolAdapter,
 	toolAdapter,
 	type ToolInput,
@@ -212,7 +213,7 @@ function leavingReason(reach: Reach, rules: ModeRules): string | undefined {
 		case "inside":
 			return undefined;
 		case "outside":
-			return `outside the workspace (${shortenHome(reach.path)})`;
+			return `outside the workspace (${tildify(reach.path)})`;
 		case "unknown":
 			return rules.unknownIsOutside ? "cannot tell which paths this command reaches" : undefined;
 	}

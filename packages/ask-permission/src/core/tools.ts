@@ -1,5 +1,6 @@
-import { homedir } from "node:os";
 import { dirname } from "node:path";
+
+import { tildify } from "@adeildo/pi-kit";
 
 import { commandWords, isReadOnlyCommand } from "#core/readonly-bash.ts";
 
@@ -112,7 +113,7 @@ export function pathLevels(path: string): string[] {
 	const exact = path.trim();
 	if (!exact) return ["(no path)"];
 
-	const display = shortenHome(exact);
+	const display = tildify(exact);
 	const directory = dirname(display);
 	if (directory === "." || directory === display) return [display];
 
@@ -135,15 +136,6 @@ function pathValue(word: string): string | undefined {
 	const value = word.startsWith("-") ? word.slice(word.indexOf("=") + 1) : word;
 	if (value === "" || value.startsWith("-") || URL_SCHEME.test(value)) return undefined;
 	return /^(~|\/|\.\.?$|\.\.?\/)/.test(value) || value.includes("/") ? value : undefined;
-}
-
-export function shortenHome(path: string): string {
-	const home = homedir();
-	if (!home) return path;
-	if (path === home) return "~";
-	if (path.startsWith(`${home}/`) || path.startsWith(`${home}\\`))
-		return `~${path.slice(home.length)}`;
-	return path;
 }
 
 export function summarizeInput(input: ToolInput): string {

@@ -1,11 +1,10 @@
 import { readFileSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import { resolve } from "node:path";
 
 // While the model writes an edit or a write, pi shows the path, or the first lines of the file,
 // which stopped changing long ago. These show the end instead: the lines arriving, with a cursor
 // where the model is writing, and what it has written so far on the bottom rule.
-import { GLYPH, isObject } from "@adeildo/pi-kit";
+import { GLYPH, isObject, tildify } from "@adeildo/pi-kit";
 import { getLanguageFromPath, highlightCode, type Theme } from "@earendil-works/pi-coding-agent";
 import { stripTerminalSequences } from "@earendil-works/pi-tui";
 
@@ -154,9 +153,7 @@ function pathLine(tool: string, path: string | undefined, theme: Theme): string 
 	const title = theme.fg("toolTitle", theme.bold(tool));
 	// Pi's own stand-in for a path not written yet.
 	if (path === undefined) return `${title} ${theme.fg("toolOutput", "...")}`;
-	const home = homedir();
-	const shown = path.startsWith(home) ? `~${path.slice(home.length)}` : path;
-	return `${title} ${theme.fg("accent", printable(shown))}`;
+	return `${title} ${theme.fg("accent", printable(tildify(path)))}`;
 }
 
 /**

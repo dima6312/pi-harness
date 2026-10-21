@@ -1,4 +1,5 @@
 import type { Control, FeatureScope, Json, ScreenEntry } from "@adeildo/pi-kit";
+import { tildify } from "@adeildo/pi-kit";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { type Scope, SCOPE_LABEL } from "#core/always-yes.ts";
@@ -19,7 +20,6 @@ import { probeJudge } from "#core/judge/probe.ts";
 import { judgeLogText } from "#core/judge/report.ts";
 import { MCP_POLICY_TEXT, type McpServer, mcpServers, policyFor, sameServer } from "#core/mcp.ts";
 import { parseMode } from "#core/mode.ts";
-import { shortenHome } from "#core/tools.ts";
 import { renderStatus, setSessionMode, setSessionOutside } from "#pi/mode.ts";
 import { closeFolders, forgetAlwaysYes, resetJudgeHealth, type SessionState } from "#pi/session.ts";
 
@@ -209,7 +209,7 @@ function foldersText(state: SessionState, where: Scope): string {
 	const [first, ...rest] = state.folders.list(where);
 	if (first === undefined) return "none";
 	if (rest.length > 0) return `${rest.length + 1} folders`;
-	return first.access === "read" ? `${shortenHome(first.path)}, reads` : shortenHome(first.path);
+	return first.access === "read" ? `${tildify(first.path)}, reads` : tildify(first.path);
 }
 
 function close(
@@ -258,7 +258,7 @@ function alwaysYesDescription(where: Scope): string {
 		case "project":
 			return `Rules for this project, in ${projectAlwaysYesPath(".")}. Enter forgets them.`;
 		case "global":
-			return `Rules for every project, in ${shortenHome(globalAlwaysYesPath())}. Enter forgets them.`;
+			return `Rules for every project, in ${tildify(globalAlwaysYesPath())}. Enter forgets them.`;
 	}
 }
 

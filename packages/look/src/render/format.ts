@@ -1,6 +1,6 @@
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { sep } from "node:path";
 
-import { formatCost, formatTokens } from "@adeildo/pi-kit";
+import { formatCost, formatTokens, tildify } from "@adeildo/pi-kit";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 export const CELL = {
@@ -57,7 +57,7 @@ export function percent(value: number): string {
 }
 
 export function shortenPath(cwd: string, home: string | undefined, maxWidth: number): string {
-	const full = home === undefined ? cwd : underHome(cwd, home);
+	const full = home === undefined ? cwd : tildify(cwd, home);
 	if (maxWidth <= 0 || visibleWidth(full) <= maxWidth) return full;
 
 	const parts = full.split(sep);
@@ -102,14 +102,6 @@ export function fitWidth(text: string, width: number, ellipsis = "..."): string 
 /** Tabs become three spaces: a tab is as wide as the terminal says, and these lines have a width. */
 export function tabs(text: string): string {
 	return text.replace(/\t/g, "   ");
-}
-
-function underHome(cwd: string, home: string): string {
-	const rest = relative(resolve(home), resolve(cwd));
-	const inside =
-		rest === "" || (rest !== ".." && !rest.startsWith(`..${sep}`) && !isAbsolute(rest));
-	if (!inside) return cwd;
-	return rest === "" ? "~" : `~${sep}${rest}`;
 }
 
 function trim(fixed: string): string {

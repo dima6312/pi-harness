@@ -5,7 +5,7 @@ import type { Delivery } from "@adeildo/pi-kit";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import type { Posted } from "./folder.ts";
-import { type BusyDelivery, deliveryFor, QUIET_AFTER } from "./rules.ts";
+import { type BusyDelivery, deliveryFor, QUIET_AFTER, STEERS_PER_RUN } from "./rules.ts";
 
 export const PEER_MESSAGE = "pi-peers:message";
 
@@ -32,8 +32,13 @@ export interface PeerDelivery {
 	items: PeerMessageDetails[];
 }
 
+/** Why a colleague's message waits for the next prompt instead of reaching the agent now. */
+export type Held = "asleep" | "quiet" | "full";
+
 export interface InboxHooks {
 	sendMessage: ExtensionAPI["sendMessage"];
+	/** Shows now, outside the model's context, what waits for the next prompt, and why. */
+	held?(delivery: PeerDelivery, why: Held): void;
 	sendUserMessage: ExtensionAPI["sendUserMessage"];
 	/** What the delivery setting says for a colleague's message that arrives while the agent runs. */
 	busyDelivery?: () => BusyDelivery;
@@ -53,8 +58,10 @@ interface Arrival {
 
 export class Inbox {
 	readonly #hooks: InboxHooks;
-	/** The depth of what this session's agent writes now: how many agent replies led to its run. */
+	/** The depth of what this session's agent writes now: how many agent replies woke its run. */
 	#depth = 0;
+	/** Colleagues' messages steered into the run that is going on, which does not deepen it. */
+	#steers = 0;
 	#holding = 0;
 	#waiting: Arrival[] = [];
 	/** The operator has written to this session: before that, a colleague's message waits for it. */
@@ -75,6 +82,7 @@ export class Inbox {
 	/** Someone typed a prompt here: what the agent writes next starts a new chain. */
 	prompted(): void {
 		this.#depth = 0;
+		this.#steers = 0;
 		this.#awake = true;
 	}
 
@@ -86,6 +94,7 @@ export class Inbox {
 	/** Another session opens in this process: it starts asleep, with nothing waiting. */
 	reset(): void {
 		this.#depth = 0;
+		this.#steers = 0;
 		this.#awake = false;
 		this.#waiting = [];
 	}
@@ -128,10 +137,13 @@ export class Inbox {
 
 	/** Colleagues' messages, wrapped so the agent knows who wrote and that they cannot approve. */
 	#handPeer(arrivals: readonly Arrival[]): void {
-		const mode = this.#modeFor(arrivals);
+		const { mode, held } = this.#modeFor(arrivals);
 		const items = inOrder(arrivals).map(({ from, message }) => from.details(message));
+		// What waits is shown now, and goes in with the next prompt without being drawn a second time.
+		if (held !== undefined) this.#hooks.held?.({ items }, held);
+		const display = held === undefined || this.#hooks.held === undefined;
 		this.#hooks.sendMessage(
-			{ customType: PEER_MESSAGE, content: forModel(items), display: true, details: { items } },
+			{ customType: PEER_MESSAGE, content: forModel(items), display, details: { items } },
 			sendOptions(mode),
 		);
 		this.#handed(arrivals, mode);
@@ -139,7 +151,7 @@ export class Inbox {
 
 	/** Yours, sent from another session: the operator speaking, so no wrapper. */
 	#handYou(arrivals: readonly Arrival[]): void {
-		const mode = this.#modeFor(arrivals);
+		const { mode } = this.#modeFor(arrivals);
 		const texts = inOrder(arrivals).map(({ message }) => message.text);
 		// Its deliverAs only matters while the agent runs, so pass it whether or not it looks idle: a
 		// run starting between the two would otherwise make the call fail.
@@ -152,20 +164,32 @@ export class Inbox {
 	#handed(arrivals: readonly Arrival[], mode: Delivery): void {
 		for (const { from, messages } of arrivals) if (messages.length > 0) from.handed(messages, mode);
 		if (mode === "next-turn") return;
+		// A steer joins a run already going, so only a run it starts is one reply deeper. The count of
+		// steers is what stops two running agents from keeping each other's runs going forever.
+		if (mode === "steered") {
+			this.#steers++;
+			return;
+		}
 		const messages = arrivals.flatMap((arrival) => arrival.messages);
 		this.#depth = Math.max(...messages.map(runDepth));
+		this.#steers = 0;
 	}
 
 	/** Until the operator writes here, it waits for that first prompt; then it follows the rule. */
-	#modeFor(arrivals: readonly Arrival[]): Delivery {
-		if (!this.#awake) return "next-turn";
+	#modeFor(arrivals: readonly Arrival[]): { mode: Delivery; held?: Held } {
+		if (!this.#awake) return { mode: "next-turn", held: "asleep" };
 		const messages = arrivals.flatMap((arrival) => arrival.messages);
-		return deliveryFor({
+		const urgent = messages.some((message) => message.urgent === true);
+		const mode = deliveryFor({
 			busy: !this.#hooks.idle(),
-			urgent: messages.some((message) => message.urgent === true),
+			urgent,
 			quiet: messages.every((message) => message.depth >= QUIET_AFTER),
 			busyMode: this.#hooks.busyDelivery?.() ?? "steered",
 		});
+		if (mode === "next-turn") return { mode, held: "quiet" };
+		if (mode === "steered" && !urgent && this.#steers >= STEERS_PER_RUN)
+			return { mode: "next-turn", held: "full" };
+		return { mode };
 	}
 }
 

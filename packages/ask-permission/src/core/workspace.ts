@@ -2,6 +2,8 @@ import { existsSync, realpathSync, statSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, normalize, resolve, sep } from "node:path";
 
+import { expandHome } from "@adeildo/pi-kit";
+
 import type { OutsideScope } from "#core/config/schema.ts";
 
 export const OUTSIDE_SCOPES: readonly OutsideScope[] = ["ask", "allow", "deny"];
@@ -122,9 +124,7 @@ export function resolveRoots(roots: string[], cwd: string): string[] {
 }
 
 function resolvePath(path: string, cwd: string): string {
-	if (path === "~") return homedir();
-	if (path.startsWith("~/")) return join(homedir(), path.slice(2));
-	return resolve(cwd, path);
+	return resolve(cwd, expandHome(path));
 }
 
 function canonical(path: string): string {

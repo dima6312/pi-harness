@@ -1,5 +1,6 @@
+import { tildify } from "@adeildo/pi-kit";
+
 import type { FolderOffer } from "#core/answer.ts";
-import { shortenHome } from "#core/tools.ts";
 
 export interface Choice {
 	key: string;
@@ -44,7 +45,7 @@ export function choicesFor(offer?: FolderOffer): Choice[] {
 }
 
 export function openLabel(offer: FolderOffer, folder: string): string {
-	const shown = shortenHome(folder);
+	const shown = tildify(folder);
 	return offer.access === "read"
 		? `yes, and allow reads in ${shown}`
 		: `yes, and add ${shown} to the workspace`;

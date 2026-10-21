@@ -1,8 +1,8 @@
 import { constants } from "node:fs";
 import { access, readFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 
+import { expandHome } from "@adeildo/pi-kit";
 import {
 	createEditToolDefinition,
 	type EditToolInput,
@@ -76,7 +76,5 @@ export async function previewWrite(
 }
 
 function absolute(path: string, cwd: string): string {
-	if (path === "~") return homedir();
-	if (path.startsWith("~/")) return join(homedir(), path.slice(2));
-	return resolve(cwd, path);
+	return resolve(cwd, expandHome(path));
 }

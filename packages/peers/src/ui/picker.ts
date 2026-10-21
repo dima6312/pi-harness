@@ -1,9 +1,17 @@
 // The picker that makes a room or adds to one, from what is open on this machine. It draws in the
 // panel's conversation pane, over the room it was opened from, until it is done or left.
-import { homedir } from "node:os";
-import { basename, resolve } from "node:path";
+import { basename, isAbsolute, resolve } from "node:path";
 
-import { GLYPH, type KeyHint, type Member, pointer, rule, spread } from "@adeildo/pi-kit";
+import {
+	GLYPH,
+	type KeyHint,
+	type Member,
+	pointer,
+	rule,
+	spread,
+	expandHome,
+	tildify,
+} from "@adeildo/pi-kit";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Input, Key, matchesKey, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -23,7 +31,7 @@ function folderRow(path: string): Row {
 	return {
 		key: `f:${path}`,
 		member: { folder: path },
-		label: home(path),
+		label: tildify(path),
 		state: "",
 	};
 }
@@ -197,7 +205,7 @@ export class Picker {
 		}
 		const rows: Row[] = [];
 		for (const [path, sessions] of byFolder) {
-			const folderMatches = query === "" || home(path).toLowerCase().includes(query);
+			const folderMatches = query === "" || tildify(path).toLowerCase().includes(query);
 			const matching = sessions.filter(
 				(live) =>
 					folderMatches ||
@@ -259,16 +267,8 @@ export class Picker {
 
 /** What you typed, read as a folder's path when it looks like one. */
 function pathOf(query: string): string | undefined {
-	if (query.startsWith("~")) return resolve(homedir(), query.slice(1).replace(/^\//, ""));
-	if (query.startsWith("/")) return resolve(query);
-	return undefined;
-}
-
-/** A path as you would type it, `~` for the home folder. */
-export function home(path: string): string {
-	const root = homedir();
-	if (path === root) return "~";
-	return path.startsWith(`${root}/`) ? `~${path.slice(root.length)}` : path;
+	const path = expandHome(query);
+	return isAbsolute(path) ? resolve(path) : undefined;
 }
 
 export function wrapped(theme: Theme, text: string, width: number): string[] {

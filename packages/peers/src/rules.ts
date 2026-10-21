@@ -10,6 +10,8 @@ export const BID_WINDOW_MS = 6_000;
 export const TAKE_MS = 8_000;
 /** Agent replies in a chain, each one waking the agent that writes the next, before the chain stops waking anyone. */
 export const QUIET_AFTER = 4;
+/** Colleagues' messages one run takes while it works; past that, they wait for the next prompt. */
+export const STEERS_PER_RUN = 8;
 
 export type Award =
 	| { kind: "bidding"; until: number }

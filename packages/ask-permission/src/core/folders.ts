@@ -2,11 +2,11 @@
 // the workspace, so the mode decides it. A read folder lets read-only calls in, a write folder
 // lets everything in.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+
+import { expandHome, tildify } from "@adeildo/pi-kit";
 
 import { type Scope, SCOPES } from "#core/always-yes.ts";
-import { shortenHome } from "#core/tools.ts";
 import { isWithin } from "#core/workspace.ts";
 import { describe, isRecord } from "#util/primitives.ts";
 
@@ -139,7 +139,7 @@ export function readFolders(path: string): { folders: Map<string, Access>; warni
 
 function writeFolders(path: string, folders: Map<string, Access>): string | undefined {
 	const file: Record<Access, string[]> = { read: [], write: [] };
-	for (const [folder, access] of folders) file[access].push(shortenHome(folder));
+	for (const [folder, access] of folders) file[access].push(tildify(folder));
 	try {
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(
@@ -151,9 +151,4 @@ function writeFolders(path: string, folders: Map<string, Access>): string | unde
 	} catch (error) {
 		return describe(error);
 	}
-}
-
-function expandHome(path: string): string {
-	if (path === "~") return homedir();
-	return path.startsWith("~/") ? join(homedir(), path.slice(2)) : path;
 }

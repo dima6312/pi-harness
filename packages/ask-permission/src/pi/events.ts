@@ -1,4 +1,4 @@
-import { canAsk, type FeatureScope, TYPING_STATUS } from "@adeildo/pi-kit";
+import { canAsk, type FeatureScope, TYPING_STATUS, tildify } from "@adeildo/pi-kit";
 import type { ToolCall } from "@earendil-works/pi-ai";
 import {
 	type ExtensionAPI,
@@ -24,7 +24,6 @@ import { remember, warnOnce } from "#core/judge/report.ts";
 import { describeHints, type ToolFacts } from "#core/mcp.ts";
 import { MODES } from "#core/mode.ts";
 import { asking, JUDGING, judgeDetail, settle } from "#core/ruling.ts";
-import { shortenHome } from "#core/tools.ts";
 import { folderChoices } from "#core/workspace.ts";
 import { NAME } from "#identity";
 import { announce, type Decided } from "#pi/api.ts";
@@ -218,9 +217,7 @@ async function askInTurn(
 		openFolder(scope, state, ctx, where, path, access);
 		renderStatus(ctx, state);
 		const what =
-			access === "read"
-				? `reads open in ${shortenHome(path)}`
-				: `${shortenHome(path)} joins the workspace`;
+			access === "read" ? `reads open in ${tildify(path)}` : `${tildify(path)} joins the workspace`;
 		ctx.ui.notify(`${NAME}: ${what}, ${SCOPE_LABEL[where]}`, "info");
 	}
 
