@@ -95,9 +95,27 @@ opened there, today and later; a session brings only itself.
 | `x`   | Close the room, after asking                                                     |
 | `Tab` | Between the rooms and their members                                              |
 
-The folder's room has no `a`, `r`, `l` or `x`. An agent can ask for a room with the `peers` tool; whether it gets
-one is up to the permission mode, or to you alone with the setting. How it works is in
-[`docs/rooms.md`](https://github.com/felipeadeildo/pi-harness/blob/main/docs/rooms.md).
+The folder's room has no `a`, `r`, `l` or `x`.
+
+### How rooms work
+
+A shared room is a directory of logs like a folder's: `events/rooms/<id>/`, where each session in it writes only
+its own file. Each open session also keeps `events/live/<session>.json`, so finding who is open on the machine
+reads no logs.
+
+A folder brings every session opened in it, now and later. A session removed by name stays out even while its
+folder is in, and comes back only when it is added by name again. A closed room counts nobody.
+
+A name finds its room on its own. When the two sessions share several, the message goes by the folder's room,
+else by the room where they last talked, else by the oldest. A name that means two agents is ambiguous, and the
+agent is told to say which `room`. `@everyone` and `@anyone` stay in the room they were said in.
+
+An agent asks for a room with `link` in the `peers` tool, which brings sessions open in another folder, never the
+folder itself: a folder is a lasting change, and those are yours. The setting "When an agent asks for a room"
+decides who lets it through: the permission mode, always you (even in `full`), or you alone, from `Alt+G`.
+
+A shared room gets the part of the tasks the board shows, not every change to them, so a busy session does not
+fill every room it is in.
 
 ## How a message travels
 
@@ -202,10 +220,11 @@ stays allowed, and the agent is told to ask a colleague before editing a file th
 
 On the Peers tab of `Alt+S`, stored under `peers` in `~/.pi/agent/extensions/pi-harness/settings.json`:
 
-| Setting       | Default       | Does                                                                                                                                                                                                  |
-| ------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| While it runs | between calls | How a colleague's message reaches your agent while its run is going: between calls (the default), after the run ends, or with your next prompt. A message marked urgent always attaches between calls |
-| Model         | `auto`        | The model that bids for this session. `auto` is the cheapest of the session's provider                                                                                                                |
+| Setting                       | Default                     | Does                                                                                                                                                                                                  |
+| ----------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| While it runs                 | between calls               | How a colleague's message reaches your agent while its run is going: between calls (the default), after the run ends, or with your next prompt. A message marked urgent always attaches between calls |
+| Model                         | `auto`                      | The model that bids for this session. `auto` is the cheapest of the session's provider                                                                                                                |
+| When an agent asks for a room | the permission mode decides | Who lets an agent's `link` through: the permission mode like any call, always you (even in `full`), or only you, from `Alt+G`                                                                         |
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
 
