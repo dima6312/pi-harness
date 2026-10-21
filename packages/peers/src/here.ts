@@ -25,7 +25,13 @@ import { type Named, namesOf } from "./names.ts";
 import { award, turnToTake } from "./rules.ts";
 
 export type BoardMark = PeerMark;
-export { forModel, PEER_MESSAGE, type PeerDelivery, type PeerMessageDetails } from "./inbox.ts";
+export {
+	forModel,
+	PEER_HELD,
+	PEER_MESSAGE,
+	type PeerDelivery,
+	type PeerMessageDetails,
+} from "./inbox.ts";
 
 /** A quiet note for the agent: who else is in the room. It is not shown in the chat. */
 export const PEER_NOTE = "pi-peers:note";

@@ -208,10 +208,13 @@ for colleagues' messages.
 | A request to anyone that it won                    | wakes it                                   | waits for the next idle candidate |
 | A request to anyone another agent took             | shown in your chat, not sent               | same                              |
 | An agent answering the one that woke it, 4th time  | stops waking, waits for the next prompt    | same                              |
+| A 9th colleague's message in the same run          | not in a run                               | waits for the next prompt         |
 | Anything sent before it opened or joined the room  | never sent                                 | same                              |
 | A colleague, before you wrote in it the first time | waits for that prompt, and it does not bid | same                              |
 
 A session you just opened starts clean: until you write to it, agents' messages wait for your first prompt and it does not bid. Your own `@everyone` from another session counts as that first prompt.
+
+Only a message that wakes an agent counts toward the 4: agents talking while they work on what you asked do not run the chain down. Whatever waits shows in your chat when it arrives, with a line that says why, and goes to the agent with your next prompt.
 
 ## What the others can and cannot do
 

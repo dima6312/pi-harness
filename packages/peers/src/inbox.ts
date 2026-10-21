@@ -8,6 +8,8 @@ import type { Posted } from "./folder.ts";
 import { type BusyDelivery, deliveryFor, QUIET_AFTER, STEERS_PER_RUN } from "./rules.ts";
 
 export const PEER_MESSAGE = "pi-peers:message";
+/** Colleagues' messages that wait for the next prompt, drawn when they arrive and kept out of the context. */
+export const PEER_HELD = "pi-peers:held";
 
 export interface PeerMessageDetails {
 	id: string;
@@ -137,7 +139,7 @@ export class Inbox {
 
 	/** Colleagues' messages, wrapped so the agent knows who wrote and that they cannot approve. */
 	#handPeer(arrivals: readonly Arrival[]): void {
-		const { mode, held } = this.#modeFor(arrivals);
+		const { mode, held } = this.#modeFor(arrivals, true);
 		const items = inOrder(arrivals).map(({ from, message }) => from.details(message));
 		// What waits is shown now, and goes in with the next prompt without being drawn a second time.
 		if (held !== undefined) this.#hooks.held?.({ items }, held);
@@ -151,7 +153,8 @@ export class Inbox {
 
 	/** Yours, sent from another session: the operator speaking, so no wrapper. */
 	#handYou(arrivals: readonly Arrival[]): void {
-		const { mode } = this.#modeFor(arrivals);
+		// Your words are never held back: only colleagues fill a run.
+		const { mode } = this.#modeFor(arrivals, false);
 		const texts = inOrder(arrivals).map(({ message }) => message.text);
 		// Its deliverAs only matters while the agent runs, so pass it whether or not it looks idle: a
 		// run starting between the two would otherwise make the call fail.
@@ -166,17 +169,17 @@ export class Inbox {
 		if (mode === "next-turn") return;
 		// A steer joins a run already going, so only a run it starts is one reply deeper. The count of
 		// steers is what stops two running agents from keeping each other's runs going forever.
+		const messages = arrivals.flatMap((arrival) => arrival.messages);
 		if (mode === "steered") {
-			this.#steers++;
+			if (messages.some((message) => message.from !== "you")) this.#steers++;
 			return;
 		}
-		const messages = arrivals.flatMap((arrival) => arrival.messages);
 		this.#depth = Math.max(...messages.map(runDepth));
 		this.#steers = 0;
 	}
 
 	/** Until the operator writes here, it waits for that first prompt; then it follows the rule. */
-	#modeFor(arrivals: readonly Arrival[]): { mode: Delivery; held?: Held } {
+	#modeFor(arrivals: readonly Arrival[], colleagues: boolean): { mode: Delivery; held?: Held } {
 		if (!this.#awake) return { mode: "next-turn", held: "asleep" };
 		const messages = arrivals.flatMap((arrival) => arrival.messages);
 		const urgent = messages.some((message) => message.urgent === true);
@@ -187,7 +190,7 @@ export class Inbox {
 			busyMode: this.#hooks.busyDelivery?.() ?? "steered",
 		});
 		if (mode === "next-turn") return { mode, held: "quiet" };
-		if (mode === "steered" && !urgent && this.#steers >= STEERS_PER_RUN)
+		if (colleagues && mode === "steered" && !urgent && this.#steers >= STEERS_PER_RUN)
 			return { mode: "next-turn", held: "full" };
 		return { mode };
 	}

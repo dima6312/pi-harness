@@ -22,6 +22,7 @@ import { fitFor } from "./bid.ts";
 import { boardText } from "./board.ts";
 import {
 	PEER_BROADCAST,
+	PEER_HELD,
 	PEER_MESSAGE,
 	type PeerDelivery,
 	type PeerMessageDetails,
@@ -30,6 +31,7 @@ import { ANYONE_MENTION, completeMentions, EVERYONE_MENTION } from "./mention.ts
 import type { Named } from "./names.ts";
 import { type Post, Rooms } from "./rooms.ts";
 import { delivery, link, model, PEERS_SETTINGS } from "./settings.ts";
+import { heldBlock, type HeldDelivery } from "./ui/held.ts";
 import { deliveryBlock, membershipNotice, messageBlock } from "./ui/message.ts";
 import { openPanel } from "./ui/panel.ts";
 import { PEERS_STATUS, statusLine } from "./ui/status.ts";
@@ -137,6 +139,13 @@ export const peers = defineFeature({
 				showTyping();
 			},
 			show: (details) => scope.appendEntry(PEER_BROADCAST, details),
+			held: (waiting, why) => {
+				try {
+					scope.appendEntry(PEER_HELD, { ...waiting, why } satisfies HeldDelivery);
+				} catch {
+					// During a reload the scope can still be the last session's; the words go in with the next prompt anyway.
+				}
+			},
 			busyDelivery: () => delivery.get(scope),
 		});
 		let typingShown = false;
@@ -457,6 +466,9 @@ export const peers = defineFeature({
 		);
 		scope.registerEntryRenderer<PeerMessageDetails>(PEER_BROADCAST, (entry, _options, theme) =>
 			entry.data === undefined ? undefined : messageBlock(entry.data, theme),
+		);
+		scope.registerEntryRenderer<HeldDelivery>(PEER_HELD, (entry, _options, theme) =>
+			entry.data === undefined ? undefined : heldBlock(entry.data, theme),
 		);
 	},
 });

@@ -8,7 +8,8 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "../src/bid.ts";
 import { Here, type Hooks, PEER_MESSAGE, PEER_NOTE, type PeerMessageDetails } from "../src/here.ts";
-import { BID_WINDOW_MS, QUIET_AFTER } from "../src/rules.ts";
+import type { Held } from "../src/inbox.ts";
+import { BID_WINDOW_MS, QUIET_AFTER, STEERS_PER_RUN } from "../src/rules.ts";
 import { statusLine } from "../src/ui/status.ts";
 
 let root: string;
@@ -33,6 +34,7 @@ interface Sent {
 	kind: "user" | "custom";
 	text: string;
 	options?: unknown;
+	display?: boolean;
 }
 
 /** The quiet notes the agent gets about who else is here, which never start a run. */
@@ -47,6 +49,7 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }, prompted = tru
 	const sent: Sent[] = [];
 	const notes: Note[] = [];
 	const shown: PeerMessageDetails[] = [];
+	const held: { from: string[]; why: Held }[] = [];
 	const state = { idle: true };
 	const hooks: Hooks = {
 		events: { emit: () => {}, on: () => () => {} } as unknown as Hooks["events"],
@@ -59,7 +62,7 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }, prompted = tru
 				return;
 			}
 			expect(message.customType).toBe(PEER_MESSAGE);
-			sent.push({ kind: "custom", text: message.content, options });
+			sent.push({ kind: "custom", text: message.content, options, display: message.display });
 		}) as Hooks["sendMessage"],
 		sendUserMessage: ((text: string, options: unknown) =>
 			sent.push({ kind: "user", text, options })) as Hooks["sendUserMessage"],
@@ -67,6 +70,7 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }, prompted = tru
 		fit: async () => fit,
 		changed: () => {},
 		show: (details) => shown.push(details),
+		held: (delivery, why) => held.push({ from: delivery.items.map((item) => item.text), why }),
 		now: () => now,
 		alive: () => true,
 	};
@@ -74,7 +78,7 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }, prompted = tru
 	opened.push(here);
 	here.open({ getCwd: () => "/repo", getSessionId: () => id }, undefined);
 	if (prompted) here.prompted();
-	return { here, sent, notes, shown, state };
+	return { here, sent, notes, shown, held, state };
 }
 
 function name(here: Here, handle: string, title = handle): void {
@@ -170,12 +174,54 @@ describe("a message", () => {
 		const last = sessions[1 - writer];
 		last?.here.sync();
 		expect(last?.sent.at(-1)?.options).toEqual({ deliverAs: "nextTurn" });
+		// Shown now, and drawn only once: the held line says why.
+		expect(last?.held.at(-1)?.why).toBe("quiet");
+		expect(last?.sent.at(-1)?.display).toBe(false);
 
 		last?.here.prompted();
 		last?.here.post([writer === 0 ? "b" : "a"], "you prompted, so this wakes", "agent");
 		const other = sessions[writer];
 		other?.here.sync();
 		expect(other?.sent.at(-1)?.options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
+	});
+});
+
+describe("agents talking while they work", () => {
+	test("a message steered into a run you started does not make the chain deeper", () => {
+		const a = session("a");
+		const b = session("b");
+		a.state.idle = false;
+		b.state.idle = false;
+		for (let round = 0; round < QUIET_AFTER + 2; round++) {
+			a.here.post(["b"], `from a ${round}`, "agent");
+			b.here.sync();
+			b.here.post(["a"], `from b ${round}`, "agent");
+			a.here.sync();
+		}
+		const options = [...a.sent, ...b.sent].map((sent) => sent.options);
+		expect(new Set(options.map((one) => JSON.stringify(one)))).toEqual(
+			new Set([JSON.stringify({ triggerTurn: true, deliverAs: "steer" })]),
+		);
+		// Both still write at the depth of the run you started.
+		expect([...a.here.folder.messages.values()].every((message) => message.depth === 0)).toBe(true);
+	});
+
+	test("a run takes a few messages from agents, and the rest wait for your next prompt", () => {
+		const a = session("a");
+		const b = session("b");
+		b.state.idle = false;
+		for (let i = 0; i <= STEERS_PER_RUN; i++) {
+			a.here.post(["b"], `note ${i}`, "agent");
+			b.here.sync();
+		}
+		expect(b.sent.slice(0, STEERS_PER_RUN).every((sent) => sent.display !== false)).toBe(true);
+		expect(b.sent.at(-1)?.options).toEqual({ deliverAs: "nextTurn" });
+		expect(b.held).toEqual([{ from: [`note ${STEERS_PER_RUN}`], why: "full" }]);
+
+		b.here.prompted();
+		a.here.post(["b"], "after your prompt", "agent");
+		b.here.sync();
+		expect(b.sent.at(-1)?.options).toEqual({ triggerTurn: true, deliverAs: "steer" });
 	});
 });
 
@@ -196,6 +242,7 @@ describe("a session the operator just opened", () => {
 		a.here.post("all", "anyone on the migration?", "agent");
 		b.here.sync();
 		expect(b.sent.map((sent) => sent.options)).toEqual([{ deliverAs: "nextTurn" }]);
+		expect(b.held.map((one) => one.why)).toEqual(["asleep"]);
 
 		b.here.prompted();
 		a.here.post(["b"], "now you are on", "agent");
