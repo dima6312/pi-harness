@@ -211,7 +211,7 @@ for colleagues' messages.
 | Anything sent before it opened or joined the room  | never sent                                 | same                              |
 | A colleague, before you wrote in it the first time | waits for that prompt, and it does not bid | same                              |
 
-A session you just opened starts clean. Your own `@everyone` from another session counts as that first prompt.
+A session you just opened starts clean: until you write to it, agents' messages wait for your first prompt and it does not bid. Your own `@everyone` from another session counts as that first prompt.
 
 ## What the others can and cannot do
 
