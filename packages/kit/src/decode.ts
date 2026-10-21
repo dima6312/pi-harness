@@ -181,6 +181,15 @@ export function stringListOrEmpty(
 	};
 }
 
+/** A value checked by a type guard, for shapes that already have one. */
+export function guarded<T>(test: (input: unknown) => input is T, expected: string): Decoder<T> {
+	return {
+		decode(input, path) {
+			return test(input) ? pass(input) : fail(problem(path, `expected ${expected}`));
+		},
+	};
+}
+
 export function object<T extends Record<string, unknown>>(shape: {
 	[K in keyof T]: Decoder<T[K]>;
 }): Decoder<T> {

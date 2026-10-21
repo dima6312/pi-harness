@@ -1,6 +1,6 @@
 // The judge's intent: the session and what it is doing in your words, and your last message.
-import { currentTasks, intentOf, tasksSettled } from "@adeildo/pi-kit";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { type EventScope, intentOf, TASKS, tasksSettled } from "@adeildo/pi-kit";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { isRecord } from "#util/primitives.ts";
 
@@ -9,13 +9,13 @@ const TASKS_WAIT_MS = 3000;
 
 export async function intentFor(
 	ctx: Pick<ExtensionContext, "sessionManager">,
-	events: ExtensionAPI["events"],
+	scope: EventScope,
 ): Promise<string | undefined> {
 	const last = currentIntent(ctx);
-	if (currentTasks(events) === undefined) return last;
-	await tasksSettled(events, TASKS_WAIT_MS);
+	if (TASKS.current(scope) === undefined) return last;
+	await tasksSettled(scope, TASKS_WAIT_MS);
 
-	const tasks = currentTasks(events)?.state;
+	const tasks = TASKS.current(scope)?.state;
 	const parts: string[] = [];
 	const ours = tasks === undefined ? undefined : intentOf(tasks);
 	if (ours !== undefined) parts.push(ours);

@@ -4,11 +4,9 @@ import {
 	CUT,
 	type CallRuling,
 	type FeatureScope,
-	FRAMED,
-	isObject,
-	RULING_CHANGED,
+	CALLS_FRAMED,
+	RULING,
 	type RulingTone,
-	rulingOf,
 	GLYPH,
 	LINE,
 } from "@adeildo/pi-kit";
@@ -48,12 +46,8 @@ export function registerToolFrames(scope: FeatureScope): void {
 	const written = new Map<string, number>();
 	// The set is asked for on every drawing of every frame, and it changes only with the setting.
 	const set = glyphsOf(() => icons.get(scope));
-	scope.events.on(FRAMED, (data) => {
-		if (isObject(data)) data.framed = true;
-	});
-	scope.events.on(RULING_CHANGED, (data) => {
-		if (isObject(data) && typeof data.toolCallId === "string") redraws.get(data.toolCallId)?.();
-	});
+	CALLS_FRAMED.provide(scope, () => true);
+	RULING.onChanged(scope, (_ruling, toolCallId) => redraws.get(toolCallId)?.());
 	// Pi completes every call of a message only when the message ends, so a call the model finished
 	// before writing the next one would go on writing. The provider says when each one ends. Pi tells
 	// the extensions first and hands every call its arguments right after, which draws the frame.
@@ -119,7 +113,7 @@ function framed(
 			else clock.writtenAt ??= ended ?? now;
 			if (context.executionStarted) clock.startedAt ??= now;
 			const writing = clock.writtenAt === undefined;
-			const ruling = rulingOf(scope.events, context.toolCallId);
+			const ruling = RULING.current(scope, context.toolCallId);
 
 			// Pi hands every call of a message its arguments again on each piece the model writes, so a
 			// call that did not change keeps the frame it has, and its renderer is not asked again.
@@ -178,7 +172,7 @@ function framed(
 		renderResult(shown, options, theme, context) {
 			const clock = clockOf(context);
 			// A blocked call prints nothing but the reason the line above already gives.
-			const blocked = rulingOf(scope.events, context.toolCallId)?.blocked === true;
+			const blocked = RULING.current(scope, context.toolCallId)?.blocked === true;
 			// Pi draws the pictures of a result right below the frame, so the frame counts them.
 			const images = shown.content.filter((block) => block.type === "image").length;
 			if (!options.isPartial) clock.endedAt ??= Date.now();

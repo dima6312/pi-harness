@@ -191,12 +191,12 @@ What a client needs to draw a session without replaying it:
 | The message being streamed, if any  | The bridge's own copy of the partial message                |
 | The queue                           | The last `queue_update`                                     |
 | Model, thinking level, context use  | `ctx.model`, `ctx.thinkingLevel`, `ctx.getContextUsage()`   |
-| Tasks and decisions                 | `currentTasks()`                                            |
-| Rulings of the calls in view        | `rulingOf()` for each call                                  |
+| Tasks and decisions                 | `TASKS.current()`                                           |
+| Rulings of the calls in view        | `RULING.current()` for each call                            |
 | Open questions                      | The bridge's list of open asks                              |
 | Permission mode                     | The permission feature's state                              |
-| Account and quota windows           | `accountStateOf()`                                          |
-| Peers in the folder                 | `currentPeers()`                                            |
+| Account and quota windows           | `ACCOUNT.current()`                                         |
+| Peers in the folder                 | `PEERS.current()`                                           |
 | Cost of the session                 | The session's usage totals                                  |
 | Who is looking                      | The hub adds the viewers and whether a terminal is attached |
 
@@ -279,24 +279,26 @@ Every command from a device is written to the session's event log with the devic
 
 ## Events inside the harness
 
-Today the harness publishes in two ways, and a bridge can see only part of either.
+The harness publishes in two ways.
 
-1. **The event log on disk** (`~/.pi/agent/harness/events/<folder>/<session>.jsonl`, version 1, written by `logEvent` in `packages/kit/src/events/log.ts`). It was built for "peers, the bridge and the web UI", but only the peers feature writes to it: sessions starting and ending, their names and states, tasks, edits and commands, and the room's messages.
-2. **`pi.events` inside the process.** Most contracts are probes: whoever wants the state emits a request and the owner writes the answer on it, at the moment of drawing. Only the tasks and the rulings also announce a change.
+1. **The event log on disk** (`~/.pi/agent/harness/events/<folder>/<session>.jsonl`, version 1, written by `logEvent` in `packages/kit/src/events/log.ts`). It was built for "peers, the bridge and the web UI", but only the peers and tasks features write to it: sessions starting and ending, their names and states, tasks, edits and commands, and the room's messages.
+2. **`pi.events` inside the process.** Whoever wants a state asks and the owner answers on the spot, at the moment of drawing, and the owner also announces each change.
 
-| Contract        | Channel                                                           | Pushes a change                           |
-| --------------- | ----------------------------------------------------------------- | ----------------------------------------- |
-| Tasks           | `harness:tasks`, `harness:tasks:changed`, `harness:tasks:settled` | Yes                                       |
-| Rulings         | `harness:calls:ruling`, `harness:calls:ruling-changed`            | Yes                                       |
-| Questions       | `harness:ask`, `harness:ask:answer`, `harness:ask:available`      | Request and answer only                   |
-| Peers           | `harness:peers`                                                   | No                                        |
-| Account         | `harness:accounts:state`                                          | No                                        |
-| Skills          | `harness:skills:names`                                            | No                                        |
-| Settings screen | `harness:screen:*`, `harness:settings:changed`                    | Changed only, and its rows hold functions |
+Every state contract is a `defineContract` in `packages/kit/src/contract.ts`: readers ask on `harness:<name>` and the owner announces each change on `harness:<name>:changed` with the whole value.
+
+| Contract        | Channel                                                      | Pushes a change                           |
+| --------------- | ------------------------------------------------------------ | ----------------------------------------- |
+| Tasks           | `harness:tasks`, and `harness:tasks:settled`                 | Yes                                       |
+| Rulings         | `harness:calls:ruling`, keyed by tool call                   | Yes                                       |
+| Peers           | `harness:peers`                                              | Yes                                       |
+| Account         | `harness:accounts:state`, keyed by provider                  | Yes                                       |
+| Skills          | `harness:skills:names`                                       | Yes                                       |
+| Questions       | `harness:ask`, `harness:ask:answer`, `harness:ask:available` | Request and answer only                   |
+| Settings screen | `harness:screen:*`, `harness:settings:changed`               | Changed only, and its rows hold functions |
 
 ### The rule from here
 
-- **Every contract that crosses packages has a state and a change.** A probe for whoever draws, and a `*:changed` event that carries the whole new value. The bridge listens to the changes and never polls. Peers, the account and the permission mode gain the event they lack.
+- **Every contract that crosses packages has a state and a change.** A probe for whoever draws, and a `*:changed` event that carries the whole new value. The bridge listens to the changes and never polls. The permission mode is the one left without a contract.
 - **What crosses is JSON.** A contract's values are plain data so the bridge can forward them without knowing them. The settings screen keeps its `Preview` functions on the terminal. Its remote form is the JSON part of each row (label, control, value), and only the Remote tab and the permission mode are offered on the phone at first.
 - **Every feature writes its own facts to the log**, through `logFrom`, not only the peers feature. The log keeps what happened. The live stream adds what is only worth seeing as it happens: text deltas, tool output, the streamed message. Those never go to disk, because pi's session file already has the final text.
 - **The hub reads history from files.** For a session it did not watch, the hub reads pi's session file for the transcript and the harness log for the rest. A phone that was away for a day sees the same story as one that watched.
@@ -308,9 +310,9 @@ Today the harness publishes in two ways, and a bridge can see only part of eithe
 | kit / ask      | `harness:ask:opened`, `harness:ask:closed` with `by`, and `harness:ask:cancel` so a provider closes its dialog when another side answered | `ask.opened`, `ask.closed`                                   |
 | ask-questions  | Closes its dialog on `harness:ask:cancel` and answers nothing                                                                             |                                                              |
 | ask-permission | `harness:permission:mode` (state) and `harness:permission:mode-changed`                                                                   | `mode.changed`, and `call.ruled` for every ruling, with `by` |
-| providers      | `harness:accounts:changed`, and the turn's usage                                                                                          | `account.switched`, `usage.turn`                             |
+| providers      | The turn's usage                                                                                                                          | `account.switched`, `usage.turn`                             |
 | compact        |                                                                                                                                           | `context.pruned`                                             |
-| peers          | `harness:peers:changed`                                                                                                                   | (already writes)                                             |
+| peers          | (done)                                                                                                                                    | (already writes)                                             |
 | tasks          |                                                                                                                                           | (already in `tasks.changed`)                                 |
 | look           | Nothing: it only draws                                                                                                                    |                                                              |
 

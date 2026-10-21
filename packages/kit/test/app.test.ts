@@ -8,7 +8,7 @@ import { createEventBus, type ExtensionCommandContext } from "@earendil-works/pi
 import { attributed } from "../src/app/attribution.ts";
 import {
 	createApp,
-	defineEvent,
+	defineContract,
 	defineFeature,
 	enabledSetting,
 	type Feature,
@@ -237,31 +237,42 @@ describe("two apps in one pi process", () => {
 		expect(app.has("subscription")).toBe(true);
 	});
 
-	test("features talk over typed events and drop payloads that do not decode", async () => {
+	test("features share a contract: readers ask, the owner answers, and changes that do not decode are dropped", async () => {
 		const bus = createEventBus();
-		const changed = defineEvent("providers:account-changed", object({ account: string }));
+		const inUse = defineContract<{ account: string }>(
+			"accounts:in-use",
+			object({ account: string }),
+		);
 		const heard: string[] = [];
+		let asked: string | undefined;
 
 		const listener = fakePi(bus);
 		createApp(listener.pi, { name: "listener", settingsPath })
 			.use(
-				feature(
-					"statusline",
-					(scope) => void changed.on(scope, ({ account }) => heard.push(account)),
-				),
+				feature("statusline", (scope) => {
+					inUse.onChanged(scope, (value) => heard.push(value?.account ?? "none"));
+					asked = inUse.current(scope)?.account;
+				}),
 			)
 			.build();
+		expect(asked).toBeUndefined();
 
 		createApp(fakePi(bus).pi, { name: "speaker", settingsPath })
-			.use(feature("accounts", (scope) => changed.emit(scope, { account: "work" })))
+			.use(
+				feature("accounts", (scope) => {
+					inUse.provide(scope, () => ({ account: "work" }));
+					inUse.changed(scope, { account: "work" });
+					inUse.changed(scope, undefined);
+				}),
+			)
 			.build();
-		bus.emit(changed.channel, { account: 42 });
+		bus.emit(`${inUse.channel}:changed`, { value: { account: 42 } });
 
-		expect(heard).toEqual(["work"]);
+		expect(heard).toEqual(["work", "none"]);
 		const notes: string[] = [];
 		await listener.fire("session_start", {}, fakeContext(notes));
 		expect(notes).toEqual([
-			"listener: statusline: ignored a providers:account-changed event: providers:account-changed.account: expected a string",
+			"listener: statusline: ignored a change of accounts:in-use: accounts:in-use.account: expected a string",
 		]);
 	});
 });

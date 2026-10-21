@@ -239,7 +239,7 @@ export async function addAccount(
 		// The first account of a provider was not attached at session start, so attach it now.
 		if (first) attachProvider(scope, store, pins, watch, ctx, providerId);
 		ctx.ui.notify(`${NAME}: ${provider} now uses ${label}`, "info");
-		showPlans(store, pins, watch, ctx, providerId);
+		void showPlans(store, pins, watch, ctx, providerId);
 	} catch (error) {
 		ctx.ui.notify(`${NAME}: ${reason(error)}`, "error");
 	} finally {

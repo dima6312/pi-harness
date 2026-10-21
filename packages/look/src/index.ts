@@ -1,10 +1,11 @@
 import { dirname, join } from "node:path";
 
 import {
-	accountStateOf,
+	ACCOUNT,
+	type AccountState,
 	createApp,
-	currentPeers,
-	currentTasks,
+	PEERS,
+	TASKS,
 	defineFeature,
 	drawSkillRefs,
 	type FeatureScope,
@@ -321,7 +322,7 @@ function createScreen(
 			const snapshot = reader.read(ctx, {
 				branch: live.footerData?.getGitBranch() ?? null,
 				git: live.git,
-				account: accountStateOf(scope.events, ctx.model?.provider),
+				account: accountOf(scope, ctx.model?.provider),
 				request: telemetry.request(),
 				last: telemetry.last(),
 				run: telemetry.run(),
@@ -353,18 +354,22 @@ function createScreen(
 		decorate: (line) => {
 			const theme = live.ctx?.ui.theme;
 			if (theme === undefined) return line;
-			return drawSkillRefs(line, skillNames(scope.events), (name) =>
+			return drawSkillRefs(line, skillNames(scope), (name) =>
 				theme.fg("customMessageLabel", `${SKILL_REF}${name}`),
 			);
 		},
-		skills: () => skillNames(scope.events).length > 0,
+		skills: () => skillNames(scope).length > 0,
 	};
 }
 
+function accountOf(scope: FeatureScope, provider: string | undefined): AccountState | undefined {
+	return provider === undefined ? undefined : ACCOUNT.current(scope, provider);
+}
+
 function tasksOf(scope: FeatureScope): Pick<LiveInputs, "tasks" | "peers" | "peersUnread"> {
-	const peers = currentPeers(scope.events);
+	const peers = PEERS.current(scope);
 	return {
-		tasks: currentTasks(scope.events)?.state,
+		tasks: TASKS.current(scope)?.state,
 		peers: peers?.peers,
 		peersUnread: peers?.unread,
 	};

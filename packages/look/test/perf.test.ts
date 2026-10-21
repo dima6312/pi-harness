@@ -14,9 +14,10 @@ import { screen, snapshot } from "./helpers.ts";
 function frame(theme: Theme) {
 	const fake = fakePi();
 	createApp(fake.pi, { name: "look" }).use(look).build();
-	fake.pi.events.on(RULING, (data) => {
-		(data as { ruling?: unknown }).ruling = { tone: "success", head: "judge approved" };
-	});
+	RULING.provide({ events: fake.pi.events, warn: () => {} }, () => ({
+		tone: "success",
+		head: "judge approved",
+	}));
 
 	const base: ToolRenderers = {
 		renderCall: () => new Text("$ bun run test", 0, 0),

@@ -1,9 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import { answerTasks, applyTaskOps, emptyTasks, TASKS_SETTLED, TASKS_STATE } from "@adeildo/pi-kit";
-import { createEventBus, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { applyTaskOps, emptyTasks, type EventScope, TASKS, TASKS_SETTLED } from "@adeildo/pi-kit";
+import {
+	createEventBus,
+	type EventBusController,
+	type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 
 import { currentIntent, intentFor } from "#pi/intent.ts";
+
+function scopeOf(events: EventBusController): EventScope {
+	return { events, warn: () => {} };
+}
 
 function ctxWith(branch: unknown[]): Pick<ExtensionContext, "sessionManager"> {
 	return { sessionManager: { getBranch: () => branch } } as unknown as Pick<
@@ -59,8 +67,8 @@ describe("with a tasks feature", () => {
 			at: 2,
 			origin: "agent",
 		});
-		bus.on(TASKS_STATE, (data: unknown) => answerTasks(data, state, {}));
-		expect(await intentFor(ctxWith(branch), bus)).toBe(
+		TASKS.provide(scopeOf(bus), () => ({ state }));
+		expect(await intentFor(ctxWith(branch), scopeOf(bus))).toBe(
 			"Session: release 5.4\nLast message: publish it",
 		);
 	});
@@ -74,11 +82,13 @@ describe("with a tasks feature", () => {
 			pending = false;
 			bus.emit(TASKS_SETTLED, {});
 		}, 20);
-		bus.on(TASKS_STATE, (data: unknown) => answerTasks(data, state, { pending }));
-		expect(await intentFor(ctxWith(branch), bus)).toBe("Doing: publish\nLast message: publish it");
+		TASKS.provide(scopeOf(bus), () => (pending ? { state, pending } : { state }));
+		expect(await intentFor(ctxWith(branch), scopeOf(bus))).toBe(
+			"Doing: publish\nLast message: publish it",
+		);
 	});
 
 	test("without one, it is the last message as before", async () => {
-		expect(await intentFor(ctxWith(branch), createEventBus())).toBe("publish it");
+		expect(await intentFor(ctxWith(branch), scopeOf(createEventBus()))).toBe("publish it");
 	});
 });

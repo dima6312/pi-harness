@@ -1,6 +1,6 @@
 import {
 	createApp,
-	currentTasks,
+	TASKS,
 	defineFeature,
 	describeTasks,
 	type FeatureScope,
@@ -199,7 +199,7 @@ export const compact = defineFeature({
 
 		scope.on("session_before_compact", async (event, ctx) => {
 			if (!summary.get(scope)) return undefined;
-			const tasks = currentTasks(scope.events)?.state ?? tasksFromEntries(event.branchEntries);
+			const tasks = TASKS.current(scope)?.state ?? tasksFromEntries(event.branchEntries);
 			if (tasks.tasks.length === 0) return undefined;
 			const { preparation } = event;
 			const models = modelsFor(model.get(scope), ctx.modelRegistry, ctx.model);
@@ -264,7 +264,7 @@ export const compact = defineFeature({
 		}
 
 		function tasksNow(ctx: ExtensionContext): SessionTasks {
-			return currentTasks(scope.events)?.state ?? tasksFromEntries(ctx.sessionManager.getBranch());
+			return TASKS.current(scope)?.state ?? tasksFromEntries(ctx.sessionManager.getBranch());
 		}
 	},
 });

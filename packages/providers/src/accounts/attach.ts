@@ -151,8 +151,8 @@ export function showPlans(
 	watch: Watch,
 	ctx: ExtensionContext,
 	providerId: string | undefined,
-): void {
-	void readPlans(store, watch, ctx, providerId).then(() => refreshStatus(store, pins, ctx));
+): Promise<void> {
+	return readPlans(store, watch, ctx, providerId).then(() => refreshStatus(store, pins, ctx));
 }
 
 /** The best reading for an account: the live one, else the endpoint's, fetched when there is none. */

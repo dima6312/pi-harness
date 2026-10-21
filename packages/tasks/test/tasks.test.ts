@@ -6,7 +6,7 @@ import { join } from "node:path";
 import {
 	applyTaskOps,
 	createApp,
-	currentTasks,
+	TASKS,
 	eventsDir,
 	FolderFeed,
 	emptyTasks,
@@ -179,7 +179,8 @@ async function mounted(answers: Record<string, Answer>[], branch: unknown[] = []
 		fake.entries
 			.filter((entry) => entry.customType === TASKS_ENTRY)
 			.map((entry) => entry.data as TasksUpdate);
-	const state = () => currentTasks(fake.pi.events)?.state ?? emptyTasks();
+	const bus = { events: fake.pi.events, warn: () => {} };
+	const state = () => TASKS.current(bus)?.state ?? emptyTasks();
 	/** Your message reaches the session, then pi says it ended. */
 	const say = async (id: string, text: string) => {
 		branch.push(yours(id, text));
@@ -188,7 +189,7 @@ async function mounted(answers: Record<string, Answer>[], branch: unknown[] = []
 			{ type: "message_end", message: { role: "user", content: text } },
 			ctx,
 		);
-		await tasksSettled(fake.pi.events, 1000);
+		await tasksSettled(bus, 1000);
 	};
 	const start = () => fake.fire("agent_start", { type: "agent_start" }, ctx);
 	const settle = async () => {
@@ -342,7 +343,7 @@ describe("your messages", () => {
 		const entry = answered("r1", ANSWERS);
 		branch.push(entry);
 		await fake.fire("message_end", { type: "message_end", message: entry.message }, ctx);
-		await tasksSettled(fake.pi.events, 1000);
+		await tasksSettled({ events: fake.pi.events, warn: () => {} }, 1000);
 		expect(models.asked[0]?.prompt).toContain("Answering the agent's questions:");
 		expect(state().decisions).toMatchObject([
 			{ text: "Call it pi-tasks", origin: "you", made: { entry: "r1" } },

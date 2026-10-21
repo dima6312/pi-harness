@@ -1,16 +1,15 @@
 import {
-	answerTasks,
 	modelsFor,
 	createApp,
 	defineFeature,
-	TASKS_CHANGED,
 	TASKS_SETTLED,
-	TASKS_STATE,
+	TASKS,
 	tasksSpent,
 	tasksWith,
 	logFrom,
 	hideImagesUnderOverlays,
 	GLYPH,
+	type TasksValue,
 } from "@adeildo/pi-kit";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
@@ -60,7 +59,7 @@ export const tasks = defineFeature({
 				TASKS_STATUS,
 				first === undefined ? undefined : `${GLYPH.triangle} ${first}${more}`,
 			);
-			scope.events.emit(TASKS_CHANGED, state);
+			TASKS.changed(scope, current());
 			if (session !== undefined && state.updatedAt !== loggedAt) {
 				loggedAt = state.updatedAt;
 				logFrom(session, scope.events, "tasks.changed", { state });
@@ -101,9 +100,13 @@ export const tasks = defineFeature({
 			session = undefined;
 		});
 
-		scope.events.on(TASKS_STATE, (data: unknown) =>
-			answerTasks(data, keeper.state(), { pending: updates.pending, working: updates.working }),
-		);
+		function current(): TasksValue {
+			const value: TasksValue = { state: keeper.state() };
+			if (updates.pending) value.pending = true;
+			if (updates.working) value.working = true;
+			return value;
+		}
+		TASKS.provide(scope, current);
 
 		scope.on("agent_start", (_event, ctx) => {
 			if (ctx.hasUI) updates.runStarted(ctx);
@@ -134,7 +137,7 @@ export const tasks = defineFeature({
 			await ctx.ui.custom<void>(
 				(tui, theme, _keybindings, done) => {
 					hideImagesUnderOverlays(tui);
-					stopWatching = scope.events.on(TASKS_CHANGED, () => tui.requestRender());
+					stopWatching = TASKS.onChanged(scope, () => tui.requestRender());
 					return new TasksView({
 						theme,
 						state: () => keeper.state(),

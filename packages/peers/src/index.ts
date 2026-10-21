@@ -1,14 +1,13 @@
 import { isAbsolute, relative, resolve } from "node:path";
 
 import {
-	answerPeers,
 	createApp,
 	defineFeature,
 	eventsRoot,
 	isObject,
 	modelRef,
 	modelsFor,
-	PEERS_STATE,
+	PEERS,
 } from "@adeildo/pi-kit";
 import { Type } from "@earendil-works/pi-ai";
 import type {
@@ -163,17 +162,28 @@ export const peers = defineFeature({
 		}
 		const pending = new Map<string, { path?: string; command?: string }>();
 
-		/** The look's footer keeps one mark per other session, and how many wait for an answer. */
+		/**
+		 * The look's footer keeps one mark per other session, and how many wait for an answer. The
+		 * bridge hears the same marks when they change.
+		 */
+		let announced: string | undefined;
 		function showStatus(): void {
+			const summary = rooms.summary();
+			const state = { peers: summary.others, unread: summary.unread };
+			const text = JSON.stringify(state);
+			if (text !== announced) {
+				announced = text;
+				PEERS.changed(scope, state);
+			}
 			const ctx = session;
 			if (ctx === undefined) return;
-			ctx.ui.setStatus(PEERS_STATUS, statusLine(rooms.summary(), ctx.ui.theme));
+			ctx.ui.setStatus(PEERS_STATUS, statusLine(summary, ctx.ui.theme));
 		}
 
 		// The look draws its own peers segment from this, so the footer can show names and colours.
-		scope.events.on(PEERS_STATE, (data: unknown) => {
+		PEERS.provide(scope, () => {
 			const summary = rooms.summary();
-			answerPeers(data, summary.others, summary.unread);
+			return { peers: summary.others, unread: summary.unread };
 		});
 
 		scope.events.on(DECIDED, (data: unknown) => {

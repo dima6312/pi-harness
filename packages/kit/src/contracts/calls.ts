@@ -1,11 +1,7 @@
 // What decided a tool call, and why, drawn wherever the call is. The feature that knows the answer
 // publishes it; whoever frames the call asks for it while drawing.
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-
-export const RULING = "harness:calls:ruling";
-export const RULING_CHANGED = "harness:calls:ruling-changed";
-/** A feature that frames every call answers this, so the ruling is not drawn twice. */
-export const FRAMED = "harness:calls:framed";
+import { defineContract } from "../contract.ts";
+import { boolean, guarded, isObject } from "../decode.ts";
 
 export const RULING_TONES = ["pending", "success", "warning", "error"] as const;
 
@@ -24,30 +20,21 @@ export interface CallRuling {
 	blocked?: boolean;
 }
 
-export interface RulingRequest {
-	toolCallId: string;
-	ruling?: CallRuling;
-}
+/** The ruling of a call, keyed by the tool call id. Nobody answers for a call nothing decided. */
+export const RULING = defineContract<CallRuling, string>(
+	"calls:ruling",
+	guarded(isRuling, "a ruling with a tone and a head"),
+);
 
-export interface RulingChange {
-	toolCallId: string;
-	ruling?: CallRuling;
-}
+/** A feature that frames every call answers true, so the ruling is not drawn twice. */
+export const CALLS_FRAMED = defineContract<boolean>("calls:framed", boolean);
 
-type Events = ExtensionAPI["events"];
-
-/** The ruling of a call, asked of every listener. Undefined when nothing decided it. */
-export function rulingOf(events: Events, toolCallId: string): CallRuling | undefined {
-	const request: RulingRequest = { toolCallId };
-	events.emit(RULING, request);
-	return request.ruling;
-}
-
-/** True when a feature draws each call in a frame of its own, which is where the ruling goes. */
-export function callsFramed(events: Events): boolean {
-	const probe = { framed: false };
-	events.emit(FRAMED, probe);
-	return probe.framed;
+function isRuling(value: unknown): value is CallRuling {
+	return (
+		isObject(value) &&
+		typeof value.head === "string" &&
+		RULING_TONES.some((tone) => tone === value.tone)
+	);
 }
 
 /** The fields of a call's arguments that name what it acted on, in the order they are worth trying. */

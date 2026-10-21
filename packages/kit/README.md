@@ -119,19 +119,22 @@ Every feature also gets `features.<id>.enabled`, on by default. A feature that i
 ## Events and contracts
 
 ```ts
-const accountChanged = defineEvent("providers:account-changed", object({ account: string }));
+// contracts/accounts.ts
+export const ACCOUNT = defineContract<AccountState, string>("accounts:state", decoder);
 
-accountChanged.on(scope, ({ account }) => …);
-accountChanged.emit(scope, { account: "work" });
+ACCOUNT.provide(scope, (provider) => inUse(provider)); // the owner answers
+ACCOUNT.current(scope, "anthropic"); // a reader asks while drawing
+ACCOUNT.changed(scope, state, "anthropic"); // the owner announces a change
+ACCOUNT.onChanged(scope, (state, provider) => …); // a bridge follows it
 ```
 
-Events travel over `pi.events`, on the channel `harness:<name>`. Two features behave the same whether they share an app or come from different packages. The payload may come from an older or newer version of the other package, so it is decoded when it arrives, and one that does not decode is dropped with a warning.
+A contract is what one feature knows and the others read. It travels over `pi.events`, asked on `harness:<name>` and announced on `harness:<name>:changed` with the whole new value, so a bridge can follow every contract without polling. A contract with a key, like the ruling of a call or the account of a provider, takes the key as one more argument. Two features behave the same whether they share an app or come from different packages. The value may come from an older or newer version of the other package, so it is decoded when it arrives, and one that does not decode is dropped with a warning.
 
-These rules hold for every event that crosses packages:
+These rules hold for every contract:
 
-- It is declared in `contracts/` here, never in the package that emits it. The listener then does not depend on the emitter, and either one works without the other.
-- The payload is plain JSON, with no functions, classes or `Date`, so a remote control or a web UI can forward any contract without knowing what is inside.
-- A payload can gain fields but never lose them.
+- It is declared in `contracts/` here, never in the package that owns the state. The reader then does not depend on the owner, and either one works without the other.
+- The value is plain JSON, with no functions, classes or `Date`, so a remote control or a web UI can forward any contract without knowing what is inside.
+- A value can gain fields but never lose them.
 
 ## Testing
 

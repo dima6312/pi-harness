@@ -1,40 +1,30 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-
-import { isObject } from "../decode.ts";
+// The session's tasks, which the footer draws, the judge reads for intent and the compact keeps.
+import { defineContract, type EventScope } from "../contract.ts";
+import { guarded, isObject } from "../decode.ts";
+import { isTasks } from "../tasks/entries.ts";
 import type { SessionTasks } from "../tasks/state.ts";
 
-export const TASKS_STATE = "harness:tasks";
-export const TASKS_CHANGED = "harness:tasks:changed";
 /** Your last message is in the tasks, changed or not. */
 export const TASKS_SETTLED = "harness:tasks:settled";
 
-export interface TasksProbe {
-	state?: SessionTasks;
+export interface TasksValue {
+	state: SessionTasks;
+	/** Your last message is not in the tasks yet. */
 	pending?: boolean;
+	/** The tasks model is writing. */
 	working?: boolean;
 }
 
-export function currentTasks(events: ExtensionAPI["events"]): TasksProbe | undefined {
-	const probe: TasksProbe = {};
-	events.emit(TASKS_STATE, probe);
-	return probe.state === undefined ? undefined : probe;
+export const TASKS = defineContract<TasksValue>("tasks", guarded(isTasksValue, "a tasks state"));
+
+function isTasksValue(value: unknown): value is TasksValue {
+	return isObject(value) && isTasks(value.state);
 }
 
-export function answerTasks(
-	data: unknown,
-	state: SessionTasks,
-	extra: Omit<TasksProbe, "state">,
-): void {
-	if (!isObject(data)) return;
-	data.state = state;
-	if (extra.pending === true) data.pending = true;
-	if (extra.working === true) data.working = true;
-}
-
-export function tasksSettled(events: ExtensionAPI["events"], timeoutMs: number): Promise<void> {
-	if (currentTasks(events)?.pending !== true) return Promise.resolve();
+export function tasksSettled(scope: EventScope, timeoutMs: number): Promise<void> {
+	if (TASKS.current(scope)?.pending !== true) return Promise.resolve();
 	return new Promise((resolve) => {
-		const stop = events.on(TASKS_SETTLED, finish);
+		const stop = scope.events.on(TASKS_SETTLED, finish);
 		const timer = setTimeout(finish, timeoutMs);
 		function finish(): void {
 			stop();

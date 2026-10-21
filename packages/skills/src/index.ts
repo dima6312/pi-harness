@@ -1,11 +1,10 @@
 import {
-	addSkillNames,
 	createApp,
 	defineFeature,
 	drawSkillRefs,
 	type FeatureScope,
 	referencedSkills,
-	SKILL_NAMES,
+	SKILLS,
 	SKILL_REF,
 } from "@adeildo/pi-kit";
 import type { TextContent } from "@earendil-works/pi-ai";
@@ -33,6 +32,8 @@ export const skills = defineFeature({
 
 		scope.onSessionStart((ctx) => {
 			session = ctx;
+			// The skills load with the session, so a bridge hears them once they are known.
+			SKILLS.changed(scope, namesOf(scope));
 			if (ctx.mode === "tui")
 				ctx.ui.addAutocompleteProvider((current) =>
 					completeSkills(current, () => loadedSkills(scope)),
@@ -42,7 +43,7 @@ export const skills = defineFeature({
 			session = undefined;
 		});
 
-		scope.events.on(SKILL_NAMES, (data: unknown) => addSkillNames(data, namesOf(scope)));
+		SKILLS.provide(scope, () => namesOf(scope));
 
 		scope.on("input", (event, ctx) => expand(scope, ctx, event));
 

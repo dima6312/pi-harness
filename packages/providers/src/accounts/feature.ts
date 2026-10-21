@@ -1,5 +1,5 @@
 // The accounts feature and its two entry points.
-import { ACCOUNT_STATE, type AccountState, defineFeature, isObject } from "@adeildo/pi-kit";
+import { ACCOUNT, type AccountState, defineFeature } from "@adeildo/pi-kit";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { type AutocompleteItem, Key } from "@earendil-works/pi-tui";
 
@@ -49,19 +49,31 @@ export const accounts = defineFeature({
 		// answer instead of after it.
 		scope.on("model_select", (event, ctx) => {
 			refreshStatus(store, pins, ctx);
-			showPlans(store, pins, watch, ctx, event.model.provider);
+			void showPlans(store, pins, watch, ctx, event.model.provider).then(announce);
+			announce();
 		});
 		scope.on("session_shutdown", (_event, ctx) => ctx.ui.setStatus(STATUS_KEY, undefined));
 
 		// Whoever draws the account in use asks for it on the spot, so it is never a frame old.
-		scope.events.on(ACCOUNT_STATE, (data: unknown) => {
-			if (!isObject(data) || typeof data.provider !== "string") return;
-			data.state = inUse(watch, store, pins, data.provider);
-		});
+		ACCOUNT.provide(scope, (provider) => inUse(watch, store, pins, provider));
+
+		// The bridge follows changes instead. A switch, a sign-in, a limit and a new reading all happen
+		// around an answer, a model change, the start or the account commands, so those announce.
+		const announced = new Map<string, string>();
+		function announce(): void {
+			for (const provider of new Set([...store.providerIds(), ...pins.keys()])) {
+				const state = inUse(watch, store, pins, provider);
+				const text = JSON.stringify(state);
+				if (announced.get(provider) === text) continue;
+				announced.set(provider, text);
+				ACCOUNT.changed(scope, state, provider);
+			}
+		}
 
 		// The line stops pi's own retry.
 		scope.on("message_end", (event) => {
 			if (event.message.role !== "assistant") return;
+			announce();
 			const providerId = event.message.provider;
 			const account = activeAccount(store, pins, providerId);
 			if (account === undefined) return;
@@ -85,18 +97,19 @@ export const accounts = defineFeature({
 				attachProvider(scope, store, pins, watch, ctx, providerId);
 			}
 			refreshStatus(store, pins, ctx);
-			showPlans(store, pins, watch, ctx, ctx.model?.provider);
+			announce();
+			void showPlans(store, pins, watch, ctx, ctx.model?.provider).then(announce);
 		});
 
 		scope.registerShortcut(Key.alt("a"), {
 			description: `${NAME}: switch the account of the current provider for this session`,
-			handler: (ctx) => pickAccount(bundle, ctx),
+			handler: (ctx) => pickAccount(bundle, ctx).then(announce),
 		});
 
 		scope.registerCommand("accounts", {
 			description: `${NAME}: see, switch, rename, remove or add the accounts of a provider`,
 			getArgumentCompletions: (prefix) => providerCompletions(registry, store, prefix),
-			handler: (args, ctx) => manageAccounts(bundle, args, ctx),
+			handler: (args, ctx) => manageAccounts(bundle, args, ctx).then(announce),
 		});
 	},
 });

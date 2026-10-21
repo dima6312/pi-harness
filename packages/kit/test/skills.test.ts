@@ -2,13 +2,7 @@ import { expect, test } from "bun:test";
 
 import { createEventBus } from "@earendil-works/pi-coding-agent";
 
-import {
-	addSkillNames,
-	drawSkillRefs,
-	referencedSkills,
-	SKILL_NAMES,
-	skillNames,
-} from "../src/contracts/skills.ts";
+import { drawSkillRefs, referencedSkills, SKILLS, skillNames } from "../src/contracts/skills.ts";
 
 const NAMES = ["simplify", "unslop", "ce-simplify-code"];
 
@@ -37,10 +31,10 @@ test("each reference is drawn in place, and the rest of the text stays", () => {
 });
 
 test("the names come from the skills feature, and none without it", () => {
-	const bus = createEventBus();
-	expect(skillNames(bus)).toEqual([]);
-	bus.on(SKILL_NAMES, (data: unknown) => addSkillNames(data, NAMES));
-	expect(skillNames(bus)).toEqual(NAMES);
+	const scope = { events: createEventBus(), warn: () => {} };
+	expect(skillNames(scope)).toEqual([]);
+	SKILLS.provide(scope, () => NAMES);
+	expect(skillNames(scope)).toEqual(NAMES);
 });
 
 test("a reference anywhere inside backticks stays text", () => {

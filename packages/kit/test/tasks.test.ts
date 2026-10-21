@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 
 import { createEventBus } from "@earendil-works/pi-coding-agent";
 
-import { answerTasks, currentTasks, TASKS_STATE } from "../src/contracts/tasks.ts";
+import { TASKS } from "../src/contracts/tasks.ts";
 import {
 	type ApplyOptions,
 	applyTaskOps,
@@ -331,11 +331,11 @@ test("what the calls cost adds up across both formats", () => {
 });
 
 test("other packages read the live tasks over the bus", () => {
-	const events = createEventBus();
-	expect(currentTasks(events)).toBeUndefined();
+	const scope = { events: createEventBus(), warn: () => {} };
+	expect(TASKS.current(scope)).toBeUndefined();
 	const state = apply(emptyTasks(), [{ op: "ask", text: "a" }]);
-	events.on(TASKS_STATE, (data) => answerTasks(data, state, { pending: true }));
-	expect(currentTasks(events)).toEqual({ state, pending: true });
+	TASKS.provide(scope, () => ({ state, pending: true }));
+	expect(TASKS.current(scope)).toEqual({ state, pending: true });
 	expect(tasksWith(state, "doing")).toHaveLength(1);
 });
 

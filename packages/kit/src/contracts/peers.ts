@@ -1,8 +1,6 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-
-import { isObject } from "../decode.ts";
-
-export const PEERS_STATE = "harness:peers";
+// The other sessions this one works with, as the footer and any other viewer draw them.
+import { defineContract } from "../contract.ts";
+import { guarded, isObject } from "../decode.ts";
 
 /** Another session in the folder, as every viewer should draw it. */
 export interface PeerMark {
@@ -14,20 +12,26 @@ export interface PeerMark {
 	room?: string;
 }
 
-export interface PeersProbe {
-	peers?: PeerMark[];
+export interface PeersState {
+	peers: PeerMark[];
 	/** Messages a peer sent to this session that its agent has not read yet. */
-	unread?: number;
+	unread: number;
 }
 
-export function currentPeers(events: ExtensionAPI["events"]): PeersProbe | undefined {
-	const probe: PeersProbe = {};
-	events.emit(PEERS_STATE, probe);
-	return probe.peers === undefined ? undefined : probe;
+export const PEERS = defineContract<PeersState>(
+	"peers",
+	guarded(isPeersState, "a list of peers and an unread count"),
+);
+
+const STATES = new Set(["running", "idle", "waiting"]);
+
+function isPeersState(value: unknown): value is PeersState {
+	if (!isObject(value) || typeof value.unread !== "number") return false;
+	return Array.isArray(value.peers) && value.peers.every(isPeerMark);
 }
 
-export function answerPeers(data: unknown, peers: PeerMark[], unread: number): void {
-	if (!isObject(data)) return;
-	data.peers = peers;
-	data.unread = unread;
+function isPeerMark(value: unknown): value is PeerMark {
+	if (!isObject(value) || typeof value.handle !== "string" || typeof value.color !== "string")
+		return false;
+	return typeof value.state === "string" && STATES.has(value.state);
 }

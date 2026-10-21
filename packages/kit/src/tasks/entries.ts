@@ -88,7 +88,7 @@ export function tasksSpent(entries: readonly unknown[]): TasksUsage & { calls: n
 	return spent;
 }
 
-function isTasks(value: unknown): value is SessionTasks {
+export function isTasks(value: unknown): value is SessionTasks {
 	return (
 		isObject(value) &&
 		value.version === TASKS_VERSION &&

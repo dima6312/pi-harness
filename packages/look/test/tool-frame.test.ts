@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createApp, RULING, type RulingRequest } from "@adeildo/pi-kit";
+import { type CallRuling, createApp, RULING } from "@adeildo/pi-kit";
 import { fakePi } from "@adeildo/pi-kit/testing";
 import type { AgentToolResult, Theme, ToolRenderers } from "@earendil-works/pi-coding-agent";
 import { Container, stripTerminalSequences, Text } from "@earendil-works/pi-tui";
@@ -61,12 +61,12 @@ function context(overrides: Record<string, unknown> = {}) {
 }
 
 /** A call and its result share one context, which is where the frame keeps the clock. */
-function whole(ruling?: RulingRequest["ruling"], output = "583 pass") {
+function whole(ruling?: CallRuling, output = "583 pass") {
 	const fake = fakePi();
 	createApp(fake.pi, { name: "look" }).use(look).build();
-	fake.pi.events.on(RULING, (data) => {
-		if ((data as RulingRequest).toolCallId === "call-1") (data as RulingRequest).ruling = ruling;
-	});
+	RULING.provide({ events: fake.pi.events, warn: () => {} }, (toolCallId) =>
+		toolCallId === "call-1" ? ruling : undefined,
+	);
 	const chain = resolve(fake, { ...renderers(), renderResult: () => new Text(output, 0, 0) });
 	if (chain === undefined) throw new Error("no renderers");
 
@@ -87,16 +87,12 @@ function whole(ruling?: RulingRequest["ruling"], output = "583 pass") {
 	return { call: plain(call), result: plain(result) };
 }
 
-function framed(
-	ruling?: RulingRequest["ruling"],
-	toolName = "bash",
-	overrides: Record<string, unknown> = {},
-) {
+function framed(ruling?: CallRuling, toolName = "bash", overrides: Record<string, unknown> = {}) {
 	const fake = fakePi();
 	createApp(fake.pi, { name: "look" }).use(look).build();
-	fake.pi.events.on(RULING, (data) => {
-		if ((data as RulingRequest).toolCallId === "call-1") (data as RulingRequest).ruling = ruling;
-	});
+	RULING.provide({ events: fake.pi.events, warn: () => {} }, (toolCallId) =>
+		toolCallId === "call-1" ? ruling : undefined,
+	);
 	const chain = resolve(fake, renderers(), toolName);
 	if (chain === undefined) throw new Error("no renderers");
 	const call = chain.renderCall?.({ command: "bun run test" }, theme, context(overrides));

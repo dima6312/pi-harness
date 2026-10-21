@@ -2,11 +2,9 @@
 // feature that frames the calls draws it instead, and this only answers when it is asked.
 import {
 	type CallRuling,
-	callsFramed,
+	CALLS_FRAMED,
 	type FeatureScope,
 	RULING,
-	RULING_CHANGED,
-	type RulingRequest,
 	type RulingTone,
 	RULING_TONES,
 	GLYPH,
@@ -23,16 +21,13 @@ export const RULING_ENTRY = `${NAME}:ruling`;
 const ARGS_PREVIEW = 100;
 
 export function registerRulingLine(scope: FeatureScope, state: SessionState): void {
-	scope.events.on(RULING, (data) => {
-		if (isRecord(data) && typeof data.toolCallId === "string")
-			(data as unknown as RulingRequest).ruling = state.rulings.get(data.toolCallId);
-	});
+	RULING.provide(scope, (toolCallId) => state.rulings.get(toolCallId));
 	scope.registerToolRenderer((toolName, next) => {
 		const base = next();
 		if (base === undefined) return undefined;
 		// A feature that frames the calls draws the line, and pi drops the whole chain when a
 		// resolver answers nothing, so this hands the renderer back untouched.
-		if (callsFramed(scope.events)) return base;
+		if (CALLS_FRAMED.current(scope) === true) return base;
 		return withRuling(toolName, base, state);
 	});
 }
@@ -47,7 +42,7 @@ export function showRuling(
 	if (ruling === undefined) state.rulings.delete(toolCallId);
 	else state.rulings.set(toolCallId, ruling);
 	state.redraws.get(toolCallId)?.();
-	scope.events.emit(RULING_CHANGED, { toolCallId, ruling });
+	RULING.changed(scope, ruling, toolCallId);
 }
 
 /** The final line of a call, kept in the session. */

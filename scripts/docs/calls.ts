@@ -63,9 +63,7 @@ export function drawCall(spec: CallSpec, width: number): string[] {
 		const base = TOOLS[spec.tool];
 		const fake = fakePi();
 		createApp(fake.pi, { name: "docs" }).use(look).build();
-		fake.pi.events.on(RULING, (data: unknown) => {
-			(data as { ruling?: CallRuling }).ruling = spec.ruling;
-		});
+		RULING.provide({ events: fake.pi.events, warn: () => {} }, () => spec.ruling);
 		// Pi runs the resolvers in load order, and the tool's own renderer comes last.
 		const resolveAt = (index: number): ToolRenderers =>
 			index < fake.toolRenderers.length

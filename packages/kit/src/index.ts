@@ -16,7 +16,7 @@ export * from "./events/log.ts";
 export * from "./tasks/index.ts";
 export * from "./control.ts";
 export * from "./decode.ts";
-export * from "./events.ts";
+export * from "./contract.ts";
 export * from "./format.ts";
 export * from "./models.ts";
 export * from "./one-at-a-time.ts";

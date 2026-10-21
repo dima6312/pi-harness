@@ -1,22 +1,15 @@
 // The `/skill:name` pattern the skills feature expands and the look colors.
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { defineContract, type EventScope } from "../contract.ts";
+import { stringList } from "../decode.ts";
 
-import { isObject } from "../decode.ts";
-
-/** The skills feature adds the names a reference expands to. */
-export const SKILL_NAMES = "harness:skills:names";
+/** The names a `/skill:` reference expands to, which the skills feature knows. */
+export const SKILLS = defineContract<string[]>("skills:names", stringList("skill names"));
 
 export const SKILL_REF = "/skill:";
 
 /** Empty when no skills feature runs. */
-export function skillNames(events: ExtensionAPI["events"]): string[] {
-	const probe = { names: [] as string[] };
-	events.emit(SKILL_NAMES, probe);
-	return probe.names;
-}
-
-export function addSkillNames(data: unknown, names: readonly string[]): void {
-	if (isObject(data) && Array.isArray(data.names)) data.names.push(...names);
+export function skillNames(scope: EventScope): string[] {
+	return SKILLS.current(scope) ?? [];
 }
 
 /** Group 1 is what came before, group 2 the name. */
