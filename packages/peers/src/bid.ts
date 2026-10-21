@@ -12,7 +12,7 @@ export interface Fit {
 }
 
 const TOOL = "bid";
-const SYSTEM = `Several coding agents work in the same folder. The operator asked all of them for something, and each one bids on how well it fits. You bid for one of them. Read what it is doing and what it touched, then call bid.
+const SYSTEM = `Several coding agents share a room, in one folder or in several. The operator asked all of them for something, and each one bids on how well it fits. You bid for one of them. Read what it is doing and what it touched, then call bid.
 fit: from 0 to 1. High when the request continues its work, touches files it edited, or follows its decisions. Low when the request is about something else, or when the session has barely started.
 reason: at most 8 words in English, the one thing that decides it.`;
 

@@ -107,6 +107,14 @@ export function gateLayers(state: GateState): Layer[] {
 	const rules = MODES[state.mode];
 	return [
 		{
+			// Before everything, an always yes included: the tool keeps these calls with you.
+			name: "always asks",
+			decide: (call) =>
+				call.tool.alwaysAsks?.(call.input) === true
+					? { action: "ask", reason: "this tool keeps these calls with you" }
+					: undefined,
+		},
+		{
 			name: "always yes",
 			decide: (call) =>
 				state.alwaysYes.has(call.toolName, call.target.levels) ? ALLOW : undefined,

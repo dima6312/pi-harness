@@ -36,6 +36,8 @@ export interface LiveSession {
 	handle?: string;
 	title?: string;
 	state: SessionState;
+	/** When the session opened, which orders the list. */
+	startedAt: number;
 	/** When the entry last changed. */
 	at: number;
 }
@@ -51,7 +53,7 @@ export type MembershipChange =
 	  }
 	| { kind: "left"; room: Room; reason: "removed" | "closed" };
 
-/** A mark in the footer or a line being typed, with the shared room it is in. */
+/** A line another agent is writing, with the id of the shared room it is in. */
 export type RoomTyping = Typing & { room?: string };
 
 export interface RoomsView {

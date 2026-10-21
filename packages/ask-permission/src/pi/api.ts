@@ -39,6 +39,8 @@ export function listenForTools(
 		if (typeof data.describe === "function") {
 			adapter.describe = data.describe as ToolAdapter["describe"];
 		}
+		if (typeof data.alwaysAsks === "function")
+			adapter.alwaysAsks = data.alwaysAsks as ToolAdapter["alwaysAsks"];
 		tools.set(data.name, adapter);
 	});
 }

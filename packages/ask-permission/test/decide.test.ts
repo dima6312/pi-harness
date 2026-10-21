@@ -56,6 +56,23 @@ describe("decide", () => {
 		expect(await decidedBy("bash", { command: "cat /etc/passwd" }, state)).toBe("always yes");
 	});
 
+	test("a call its tool always asks about comes to you in every mode, past any always yes", async () => {
+		const custom = new Map([
+			["peers", { alwaysAsks: (input: Record<string, unknown>) => input.action === "link" }],
+		]);
+		const state = gate({ mode: "full", alwaysYes: { has: () => true } });
+		const asked = (input: unknown) =>
+			decide(describeCall("peers", input, CWD, state.config, { custom }), [
+				...gateLayers(state),
+				judge,
+			]);
+		expect(await asked({ action: "link", folder: "../backend" })).toMatchObject({
+			action: "ask",
+			by: "always asks",
+		});
+		expect(await asked({ action: "send", text: "hi" })).toMatchObject({ action: "allow" });
+	});
+
 	test.each<[PermissionMode, string, unknown, string | undefined]>([
 		["manual", "read", { path: "a.ts" }, "allow list"],
 		["manual", "bash", { command: "git status" }, "read-only bash"],

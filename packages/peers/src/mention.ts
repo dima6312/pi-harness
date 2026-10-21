@@ -14,6 +14,9 @@ import { mentionedNames, mentionsIn, type Named } from "./names.ts";
 export const EVERYONE_MENTION = "everyone";
 export const ANYONE_MENTION = "anyone";
 
+/** An agent the list can offer, and where it is when that is not this folder. */
+export type Mentionable = Named & { where?: string };
+
 /** Whether a name is one of the group mentions, so it names no single session. */
 export function isGroupMention(name: string): boolean {
 	return name === EVERYONE_MENTION || name === ANYONE_MENTION;
@@ -59,7 +62,7 @@ export function recipientsOf(
 /** Puts the other agents, `@everyone` and `@anyone` above pi's files in the list that opens after an `@`. */
 export function completeMentions(
 	current: AutocompleteProvider,
-	others: () => readonly Named[],
+	others: () => readonly Mentionable[],
 ): AutocompleteProvider {
 	function isMention(item: AutocompleteItem): boolean {
 		if (isGroupMention(item.value.slice(1))) return true;
@@ -100,12 +103,12 @@ export function completeMentions(
 }
 
 /** The agents whose names match what follows the `@`, then `@everyone` and `@anyone`. None alone. */
-function mentionItems(others: readonly Named[], query: string): AutocompleteItem[] {
+function mentionItems(others: readonly Mentionable[], query: string): AutocompleteItem[] {
 	if (others.length === 0) return [];
 	const agents = fuzzyFilter([...others], query, (named) => named.handle).map((named) => ({
 		value: `@${named.handle}`,
 		label: `@${named.handle}`,
-		description: "agent in this folder",
+		description: named.where ?? "agent in this folder",
 	}));
 	const groups = fuzzyFilter([EVERYONE_MENTION, ANYONE_MENTION], query, (name) => name).map(
 		(name) => ({

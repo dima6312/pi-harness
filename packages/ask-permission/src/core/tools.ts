@@ -18,6 +18,11 @@ export interface ToolAdapter {
 	/** Never writes, whatever the input. Unlike `readOnly`, it does not pass the read-only bash layer. */
 	onlyReads?: boolean;
 	readOnly?(input: ToolInput): boolean;
+	/**
+	 * This call always comes to you, in every mode and past any always yes. A tool says so for the
+	 * calls its own settings keep with you, like an agent asking to talk to another folder.
+	 */
+	alwaysAsks?(input: ToolInput): boolean;
 }
 
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;

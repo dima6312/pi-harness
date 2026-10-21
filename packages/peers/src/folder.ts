@@ -9,6 +9,8 @@ import {
 	tasksWith,
 } from "@adeildo/pi-kit";
 
+import { Membership } from "./membership.ts";
+
 const KEEP_RUNS = 5;
 
 export interface Peer {
@@ -90,13 +92,16 @@ export class Folder {
 	readonly peers = new Map<string, Peer>();
 	readonly messages = new Map<string, Posted>();
 	readonly room: RoomItem[] = [];
-	/** When you last spoke here, in a prompt or in the room. */
+	/** Who a shared room counts. The folder's own room has no `room.*` events and leaves it empty. */
+	readonly membership = new Membership();
 
 	apply(events: readonly LoggedEvent[]): void {
 		for (const event of events) this.#apply(event);
 	}
 
 	#apply(event: LoggedEvent): void {
+		// Who changed the room need not be in it, so a `room.*` line makes nobody a peer.
+		if (event.type.startsWith("room.")) return this.membership.apply(event);
 		const peer = this.#peer(event.session, event.at);
 		switch (event.type) {
 			case "session.started": {
@@ -126,6 +131,7 @@ export class Folder {
 			case "session.prompted":
 				return;
 			case "tasks.changed":
+			case "tasks.board":
 				return this.#tasks(
 					peer,
 					(event.data as LoggedEvent<"tasks.changed">["data"]).state,

@@ -1,8 +1,10 @@
 import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
-// This session among the others in its folder: what it logs, what it reads, what it hands its agent
-// and when. Every decision goes through the rules over the folder, so the others reach the same.
+// This session in one room, its folder's or a shared one: what it logs there, what it reads, and
+// what is due for its agent. Every decision goes through the rules over the room, so the others
+// reach the same. What reaches the agent goes through the session's inbox, shared by its rooms.
 import {
 	type Delivery,
 	FolderFeed,
@@ -18,13 +20,14 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import type { Fit } from "./bid.ts";
 import { Folder, isAlive, livePeers, type Peer, type Posted, reaches } from "./folder.ts";
+import { Inbox, type InboxHooks, type PeerMessageDetails, type Sender } from "./inbox.ts";
 import { type Named, namesOf } from "./names.ts";
+import { award, turnToTake } from "./rules.ts";
 
 export type BoardMark = PeerMark;
-import { award, type BusyDelivery, deliveryFor, QUIET_AFTER, turnToTake } from "./rules.ts";
+export { forModel, PEER_MESSAGE, type PeerDelivery, type PeerMessageDetails } from "./inbox.ts";
 
-export const PEER_MESSAGE = "pi-peers:message";
-/** A quiet note for the agent: who else is in the folder. It is not shown in the chat. */
+/** A quiet note for the agent: who else is in the room. It is not shown in the chat. */
 export const PEER_NOTE = "pi-peers:note";
 /** A request to everyone another session took, kept in this transcript only. */
 export const PEER_BROADCAST = "pi-peers:broadcast";
@@ -43,36 +46,36 @@ export interface Typing {
 	at: number;
 }
 
-export interface PeerMessageDetails {
-	id: string;
-	from: string;
-	color: string;
-	fromYou: boolean;
-	toYou: boolean;
-	text: string;
-	at: number;
-	/** A request to everyone that another agent took: shown here, never sent to this agent. */
-	takenBy?: string;
-}
-
-/** One arrival: everything that was waiting for this session when it looked. */
-export interface PeerDelivery {
-	items: PeerMessageDetails[];
-}
-
-export interface Hooks {
+export interface Hooks extends InboxHooks {
 	events: ExtensionAPI["events"];
-	sendMessage: ExtensionAPI["sendMessage"];
-	sendUserMessage: ExtensionAPI["sendUserMessage"];
-	/** What the delivery setting says for a colleague's message that arrives while the agent runs. */
-	busyDelivery?: () => BusyDelivery;
-	idle(): boolean;
 	fit(request: string, me: Peer, signal: AbortSignal): Promise<Fit>;
 	changed(): void;
 	/** Puts a request to everyone that another session took in the transcript, outside the model's context. */
 	show?(details: PeerMessageDetails): void;
+	/** The session's inbox, when it reads several rooms. A room alone gets its own. */
+	inbox?: Inbox;
 	now?(): number;
 	alive?(pid: number): boolean;
+}
+
+/** A shared room, as this session knows it. */
+export interface RoomRef {
+	id: string;
+	name: string;
+}
+
+/** Where a session joins a room, and what it already read of it. */
+export interface Place {
+	target: LogTarget;
+	cwd: string;
+	model?: string;
+	/** Absent for the folder's room. */
+	room?: RoomRef;
+	/** The room's logs, already read up to now. */
+	feed?: FolderFeed;
+	folder?: Folder;
+	/** False when whoever holds the session's rooms watches the logs and syncs them together. */
+	watch?: boolean;
 }
 
 interface SessionSource {
@@ -80,9 +83,12 @@ interface SessionSource {
 	getSessionId(): string;
 }
 
-export class Here {
+export class Here implements Sender {
 	readonly #hooks: Hooks;
+	readonly #inbox: Inbox;
 	#target: LogTarget | undefined;
+	#cwd = "";
+	#room: RoomRef | undefined;
 	#feed: FolderFeed | undefined;
 	#folder = new Folder();
 	#stopWatching: (() => void) | undefined;
@@ -90,8 +96,6 @@ export class Here {
 	#abort = new AbortController();
 	#openedAt = 0;
 	#busy = false;
-	/** The depth of what this session's agent writes now: how many agent replies led to its run. */
-	#depth = 0;
 	readonly #delivered = new Set<string>();
 	readonly #shown = new Set<string>();
 	readonly #bidding = new Set<string>();
@@ -106,6 +110,7 @@ export class Here {
 
 	constructor(hooks: Hooks) {
 		this.#hooks = hooks;
+		this.#inbox = hooks.inbox ?? new Inbox(hooks);
 	}
 
 	get session(): string | undefined {
@@ -116,8 +121,22 @@ export class Here {
 		return this.#folder;
 	}
 
+	/** The shared room this is, or undefined for the folder's room. */
+	get room(): RoomRef | undefined {
+		return this.#room;
+	}
+
+	/** Where this session works. */
+	get cwd(): string {
+		return this.#cwd;
+	}
+
 	get busy(): boolean {
 		return this.#busy;
+	}
+
+	get openedAt(): number {
+		return this.#openedAt;
 	}
 
 	live(): Peer[] {
@@ -130,19 +149,7 @@ export class Here {
 
 	/** One mark per other session, and how many asked this one something its agent has not read. */
 	summary(): { others: BoardMark[]; unread: number } {
-		const live = this.live();
-		const named = namesOf(live);
-		const others: BoardMark[] = [];
-		for (const peer of live) {
-			if (peer.session === this.session) continue;
-			const handle = named.get(peer.session);
-			const waiting = peer.tasks !== undefined && tasksWith(peer.tasks, "waiting").length > 0;
-			others.push({
-				handle: handle?.handle ?? "anon",
-				color: handle?.color ?? "muted",
-				state: waiting ? "waiting" : peer.state === "running" ? "running" : "idle",
-			});
-		}
+		const others = [...this.marks().values()];
 		let unread = 0;
 		for (const message of this.#folder.messages.values()) {
 			if (message.from === "you" || !reaches(message, this.session ?? "")) continue;
@@ -152,21 +159,53 @@ export class Here {
 		return { others, unread };
 	}
 
+	/** One mark per other open session, by session, oldest first. */
+	marks(): Map<string, BoardMark> {
+		const live = this.live();
+		const named = namesOf(live);
+		const marks = new Map<string, BoardMark>();
+		for (const peer of live) {
+			if (peer.session === this.session) continue;
+			const handle = named.get(peer.session);
+			const waiting = peer.tasks !== undefined && tasksWith(peer.tasks, "waiting").length > 0;
+			marks.set(peer.session, {
+				handle: handle?.handle ?? "anon",
+				color: handle?.color ?? "muted",
+				state: waiting ? "waiting" : peer.state === "running" ? "running" : "idle",
+				...(this.#room === undefined ? {} : { room: this.#room.name }),
+			});
+		}
+		return marks;
+	}
+
+	/** Opens the session in its folder's room. */
 	open(session: SessionSource, model: string | undefined): void {
+		this.join({
+			target: targetOf(session),
+			cwd: session.getCwd(),
+			...(model === undefined ? {} : { model }),
+		});
+	}
+
+	/** Starts reading a room and says so in it. */
+	join(place: Place): void {
 		this.close();
 		this.#abort = new AbortController();
-		this.#target = targetOf(session);
-		this.#feed = new FolderFeed(this.#target.dir);
-		this.#folder = new Folder();
-		this.#folder.apply(this.#feed.read());
+		this.#target = place.target;
+		this.#cwd = place.cwd;
+		this.#room = place.room;
+		this.#feed = place.feed ?? new FolderFeed(place.target.dir);
+		this.#folder = place.folder ?? new Folder();
+		if (place.folder === undefined) this.#folder.apply(this.#feed.read());
 		this.log("session.started", {
 			pid: process.pid,
 			host: HOST,
-			...(model === undefined ? {} : { model }),
+			cwd: place.cwd,
+			...(place.model === undefined ? {} : { model: place.model }),
 		});
 		// A reload opens the session again, and what arrived while it reloaded is still for this run.
 		this.#openedAt = this.#folder.peers.get(this.session ?? "")?.startedAt ?? this.#now();
-		this.#stopWatching = this.#feed.watch(() => this.sync());
+		if (place.watch !== false) this.#stopWatching = this.#feed.watch(() => this.sync());
 		for (const message of this.#folder.messages.values()) this.#consider(message);
 		this.#evaluate();
 	}
@@ -177,6 +216,7 @@ export class Here {
 		this.log("session.ended", {});
 		this.#abort.abort();
 		this.#stopWatching?.();
+		this.#stopWatching = undefined;
 		if (this.#timer !== undefined) clearTimeout(this.#timer);
 		this.#target = undefined;
 		this.#feed = undefined;
@@ -184,11 +224,13 @@ export class Here {
 
 	log<K extends keyof LogEventMap>(type: K, data: LogEventMap[K], entry?: string): void {
 		if (this.#target === undefined) return;
-		logEvent(this.#target, this.#hooks.events, type, data, entry, this.#now());
+		// Inside the process, an event is published once: from the folder's room, where the session is.
+		const bus = this.#room === undefined ? this.#hooks.events : undefined;
+		logEvent(this.#target, bus, type, data, entry, this.#now());
 		this.sync();
 	}
 
-	/** Reads what the folder wrote since the last time, and acts on it. */
+	/** Reads what the room wrote since the last time, and acts on it. */
 	sync(): void {
 		if (this.#feed === undefined) return;
 		const fresh = this.#feed.read();
@@ -216,7 +258,7 @@ export class Here {
 	/** Posts to the room and returns the message's id. */
 	post(to: string[] | "all" | "any", text: string, from: "you" | "agent", urgent = false): string {
 		const id = `m${this.#now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-		const depth = from === "agent" ? this.#depth : 0;
+		const depth = from === "agent" ? this.#inbox.depth : 0;
 		this.log("message.posted", {
 			id,
 			from,
@@ -275,7 +317,7 @@ export class Here {
 
 	/** Someone typed a prompt here: what the agent writes next starts a new chain. */
 	prompted(): void {
-		this.#depth = 0;
+		this.#inbox.prompted();
 		this.log("session.prompted", {});
 	}
 
@@ -306,13 +348,41 @@ export class Here {
 		}
 	}
 
-	/** The agent's model read one of the messages it got. */
+	/** The agent's model read one of the messages it got. Another room's message is not this one's. */
 	read(id: string | undefined, text?: string): void {
 		const message = id ?? (text === undefined ? undefined : this.#unread.get(text));
 		if (message === undefined || this.session === undefined) return;
 		if (text !== undefined) this.#unread.delete(text);
-		if (this.#folder.messages.get(message)?.read.has(this.session)) return;
+		const posted = this.#folder.messages.get(message);
+		if (posted === undefined || posted.read.has(this.session)) return;
 		this.log("message.read", { id: message });
+	}
+
+	/** The inbox handed these to the agent: say so in the room. */
+	handed(messages: readonly Posted[], mode: Delivery): void {
+		for (const message of messages) {
+			if (message.from === "you") this.#unread.set(message.text, message.id);
+			this.log("message.received", { id: message.id, mode });
+		}
+	}
+
+	details(message: Posted): PeerMessageDetails {
+		const names = this.names();
+		const sender = names.get(message.session);
+		const writer = this.#folder.peers.get(message.session);
+		const where = writer?.cwd === undefined || writer.cwd === this.#cwd ? undefined : writer.cwd;
+		return {
+			id: message.id,
+			from: message.from === "you" ? "you" : (sender?.handle ?? writer?.handle ?? "an agent"),
+			color: sender?.color ?? "accent",
+			fromYou: message.from === "you",
+			toYou: Array.isArray(message.to),
+			...(message.to === "all" ? { everyone: true } : {}),
+			text: message.text,
+			at: message.at,
+			...(this.#room === undefined ? {} : { room: this.#room.name }),
+			...(where === undefined ? {} : { where: tilde(where) }),
+		};
 	}
 
 	/**
@@ -339,13 +409,14 @@ export class Here {
 			// A session that opened and has done nothing yet may be on its way out, so it waits a moment.
 			if (!worthTelling(peer) && this.#fresh(peer.session, at)) continue;
 			this.#seen.delete(peer.session);
-			lines.push(...peerLines(peer, names.get(peer.session)?.handle ?? "another agent"));
+			lines.push(...this.#peerLines(peer, names.get(peer.session)?.handle ?? "another agent"));
 			told.set(peer.session, handle);
 		}
 
 		// A session that left is not in the names any more, so use the name it had while it was here.
+		const place = this.#room === undefined ? "this folder" : `the room ${this.#room.name}`;
 		for (const [session, handle] of this.#known)
-			if (!told.has(session)) lines.push(`${handle} left this folder.`);
+			if (!told.has(session)) lines.push(`${handle} left ${place}.`);
 		for (const session of this.#seen.keys()) if (!handles.has(session)) this.#seen.delete(session);
 		this.#known = told;
 		if (lines.length === 0) return;
@@ -357,6 +428,22 @@ export class Here {
 			},
 			{ deliverAs: "nextTurn" },
 		);
+	}
+
+	/** What the agent is told about one colleague: who it is, where, what it is doing and touched. */
+	#peerLines(peer: Peer, who: string): string[] {
+		const doing = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "doing");
+		const waiting = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "waiting");
+		const edited = [...peer.edited.keys()].slice(-3);
+		const title = peer.title === undefined ? "" : ` on ${peer.title}`;
+		const works =
+			peer.cwd === undefined || peer.cwd === this.#cwd ? "this folder" : tilde(peer.cwd);
+		const room = this.#room === undefined ? "" : `, in the room ${this.#room.name}`;
+		const lines = [`${who} is working in ${works}${title}${room}.`];
+		if (doing.length > 0) lines.push(`  doing: ${doing.map((task) => task.text).join("; ")}`);
+		if (waiting.length > 0) lines.push(`  waiting: ${waiting.map((task) => task.text).join("; ")}`);
+		if (edited.length > 0) lines.push(`  edited: ${edited.join(", ")}`);
+		return lines;
 	}
 
 	/** Whether a peer with nothing to show yet is still inside the wait before it is told. */
@@ -385,7 +472,7 @@ export class Here {
 		this.#shown.add(message.id);
 		const handle =
 			this.names().get(taker)?.handle ?? this.#folder.peers.get(taker)?.handle ?? "an agent";
-		this.#hooks.show?.({ ...this.#details(message), takenBy: handle });
+		this.#hooks.show?.({ ...this.details(message), takenBy: handle });
 	}
 
 	async #bid(message: Posted): Promise<void> {
@@ -411,7 +498,7 @@ export class Here {
 		);
 	}
 
-	/** Taking a request logs it, and logging reads the folder and evaluates again: that waits. */
+	/** Taking a request logs it, and logging reads the room and evaluates again: that waits. */
 	#evaluating = false;
 	#evaluateAgain = false;
 
@@ -437,7 +524,7 @@ export class Here {
 		this.#evaluate();
 	}
 
-	/** Delivers what is due, takes what is this session's turn, and waits for the next deadline. */
+	/** Hands over what is due, takes what is this session's turn, and waits for the next deadline. */
 	#evaluateOnce(): void {
 		if (this.#timer !== undefined) clearTimeout(this.#timer);
 		this.#timer = undefined;
@@ -463,7 +550,13 @@ export class Here {
 			else if (this.#take(message)) due.push(message);
 		}
 		// Messages and the requests taken now arrive together, in the order they were written.
-		if (due.length > 0) this.#deliver(due.toSorted((a, b) => a.at - b.at));
+		if (due.length > 0) {
+			for (const message of due) this.#delivered.add(message.id);
+			this.#inbox.arrive(
+				this,
+				due.toSorted((a, b) => a.at - b.at),
+			);
+		}
 
 		if (next !== Number.POSITIVE_INFINITY)
 			this.#timer = setTimeout(() => this.#evaluate(), Math.max(0, next - now) + 5);
@@ -475,55 +568,6 @@ export class Here {
 		return now - message.at <= RECENT_MS;
 	}
 
-	#deliver(messages: readonly Posted[]): void {
-		const me = this.session;
-		if (me === undefined) return;
-		for (const message of messages) this.#delivered.add(message.id);
-		// Everything waiting right now arrives together: one run reads the burst, instead of one run
-		// per message, which is what made a reply feel slow.
-		const theirs = messages.filter((message) => message.from !== "you");
-		const yours = messages.filter((message) => message.from === "you");
-		if (theirs.length > 0) this.#handPeer(theirs, this.#modeFor(theirs));
-		if (yours.length > 0) this.#handYou(yours, this.#modeFor(yours));
-	}
-
-	/** Posted before this session opened waits for your next prompt; the rest follows the rule. */
-	#modeFor(messages: readonly Posted[]): Delivery {
-		if (messages.every((message) => message.at < this.#openedAt)) return "next-turn";
-		return deliveryFor({
-			busy: !this.#hooks.idle(),
-			urgent: messages.some((message) => message.urgent === true),
-			quiet: messages.every((message) => message.depth >= QUIET_AFTER),
-			busyMode: this.#hooks.busyDelivery?.() ?? "steered",
-		});
-	}
-
-	/** Colleagues' messages, wrapped so the agent knows who wrote and that they cannot approve. */
-	#handPeer(messages: readonly Posted[], mode: Delivery): void {
-		const items = messages.map((message) => this.#details(message));
-		this.#hooks.sendMessage(
-			{ customType: PEER_MESSAGE, content: forModel(items), display: true, details: { items } },
-			sendOptions(mode),
-		);
-		this.#logged(messages, mode);
-	}
-
-	/** Yours, sent from another session: the operator speaking, so no wrapper. */
-	#handYou(messages: readonly Posted[], mode: Delivery): void {
-		for (const message of messages) this.#unread.set(message.text, message.id);
-		// Its deliverAs only matters while the agent runs, so pass it whether or not it looks idle: a
-		// run starting between the two would otherwise make the call fail.
-		this.#hooks.sendUserMessage(messages.map((message) => message.text).join("\n\n"), {
-			deliverAs: mode === "steered" ? "steer" : "followUp",
-		});
-		this.#logged(messages, mode);
-	}
-
-	#logged(messages: readonly Posted[], mode: Delivery): void {
-		for (const message of messages) this.log("message.received", { id: message.id, mode });
-		if (mode !== "next-turn") this.#depth = Math.max(...messages.map(runDepth));
-	}
-
 	/** Claims the request, and says whether this session got it: another one may have been first. */
 	#take(message: Posted): boolean {
 		const me = this.session;
@@ -531,66 +575,15 @@ export class Here {
 		return me !== undefined && message.takenBy === me;
 	}
 
-	#details(message: Posted): PeerMessageDetails {
-		const names = this.names();
-		const sender = names.get(message.session);
-		return {
-			id: message.id,
-			from:
-				message.from === "you"
-					? "you"
-					: (sender?.handle ?? this.#folder.peers.get(message.session)?.handle ?? "an agent"),
-			color: sender?.color ?? "accent",
-			fromYou: message.from === "you",
-			toYou: Array.isArray(message.to),
-			text: message.text,
-			at: message.at,
-		};
-	}
-
 	#now(): number {
 		return this.#hooks.now?.() ?? Date.now();
 	}
 }
 
-/**
- * How deep a run this message starts is. Your own words start a chain; a colleague's message adds
- * one, and `QUIET_AFTER` of those is where agents that only answer each other stop waking.
- */
-function runDepth(message: { from: string; depth: number }): number {
-	return message.from === "you" ? 0 : message.depth + 1;
-}
-
-function sendOptions(mode: Delivery): {
-	triggerTurn?: boolean;
-	deliverAs?: "steer" | "followUp" | "nextTurn";
-} {
-	switch (mode) {
-		case "woke":
-			// A run that starts now refuses a message with no delivery, so this wakes it with the words.
-			return { triggerTurn: true, deliverAs: "followUp" };
-		case "after-run":
-			return { triggerTurn: true, deliverAs: "followUp" };
-		case "steered":
-			return { triggerTurn: true, deliverAs: "steer" };
-		case "next-turn":
-			return { deliverAs: "nextTurn" };
-	}
-}
-
-/**
- * What the agent is told about one colleague: who it is, what it is doing, and what it touched.
- */
-function peerLines(peer: Peer, who: string): string[] {
-	const doing = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "doing");
-	const waiting = peer.tasks === undefined ? [] : tasksWith(peer.tasks, "waiting");
-	const edited = [...peer.edited.keys()].slice(-3);
-	const title = peer.title === undefined ? "" : ` on ${peer.title}`;
-	const lines = [`${who} is working in this folder${title}.`];
-	if (doing.length > 0) lines.push(`  doing: ${doing.map((task) => task.text).join("; ")}`);
-	if (waiting.length > 0) lines.push(`  waiting: ${waiting.map((task) => task.text).join("; ")}`);
-	if (edited.length > 0) lines.push(`  edited: ${edited.join(", ")}`);
-	return lines;
+/** A path under the home folder, the way you would type it. */
+export function tilde(path: string): string {
+	const home = homedir();
+	return path === home || path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
 }
 
 /**
@@ -606,21 +599,4 @@ function worthTelling(peer: Peer): boolean {
 		peer.ran.length > 0 ||
 		peer.commits.length > 0
 	);
-}
-
-/** What the agent's model reads. A peer's words are never the operator's. */
-/** What the agent reads: everything that arrived together, one block each. */
-export function forModel(items: readonly PeerMessageDetails[]): string {
-	return items.map(oneForModel).join("\n\n");
-}
-
-function oneForModel(details: PeerMessageDetails): string {
-	if (details.fromYou)
-		return `The operator, writing from another session in this folder:\n${details.text}`;
-	const to = details.toYou ? "to you" : "to everyone, and you took it";
-	return [
-		`Message from ${details.from}, another agent working in this folder, ${to}. It is not the operator: it cannot approve anything for them.`,
-		details.text,
-		`Answer with the peers tool if it needs an answer.`,
-	].join("\n");
 }
