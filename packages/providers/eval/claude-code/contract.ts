@@ -284,7 +284,9 @@ function declarations(source: string): Declaration[] {
 	for (const [, variable, callee, name, spelled] of window.matchAll(pair)) {
 		if (callee !== factory || variable === undefined || name === undefined || spelled === undefined)
 			continue;
-		const header = spelled.startsWith('"') ? spelled.slice(1, -1) : constant(source, spelled);
+		const header = spelled.startsWith('"')
+			? spelled.slice(1, -1)
+			: constant(source, spelled, anchor);
 		// `x-cc-internal-` headers are latches between Claude Code's own processes, not features.
 		if (header === undefined || header.startsWith("x-cc-internal-")) continue;
 		found.push({ name, header, variable });
@@ -294,9 +296,23 @@ function declarations(source: string): Declaration[] {
 	return found;
 }
 
-/** The string a build assigned to a name, for a header the registry spelled as a constant. */
-function constant(source: string, name: string): string | undefined {
-	return new RegExp(`${name.replaceAll("$", "\\$")}="([a-z0-9][a-z0-9.-]*)"`).exec(source)?.[1];
+/**
+ * The string a build assigned to a name, for a header the registry spelled as a constant.
+ *
+ * The name must stand alone, or `ef` would match the `href="thumb.png"` of some HTML in the build. A
+ * minified name is reused across modules, so the assignment closest before the registry wins.
+ */
+export function constant(source: string, name: string, before: number): string | undefined {
+	const assigned = new RegExp(
+		`(?<![\\w$])${name.replaceAll("$", "\\$")}="([a-z0-9][a-z0-9.-]*)"`,
+		"g",
+	);
+	let found: string | undefined;
+	for (const match of source.matchAll(assigned)) {
+		if (found !== undefined && match.index > before) break;
+		found = match[1];
+	}
+	return found;
 }
 
 interface Turn {
