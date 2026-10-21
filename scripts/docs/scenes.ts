@@ -378,7 +378,7 @@ export const SCENES: readonly Scene[] = [
 	{
 		name: "peers/room",
 		caption:
-			"Alt+R: the rooms on the left, the open one's agents under it, and what was said there.",
+			"Alt+G: the rooms on the left, the open one's agents under it, and what was said there.",
 		alt: "The panel over the whole screen, in a quiet frame titled pi-harness, the room that is open, with 1 waits and 3 open on the right of the top edge. On the left the rooms: pi-harness, open, with a flag because an agent waits on you, its agents under it, oauth waiting on you to push to main, migration and docs working for 2 minutes with what each is on; then backend+frontend with 1 unread. On the right the conversation, no box around any message: who joined, your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit as a plain line, oauth asking migration about src/auth.ts and migration's answer, each a header with the time on the right, the words under it and what became of it under them. At the bottom a thin rule and the line you write in.",
 		draw: (theme) => peersRoom(theme),
 	},

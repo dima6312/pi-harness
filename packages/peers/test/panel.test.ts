@@ -320,11 +320,11 @@ describe("changing the rooms", () => {
 		expect(rooms.calls).toEqual(["add r1 folder:/srv/lab"]);
 	});
 
-	test("esc in the picker goes back to the room, and Alt+R closes the panel from anywhere", () => {
+	test("esc in the picker goes back to the room, and Alt+G closes the panel from anywhere", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		const panel = panelOf(rooms);
 		expect(press(panel, TAB, "n", ESC)).toContain("message everyone");
-		press(panel, UP, "\x1br");
+		press(panel, UP, "\x1bg");
 		expect(rooms.calls).toEqual(["closed panel"]);
 	});
 });
@@ -346,7 +346,7 @@ describe("the notice when this session joins or leaves", () => {
 			"me",
 		);
 		expect(joined).toBe(
-			"You joined backend+frontend, added by api: ask about /v1/fleet. With backend, docs-help. Alt+R shows it.",
+			"You joined backend+frontend, added by api: ask about /v1/fleet. With backend, docs-help. Alt+G shows it.",
 		);
 	});
 

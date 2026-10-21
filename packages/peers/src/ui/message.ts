@@ -58,7 +58,7 @@ export function membershipNotice(change: MembershipChange, me?: string): string 
 	const by = change.by === "you" ? "by you" : `by ${change.by}`;
 	const why = change.why === undefined ? "" : `: ${change.why}`;
 	const who = othersIn(change.room, me);
-	return `You joined ${room}, added ${by}${why}.${who === "" ? "" : ` ${who}`} Alt+R shows it.`;
+	return `You joined ${room}, added ${by}${why}.${who === "" ? "" : ` ${who}`} Alt+G shows it.`;
 }
 
 /** Who else the room counts, by folder and by name. */

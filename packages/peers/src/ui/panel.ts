@@ -1,4 +1,4 @@
-// The `Alt+R` panel, over the whole screen. On the left, the rooms this session is in, the folder's
+// The `Alt+G` panel, over the whole screen. On the left, the rooms this session is in, the folder's
 // first, with the open one's agents under its name. On the right, the open room's conversation and the
 // line you write in. The two sides never move or change width, whatever is open, so switching rooms
 // only changes what is in them.
@@ -88,7 +88,7 @@ export class PeersPanel implements Component, Focusable {
 	}
 
 	handleInput(data: string): void {
-		if (matchesKey(data, Key.alt("r"))) return this.#options.close();
+		if (matchesKey(data, Key.alt("g"))) return this.#options.close();
 		if (this.#picker !== undefined) return this.#picker.handleInput(data);
 		if (this.#closing !== undefined) return this.#confirm(data);
 		if (this.#pane === "write") return this.#writeInput(data);

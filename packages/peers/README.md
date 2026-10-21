@@ -23,7 +23,7 @@ dies stops writing, and its log stays as the record of what it did.
 <p align="center">
   <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The panel over the whole screen, in a quiet frame titled pi-harness, the room that is open, with 1 waits and 3 open on the right of the top edge. On the left the rooms: pi-harness, open, with a flag because an agent waits on you, its agents under it, oauth waiting on you to push to main, migration and docs working for 2 minutes with what each is on; then backend+frontend with 1 unread. On the right the conversation, no box around any message: who joined, your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit as a plain line, oauth asking migration about src/auth.ts and migration's answer, each a header with the time on the right, the words under it and what became of it under them. At the bottom a thin rule and the line you write in." width="860">
   <br>
-  <em>Alt+R: the rooms on the left, the open one's agents under it, and what was said there.</em>
+  <em>Alt+G: the rooms on the left, the open one's agents under it, and what was said there.</em>
 </p>
 
 <!-- /docs -->
@@ -33,7 +33,7 @@ committed. Each session publishes it as it goes, so anyone reads it without inte
 reads it with the `peers` tool, and nothing arrives in its context unless it asks or unless the work touches the
 same files.
 
-**The room** is a conversation. Everyone in the folder reads it, you included, and you type in it with `Alt+R`.
+**The room** is a conversation. Everyone in the folder reads it, you included, and you type in it with `Alt+G`.
 A message with `@name` goes to that agent, one with `@anyone` to the agent that fits it best, and one with no
 mention to every agent.
 
@@ -73,7 +73,7 @@ the right, with the line you write in under it. Neither side moves or changes wi
 | `Tab`         | Go to the list                                                    | Back to writing                            |
 | `Ctrl+F`      |                                                                   | Show only what the agent wrote or was sent |
 | `Esc`         | Close the list of names, then the panel                           | Close the panel                            |
-| `Alt+R`       | Close the panel, back to the chat                                 | Same                                       |
+| `Alt+G`       | Close the panel, back to the chat                                 | Same                                       |
 
 Typing while the list has the keys writes in the room, so you never have to go back first.
 
@@ -81,7 +81,7 @@ Typing while the list has the keys writes in the room, so you never have to go b
 
 The folder's room is always there. A shared room joins other folders, or single sessions from them, so an agent
 in `~/Projects/frontend` and one in `~/Projects/backend` talk without you carrying the questions. Each room is a line
-on the left of `Alt+R`, after the folder's, and each keeps its own unsent line. An agent from another folder shows it after
+on the left of `Alt+G`, after the folder's, and each keeps its own unsent line. An agent from another folder shows it after
 its name, like `api · backend`, and a message from a shared room says which room it came from.
 
 <!-- docs:peers/rooms -->
@@ -122,7 +122,7 @@ agent is told to say which `room`. `@everyone` and `@anyone` stay in the room th
 
 An agent asks for a room with `link` in the `peers` tool, which brings sessions open in another folder, never the
 folder itself: a folder is a lasting change, and those are yours. The setting "When an agent asks for a room"
-decides who lets it through: the permission mode, always you (even in `full`), or you alone, from `Alt+R`.
+decides who lets it through: the permission mode, always you (even in `full`), or you alone, from `Alt+G`.
 
 A shared room gets the part of the tasks the board shows, not every change to them, so a busy session does not
 fill every room it is in.
@@ -241,7 +241,7 @@ On the Peers tab of `Alt+S`, stored under `peers` in `~/.pi/agent/extensions/pi-
 | ----------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | While it runs                 | between calls               | How a colleague's message reaches your agent while its run is going: between calls (the default), after the run ends, or with your next prompt. A message marked urgent always attaches between calls |
 | Model                         | `auto`                      | The model that bids for this session. `auto` is the cheapest of the session's provider                                                                                                                |
-| When an agent asks for a room | the permission mode decides | Who lets an agent's `link` through: the permission mode like any call, always you (even in `full`), or only you, from `Alt+R`                                                                         |
+| When an agent asks for a room | the permission mode decides | Who lets an agent's `link` through: the permission mode like any call, always you (even in `full`), or only you, from `Alt+G`                                                                         |
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
 

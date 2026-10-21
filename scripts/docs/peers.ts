@@ -1,4 +1,4 @@
-// The Alt+R pictures, built by letting sessions in three folders log into their rooms and reading the
+// The Alt+G pictures, built by letting sessions in three folders log into their rooms and reading the
 // panel back, so they show what the package draws and not a hand-made mockup.
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -54,7 +54,7 @@ When the list does not have the keys, as the agents in the room while you write,
 
 | Shape        | Where                         | Size                                                       |
 | ------------ | ----------------------------- | ---------------------------------------------------------- |
-| Panel        | `Alt+R` rooms, `Alt+T` tasks  | Rooms fill the screen; tasks a centered overlay, about 80% |
+| Panel        | `Alt+G` rooms, `Alt+T` tasks  | Rooms fill the screen; tasks a centered overlay, about 80% |
 | Full screen  | `Alt+S` settings              | The whole terminal                                         |
 | Inline       | Questions, permission         | In place of the editor, full width, content tall           |
 | Small dialog | Accounts, login, model picker | Narrow, centered, one short list                           |
@@ -112,7 +112,7 @@ says who or what it is, and its bottom edge says what became of it and how long 
 
 The kit draws them: `entryFrame()` is the frame, and `GLYPH` and `LINE` name every character.
 A dashed frame has not happened yet. A message that leaves the queue becomes a `you` frame in the
-transcript. The rooms (Alt+R) fill the screen, so they draw lighter: a message is a header line,
+transcript. The rooms (Alt+G) fill the screen, so they draw lighter: a message is a header line,
 its words and its receipt, with no frame of its own, and the panel's frame is in `borderMuted`.
 
 ## The start screen
