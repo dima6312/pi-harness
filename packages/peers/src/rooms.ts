@@ -56,6 +56,8 @@ interface Shared {
 	folder: Folder;
 	stop: () => void;
 	here?: Here;
+	/** Closed and left: nothing more to read in it. */
+	done?: boolean;
 }
 
 /** Where a message goes: the room, and the sessions in it. */
@@ -166,7 +168,7 @@ export class Rooms implements RoomsView {
 			this.#scan();
 			for (const room of this.#shared.values()) {
 				if (room.here !== undefined) room.here.sync();
-				else room.folder.apply(room.feed.read());
+				else if (room.done !== true) room.folder.apply(room.feed.read());
 			}
 			this.#reconcile();
 		});
@@ -517,7 +519,10 @@ export class Rooms implements RoomsView {
 			if (member && room.here === undefined) this.#join(room);
 			else if (!member && room.here !== undefined) this.#leave(room);
 			// A closed room never opens again, so there is nothing more to watch in it.
-			if (room.folder.membership.closed && room.here === undefined) room.stop();
+			if (room.folder.membership.closed && room.here === undefined && room.done !== true) {
+				room.stop();
+				room.done = true;
+			}
 		}
 	}
 
