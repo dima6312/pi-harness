@@ -2,6 +2,35 @@
 
 Every `@adeildo/` package in this repository shares one version, one tag and this changelog. The entries below 4.0.0 are from before, when `pi-ask-permission` was the only package.
 
+## [5.12.0](https://github.com/felipeadeildo/pi-harness/compare/v5.11.2...v5.12.0) (2026-10-21)
+
+
+### Features
+
+* **kit:** the frame draws a line of tabs under its top edge, and the column line starts under them ([7d94634](https://github.com/felipeadeildo/pi-harness/commit/7d94634f0fa41ebcd8c34a1ce35fb5ea2ce2cff5))
+* **look:** shared rooms' agents follow the folder's after a rule ([72f262b](https://github.com/felipeadeildo/pi-harness/commit/72f262b0f6bd3dd1f5aba45e2af6f9f34c6f6304))
+* **peers:** a tab per room in Alt+G, and a rooms tab to make and change them ([74152f2](https://github.com/felipeadeildo/pi-harness/commit/74152f267a5fa781f7f9f30cbf4e8055837c337b))
+* **peers:** Alt+G opens the rooms again ([69ad9e0](https://github.com/felipeadeildo/pi-harness/commit/69ad9e0c3f4ff8e0aa3b899c1e2cc13c61bb6fd0))
+* **peers:** Alt+R opens the rooms ([9bb6edb](https://github.com/felipeadeildo/pi-harness/commit/9bb6edb94ebd47089f412bde97a25c6f110e631e))
+* **peers:** receipts for [@everyone](https://github.com/everyone) fan out per agent, and [@anyone](https://github.com/anyone) shows its bids live ([b25b3e8](https://github.com/felipeadeildo/pi-harness/commit/b25b3e83f9c9fae22db604c8d1ee5f5a2077235e))
+* **peers:** receipts read the room the message went to ([b47ddc5](https://github.com/felipeadeildo/pi-harness/commit/b47ddc556e9789ed66a9682a99ffb84d70478f6e))
+* **peers:** sessions join shared rooms across folders, and an agent can ask for one ([74e8ab5](https://github.com/felipeadeildo/pi-harness/commit/74e8ab54d2f389ca84e3682b96352c74ba7ea2ca))
+* **peers:** the contract of shared rooms, the events that fold them and the view the screen reads ([6e0340c](https://github.com/felipeadeildo/pi-harness/commit/6e0340caf6b63f973e76f1d591ceef692f85687d))
+* **peers:** the rooms panel fills the screen, with the rooms on the left and no box per message ([74f24d2](https://github.com/felipeadeildo/pi-harness/commit/74f24d2663b67ec7c09f59f71f2c9bb5b972acdf))
+
+
+### Bug Fixes
+
+* **kit:** keys that only fit across the bottom edge run under the column ([992a8a8](https://github.com/felipeadeildo/pi-harness/commit/992a8a89ffad2025d5751fa0afa50a4bc734d9a0))
+* **peers:** a new session gets nothing sent before it opened, and wakes only after your first prompt ([1ab8709](https://github.com/felipeadeildo/pi-harness/commit/1ab87094542ede2d1daf779b3cc7dcbd01f9a673))
+* **peers:** agents talking during your run no longer trip the loop brake, and held messages show right away ([48567a5](https://github.com/felipeadeildo/pi-harness/commit/48567a55b5cd17645376fb1f6229a3676633f942))
+* **providers:** the Claude Code eval no longer reads href="thumb.png" as the OAuth beta ([70ac80d](https://github.com/felipeadeildo/pi-harness/commit/70ac80db0ee3e745fc72221ea6e4ffe321ca9eca))
+
+
+### Performance Improvements
+
+* **peers:** a closed room is read once, then left alone ([2a6f83c](https://github.com/felipeadeildo/pi-harness/commit/2a6f83cc6c8189af65eb5b4572ea3d31d475ddef))
+
 ## [5.11.2](https://github.com/felipeadeildo/pi-harness/compare/v5.11.1...v5.11.2) (2026-10-19)
 
 
