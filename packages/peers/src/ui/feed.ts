@@ -15,7 +15,7 @@ const INDENT = 2;
 const BAR_CELLS = 5;
 const TOGETHER_MS = 60_000;
 /** A message nobody logged after this stops spinning. */
-const ON_ITS_WAY_MS = 60_000;
+export const ON_ITS_WAY_MS = 60_000;
 
 /** A long message shows this many lines, unless it is the newest or the room is narrowed. */
 const BODY_SHOWN = 4;
@@ -424,14 +424,16 @@ function fitting(parts: readonly string[], width: number, theme: Theme): string 
 	return line;
 }
 
-function bar(value: number, color: ThemeColor, theme: Theme): string {
+/** How well an agent fits a request, as a short row of cells in its color. */
+export function bar(value: number, color: ThemeColor, theme: Theme): string {
 	const filled = Math.max(0, Math.min(BAR_CELLS, Math.round(value * BAR_CELLS)));
 	return (
 		theme.fg(color, "\u25b0".repeat(filled)) + theme.fg("dim", "\u25b1".repeat(BAR_CELLS - filled))
 	);
 }
 
-function fit(value: number): string {
+/** A fit as the room writes it: `.62`, or `1.0`. */
+export function fit(value: number): string {
 	return value >= 1 ? "1.0" : value.toFixed(2).replace(/^0/, "");
 }
 
