@@ -37,13 +37,24 @@ describe("the frame", () => {
 	test("a column line meets the edges under the column", () => {
 		const lines = frame(plain, 30, [`${"a".repeat(10)} \u2502 b`], {
 			title: "Room",
-			keys: [["tab", "agents"]],
+			keys: [["tab", "go"]],
 			split: 11,
 		});
 		const column = lines[1]?.indexOf("\u2502", 1) ?? -1;
 		expect(lines[0]?.[column]).toBe("\u252c");
 		expect(lines[2]?.[column]).toBe("\u2534");
 		for (const line of lines) expect(visibleWidth(line)).toBe(30);
+	});
+
+	test("keys that only fit across the whole bottom edge run under the column", () => {
+		const keys = [
+			["n", "new"],
+			["esc", "close"],
+		] as const;
+		const bottom = frame(plain, 30, [], { title: "Rooms", keys, split: 11 }).at(-1) ?? "";
+		expect(bottom).toContain("n new   esc close");
+		expect(bottom).not.toContain("\u2534");
+		expect(visibleWidth(bottom)).toBe(30);
 	});
 
 	test("tabs sit under the top edge, and the column line starts under their rule", () => {
@@ -62,7 +73,7 @@ describe("the frame", () => {
 	});
 
 	test("tabs that do not fit drop from the front, and the current one stays", () => {
-		const titles = ["pi-harness", "hedy-ada", "release", "rooms"];
+		const titles = ["pi-harness", "backend+frontend", "release", "rooms"];
 		const [, tabs] = frame(plain, 30, [], { title: "Peers", tabs: { titles, current: 3 } });
 		expect(tabs).toContain("rooms");
 		expect(tabs).toContain("\u22ef");

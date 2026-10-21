@@ -108,10 +108,15 @@ function divider(theme: Theme, width: number, column: Junction | undefined): str
 
 /** The bottom edge on its own, for a screen that draws the rest itself. */
 export function frameBottom(theme: Theme, width: number, options: BottomOptions = {}): string {
-	const cross = junction(options.split, LINE.teeBottom);
+	const keys = options.keys ?? [];
+	// The keys may run under the column when they only all fit there; the column then stops short.
+	const wanted = visibleWidth(keyHints(theme, keys));
+	const past = options.split === undefined ? 0 : FRAME_PAD + options.split + 2;
+	const crowded = wanted <= width - 6 && wanted > width - 6 - past;
+	const cross = crowded ? undefined : junction(options.split, LINE.teeBottom);
 	// Past the column line when there is one, as the edge places a label that does not fit before it.
 	const room = width - 6 - (cross === undefined ? 0 : cross.at + 1);
-	const hints = keyHints(theme, fitKeys(theme, options.keys ?? [], room));
+	const hints = keyHints(theme, fitKeys(theme, keys, room));
 	const footnote = options.footnote ?? "";
 	const note = visibleWidth(hints) + visibleWidth(footnote) + 3 <= room ? footnote : "";
 	return edge(theme, width, LINE.bottomLeft, LINE.bottomRight, hints, note, cross);
