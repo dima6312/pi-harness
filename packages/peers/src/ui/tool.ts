@@ -177,7 +177,11 @@ function addressLine(here: Source | undefined, to: "all" | "any" | string[], the
 			"accent",
 			theme.bold(`@${to === "all" ? EVERYONE_MENTION : ANYONE_MENTION}`),
 		);
-		const others = here?.live().filter((peer) => peer.session !== here.session).length ?? 0;
+		const others =
+			here
+				?.live()
+				.filter((peer) => peer.session !== here.session && (to === "all" || peer.prompted === true))
+				.length ?? 0;
 		return `${group}  ${theme.fg("dim", audienceNote(to, others))}`;
 	}
 	const names = [...(here?.names().values() ?? [])];
@@ -306,7 +310,9 @@ class Receipts {
 		const message = this.#message;
 		const live = this.#here.live();
 		const ranking = award(message, live, this.#now);
+		// One the operator has not written in yet does not bid.
 		const candidates = live
+			.filter((peer) => peer.prompted === true)
 			.map((peer) => peer.session)
 			.filter((session) => session !== message.session || message.from === "you");
 		let status: string;

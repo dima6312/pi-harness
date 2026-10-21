@@ -42,7 +42,8 @@ interface Note {
 	display?: boolean;
 }
 
-function session(id: string, fit: Fit = { fit: 0.5, reason: "" }) {
+/** A session in the room; `prompted` says the operator already wrote in it, as most tests need. */
+function session(id: string, fit: Fit = { fit: 0.5, reason: "" }, prompted = true) {
 	const sent: Sent[] = [];
 	const notes: Note[] = [];
 	const shown: PeerMessageDetails[] = [];
@@ -72,6 +73,7 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }) {
 	const here = new Here(hooks);
 	opened.push(here);
 	here.open({ getCwd: () => "/repo", getSessionId: () => id }, undefined);
+	if (prompted) here.prompted();
 	return { here, sent, notes, shown, state };
 }
 
@@ -174,6 +176,56 @@ describe("a message", () => {
 		const other = sessions[writer];
 		other?.here.sync();
 		expect(other?.sent.at(-1)?.options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
+	});
+});
+
+describe("a session the operator just opened", () => {
+	test("never gets what was sent before it opened", () => {
+		const a = session("a");
+		a.here.post("all", "before you came", "agent");
+		now += 1_000;
+		const b = session("b", undefined, false);
+		b.here.prompted();
+		b.here.sync();
+		expect(b.sent).toEqual([]);
+	});
+
+	test("is not woken by an agent until the operator writes in it", () => {
+		const a = session("a");
+		const b = session("b", undefined, false);
+		a.here.post("all", "anyone on the migration?", "agent");
+		b.here.sync();
+		expect(b.sent.map((sent) => sent.options)).toEqual([{ deliverAs: "nextTurn" }]);
+
+		b.here.prompted();
+		a.here.post(["b"], "now you are on", "agent");
+		b.here.sync();
+		expect(b.sent.at(-1)?.options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
+	});
+
+	test("your message to everyone from another session counts as the first prompt", () => {
+		const a = session("a");
+		const b = session("b", undefined, false);
+		a.here.post("all", "everyone, check the build", "you");
+		b.here.sync();
+		expect(b.sent[0]?.kind).toBe("user");
+
+		a.here.post(["b"], "and the lint", "agent");
+		b.here.sync();
+		expect(b.sent.at(-1)?.options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
+	});
+
+	test("does not bid on a request until the operator writes in it, then bids on what is open", async () => {
+		const a = session("a");
+		const b = session("b", undefined, false);
+		a.here.post("any", "add tests for the callback", "agent");
+		await settle(a, b);
+		const request = () => [...b.here.folder.messages.values()][0];
+		expect(request()?.bids.has("b")).toBe(false);
+
+		b.here.prompted();
+		await settle(a, b);
+		expect(request()?.bids.has("b")).toBe(true);
 	});
 });
 

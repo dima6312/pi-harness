@@ -47,6 +47,8 @@ export async function peersRoom(
 		mkdirSync(cwd, { recursive: true });
 		const rooms = new Rooms({ ...hooks, fit: async () => ({ fit, reason: "" }) });
 		rooms.open({ getCwd: () => cwd, getSessionId: () => id }, undefined);
+		// You already wrote in each of them: only then do the others wake it, or count its bid.
+		rooms.prompted();
 		opened.push(rooms);
 		return rooms;
 	}

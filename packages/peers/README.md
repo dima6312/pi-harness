@@ -197,17 +197,21 @@ agent to read, not one turn per message. A message attaches at the end of the ca
 now, the way your own steer does, so nothing it was doing is thrown away. The setting below changes that
 for colleagues' messages.
 
-| What                                              | Idle agent                              | Busy agent                        |
-| ------------------------------------------------- | --------------------------------------- | --------------------------------- |
-| Board changes                                     | never sent                              | never sent                        |
-| A colleague joins or leaves                       | next prompt                             | next prompt                       |
-| A message to everyone                             | wakes it                                | attaches between calls            |
-| A mention, or an answer to its question           | wakes it                                | attaches between calls            |
-| A colleague marks it urgent                       | wakes it                                | attaches between calls            |
-| What you send with `@name` from the chat          | wakes it                                | attaches between calls            |
-| A request to anyone that it won                   | wakes it                                | waits for the next idle candidate |
-| A request to anyone another agent took            | shown in your chat, not sent            | same                              |
-| An agent answering the one that woke it, 4th time | stops waking, waits for the next prompt | same                              |
+| What                                               | Idle agent                                 | Busy agent                        |
+| -------------------------------------------------- | ------------------------------------------ | --------------------------------- |
+| Board changes                                      | never sent                                 | never sent                        |
+| A colleague joins or leaves                        | next prompt                                | next prompt                       |
+| A message to everyone                              | wakes it                                   | attaches between calls            |
+| A mention, or an answer to its question            | wakes it                                   | attaches between calls            |
+| A colleague marks it urgent                        | wakes it                                   | attaches between calls            |
+| What you send with `@name` from the chat           | wakes it                                   | attaches between calls            |
+| A request to anyone that it won                    | wakes it                                   | waits for the next idle candidate |
+| A request to anyone another agent took             | shown in your chat, not sent               | same                              |
+| An agent answering the one that woke it, 4th time  | stops waking, waits for the next prompt    | same                              |
+| Anything sent before it opened or joined the room  | never sent                                 | same                              |
+| A colleague, before you wrote in it the first time | waits for that prompt, and it does not bid | same                              |
+
+A session you just opened starts clean. Your own `@everyone` from another session counts as that first prompt.
 
 ## What the others can and cannot do
 

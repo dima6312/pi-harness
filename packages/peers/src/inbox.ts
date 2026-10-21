@@ -42,8 +42,6 @@ export interface InboxHooks {
 
 /** A room handing over what is due in it, and logging the receipts once the agent has it. */
 export interface Sender {
-	/** When this session joined the room: what was posted before waits for your next prompt. */
-	readonly openedAt: number;
 	details(message: Posted): PeerMessageDetails;
 	handed(messages: readonly Posted[], mode: Delivery): void;
 }
@@ -59,6 +57,8 @@ export class Inbox {
 	#depth = 0;
 	#holding = 0;
 	#waiting: Arrival[] = [];
+	/** The operator has written to this session: before that, a colleague's message waits for it. */
+	#awake = false;
 
 	constructor(hooks: InboxHooks) {
 		this.#hooks = hooks;
@@ -68,9 +68,26 @@ export class Inbox {
 		return this.#depth;
 	}
 
+	get awake(): boolean {
+		return this.#awake;
+	}
+
 	/** Someone typed a prompt here: what the agent writes next starts a new chain. */
 	prompted(): void {
 		this.#depth = 0;
+		this.#awake = true;
+	}
+
+	/** A session reopened after the operator had already written in it. */
+	wake(): void {
+		this.#awake = true;
+	}
+
+	/** Another session opens in this process: it starts asleep, with nothing waiting. */
+	reset(): void {
+		this.#depth = 0;
+		this.#awake = false;
+		this.#waiting = [];
 	}
 
 	/** Runs `work`, and hands over everything that arrived during it together. */
@@ -103,6 +120,8 @@ export class Inbox {
 			from,
 			messages: messages.filter((message) => message.from === "you"),
 		}));
+		// Your words from another session wake it as a prompt here would.
+		if (yours.some((arrival) => arrival.messages.length > 0)) this.#awake = true;
 		if (theirs.some((arrival) => arrival.messages.length > 0)) this.#handPeer(theirs);
 		if (yours.some((arrival) => arrival.messages.length > 0)) this.#handYou(yours);
 	}
@@ -137,13 +156,10 @@ export class Inbox {
 		this.#depth = Math.max(...messages.map(runDepth));
 	}
 
-	/** Posted before this session joined waits for your next prompt; the rest follows the rule. */
+	/** Until the operator writes here, it waits for that first prompt; then it follows the rule. */
 	#modeFor(arrivals: readonly Arrival[]): Delivery {
+		if (!this.#awake) return "next-turn";
 		const messages = arrivals.flatMap((arrival) => arrival.messages);
-		const old = arrivals.every((arrival) =>
-			arrival.messages.every((message) => message.at < arrival.from.openedAt),
-		);
-		if (old) return "next-turn";
 		return deliveryFor({
 			busy: !this.#hooks.idle(),
 			urgent: messages.some((message) => message.urgent === true),

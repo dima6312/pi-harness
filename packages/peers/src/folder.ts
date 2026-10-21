@@ -26,6 +26,8 @@ export interface Peer {
 	title?: string;
 	state: SessionState;
 	stateAt: number;
+	/** The operator wrote here at least once. Until then nothing from the room wakes it. */
+	prompted?: boolean;
 	tasks?: SessionTasks;
 	edited: Map<string, number>;
 	ran: { command: string; ok: boolean; at: number }[];
@@ -129,6 +131,7 @@ export class Folder {
 				return;
 			}
 			case "session.prompted":
+				peer.prompted = true;
 				return;
 			case "tasks.changed":
 			case "tasks.board":

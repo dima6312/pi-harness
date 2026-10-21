@@ -25,7 +25,13 @@ const plain = {
 const handles: Record<string, string> = { me: "writer", a: "oauth", b: "migration", c: "docs" };
 
 function peer(session: string): Peer {
-	return { session, handle: handles[session], startedAt: 0, state: "idle" } as unknown as Peer;
+	return {
+		session,
+		handle: handles[session],
+		startedAt: 0,
+		state: "idle",
+		prompted: true,
+	} as unknown as Peer;
 }
 
 function source(message: Posted, open = ["me", "a", "b", "c"]): Source {

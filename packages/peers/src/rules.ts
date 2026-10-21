@@ -23,9 +23,12 @@ export type Award =
  */
 export function award(request: Posted, live: readonly Peer[], now: number): Award {
 	if (request.takenBy !== undefined) return { kind: "taken", by: request.takenBy };
-	const open = new Map(live.map((peer) => [peer.session, peer]));
+	// A session the operator has not written in yet does not bid, so it is not waited for either.
+	const open = new Map(
+		live.filter((peer) => peer.prompted === true).map((peer) => [peer.session, peer]),
+	);
 	const bids = [...request.bids].filter(([session]) => open.has(session));
-	const everyone = live.every((peer) => request.bids.has(peer.session));
+	const everyone = [...open.keys()].every((session) => request.bids.has(session));
 	const closes = request.at + BID_WINDOW_MS;
 	if (!everyone && now < closes) return { kind: "bidding", until: closes };
 

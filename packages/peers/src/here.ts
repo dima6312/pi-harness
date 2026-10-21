@@ -31,7 +31,7 @@ export { forModel, PEER_MESSAGE, type PeerDelivery, type PeerMessageDetails } fr
 export const PEER_NOTE = "pi-peers:note";
 /** A request to everyone another session took, kept in this transcript only. */
 export const PEER_BROADCAST = "pi-peers:broadcast";
-/** Older messages and requests are history, never delivered or bid on. */
+/** Older messages and requests are history, never delivered or bid on, and so is what came before the session. */
 const RECENT_MS = 10 * 60_000;
 /** A session that has shown nothing yet waits this long before it is worth telling the agent about. */
 const ANNOUNCE_MS = 4_000;
@@ -197,14 +197,19 @@ export class Here implements Sender {
 		this.#feed = place.feed ?? new FolderFeed(place.target.dir);
 		this.#folder = place.folder ?? new Folder();
 		if (place.folder === undefined) this.#folder.apply(this.#feed.read());
+		// Set before logging: the log reads the room, and what it finds is judged against this.
+		// A reload opens the session again, and what arrived while it reloaded is still for this run.
+		const me = this.#folder.peers.get(this.session ?? "");
+		this.#openedAt = me?.startedAt ?? this.#now();
+		if (me?.prompted === true) this.#inbox.wake();
 		this.log("session.started", {
 			pid: process.pid,
 			host: HOST,
 			cwd: place.cwd,
 			...(place.model === undefined ? {} : { model: place.model }),
 		});
-		// A reload opens the session again, and what arrived while it reloaded is still for this run.
-		this.#openedAt = this.#folder.peers.get(this.session ?? "")?.startedAt ?? this.#now();
+		// Joining a room after the operator wrote: the others there count it among those who bid.
+		if (this.#inbox.awake && me?.prompted !== true) this.log("session.prompted", {});
 		if (place.watch !== false) this.#stopWatching = this.#feed.watch(() => this.sync());
 		for (const message of this.#folder.messages.values()) this.#consider(message);
 		this.#evaluate();
@@ -317,8 +322,11 @@ export class Here implements Sender {
 
 	/** Someone typed a prompt here: what the agent writes next starts a new chain. */
 	prompted(): void {
+		const first = !this.#inbox.awake;
 		this.#inbox.prompted();
 		this.log("session.prompted", {});
+		// Requests that came while it slept are its to bid on now.
+		if (first) for (const message of this.#openRequests()) this.#consider(message);
 	}
 
 	started(): void {
@@ -457,7 +465,7 @@ export class Here implements Sender {
 	}
 
 	#consider(message: Posted): void {
-		if (message.to !== "any" || this.#now() - message.at > RECENT_MS) return;
+		if (message.to !== "any" || !this.#recent(message) || !this.#inbox.awake) return;
 		// An agent asking everyone does not bid on its own request.
 		if (message.from === "agent" && message.session === this.session) return;
 		void this.#bid(message);
@@ -565,7 +573,12 @@ export class Here implements Sender {
 	#due(message: Posted, me: string, now: number): boolean {
 		if (!reaches(message, me)) return false;
 		if (message.received.has(me) || this.#delivered.has(message.id)) return false;
-		return now - message.at <= RECENT_MS;
+		return this.#recent(message, now);
+	}
+
+	/** Sent after this session joined the room, and not so long ago it is history. */
+	#recent(message: Posted, now = this.#now()): boolean {
+		return message.at >= this.#openedAt && now - message.at <= RECENT_MS;
 	}
 
 	/** Claims the request, and says whether this session got it: another one may have been first. */

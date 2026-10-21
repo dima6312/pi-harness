@@ -118,6 +118,7 @@ export class Rooms implements RoomsView {
 
 	open(session: SessionSource, model: string | undefined): void {
 		this.end();
+		this.#inbox.reset();
 		this.#session = session.getSessionId();
 		this.#cwd = real(session.getCwd());
 		this.#model = model;

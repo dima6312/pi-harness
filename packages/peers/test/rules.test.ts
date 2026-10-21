@@ -84,6 +84,7 @@ function peer(session: string, handle?: string, startedAt = 0) {
 		startedAt,
 		stateAt: startedAt,
 		state: "idle" as const,
+		prompted: true,
 		edited: new Map(),
 		ran: [],
 		commits: [],
@@ -123,8 +124,9 @@ describe("names", () => {
 });
 
 describe("who takes a request", () => {
-	function request(bids: [string, number, boolean][], peers = ["a", "b", "c"]) {
+	function request(bids: [string, number, boolean][], peers = ["a", "b", "c"], prompted = peers) {
 		const events: LoggedEvent[] = peers.map((session) => started(session));
+		for (const session of prompted) events.push(event(session, "session.prompted", {}));
 		const at = (clock += 10);
 		events.push(
 			event("a", "message.posted", { id: "r1", from: "you", to: "all", text: "do it" }, at),
@@ -140,6 +142,12 @@ describe("who takes a request", () => {
 		const posted = folder.messages.get("r1")!;
 		expect(award(posted, live, at + 1)).toEqual({ kind: "bidding", until: at + BID_WINDOW_MS });
 		expect(award(posted, live, at + BID_WINDOW_MS).kind).toBe("ranked");
+	});
+
+	test("a session the operator has not written in yet is not waited for", () => {
+		const { folder, at, live } = request([["a", 0.9, true]], ["a", "b"], ["a"]);
+		const ranking = award(folder.messages.get("r1")!, live, at + 1);
+		expect(ranking).toMatchObject({ kind: "ranked", order: ["a"] });
 	});
 
 	test("idle beats busy, then the best fit; the next in line takes it if the winner stays quiet", () => {

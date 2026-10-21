@@ -187,6 +187,34 @@ describe("a shared room", () => {
 		).toContain("later");
 	});
 
+	test("a session that joins a room later never gets what was said there before", () => {
+		const api = session("api", "backend");
+		const client = session("client", "frontend");
+		const id = api.rooms.create("backend+frontend", [{ folder: api.cwd }, { folder: client.cwd }]);
+		sync(api, client);
+		client.rooms.here(id)?.post("all", "the contract moved", "agent");
+		now += 1_000;
+		const later = session("later", "frontend");
+		sync(api, client, later);
+		expect(later.rooms.here(id)).toBeDefined();
+		expect(
+			later
+				.peers()
+				.map((one) => one.text)
+				.join("\n"),
+		).not.toContain("the contract moved");
+	});
+
+	test("a session the operator already wrote in bids in a room it joins later", () => {
+		const api = session("api", "backend");
+		const client = session("client", "frontend");
+		client.rooms.prompted();
+		const id = api.rooms.create("backend+frontend", [{ folder: api.cwd }, { folder: client.cwd }]);
+		sync(api, client);
+		const seen = api.rooms.here(id)?.folder.peers.get("client");
+		expect(seen?.prompted).toBe(true);
+	});
+
 	test("a name finds its room, and the message says where its writer works", () => {
 		const api = session("api", "backend");
 		const client = session("client", "frontend");
