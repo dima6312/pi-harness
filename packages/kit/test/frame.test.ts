@@ -46,6 +46,30 @@ describe("the frame", () => {
 		for (const line of lines) expect(visibleWidth(line)).toBe(30);
 	});
 
+	test("tabs sit under the top edge, and the column line starts under their rule", () => {
+		const lines = frame(plain, 30, [`${"a".repeat(10)} \u2502 b`], {
+			title: "Peers",
+			tabs: { titles: ["home", "shared", "rooms"], current: 1 },
+			split: 11,
+		});
+		const column = lines[3]?.indexOf("\u2502", 1) ?? -1;
+		expect(lines[0]).not.toContain("\u252c");
+		expect(lines[1]).toBe("\u2502  home   shared   rooms     \u2502");
+		expect(lines[2]?.[0]).toBe("\u251c");
+		expect(lines[2]?.[column]).toBe("\u252c");
+		expect(lines[2]?.at(-1)).toBe("\u2524");
+		for (const line of lines) expect(visibleWidth(line)).toBe(30);
+	});
+
+	test("tabs that do not fit drop from the front, and the current one stays", () => {
+		const titles = ["pi-harness", "hedy-ada", "release", "rooms"];
+		const [, tabs] = frame(plain, 30, [], { title: "Peers", tabs: { titles, current: 3 } });
+		expect(tabs).toContain("rooms");
+		expect(tabs).toContain("\u22ef");
+		expect(tabs).not.toContain("pi-harness");
+		expect(visibleWidth(tabs ?? "")).toBe(30);
+	});
+
 	test("a long title gives way, and the status drops before the frame breaks", () => {
 		const [top] = frame(plain, 20, [], { title: "A very long title indeed", status: "9 of 9" });
 		expect(visibleWidth(top ?? "")).toBe(20);

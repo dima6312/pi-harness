@@ -26,6 +26,13 @@ export interface FrameOptions extends BottomOptions {
 	title: string;
 	/** On the right of the top edge: counts, a step, how far along. */
 	status?: string;
+	/** A line of tabs under the top edge, ruled off from the body, which the column line meets. */
+	tabs?: FrameTabs;
+}
+
+export interface FrameTabs {
+	titles: readonly string[];
+	current: number;
 }
 
 export interface BottomOptions {
@@ -49,6 +56,8 @@ export function frame(
 	options: FrameOptions,
 ): string[] {
 	const title = options.title === "" ? "" : theme.bold(theme.fg("accent", options.title));
+	const column = junction(options.split, LINE.teeTop);
+	const { tabs } = options;
 	const top = edge(
 		theme,
 		width,
@@ -56,14 +65,45 @@ export function frame(
 		LINE.topRight,
 		title,
 		options.status ?? "",
-		junction(options.split, LINE.teeTop),
+		tabs === undefined ? column : undefined,
 	);
+	const head =
+		tabs === undefined
+			? []
+			: [
+					row(theme, width, tabsLine(theme, tabs, frameInner(width)), false),
+					divider(theme, width, column),
+				];
 	const rows = body.map((line) =>
 		typeof line === "string"
 			? row(theme, width, line, false)
 			: row(theme, width, line.text, line.selected === true),
 	);
-	return [top, ...rows, frameBottom(theme, width, options)];
+	return [top, ...head, ...rows, frameBottom(theme, width, options)];
+}
+
+/**
+ * The tabs, the current one in the accent. When they do not fit, the ones before the current give way
+ * first, so the tab you are on always shows.
+ */
+function tabsLine(theme: Theme, tabs: FrameTabs, inner: number): string {
+	const gap = "   ";
+	const drawn = tabs.titles.map((title, index) =>
+		index === tabs.current ? theme.fg("accent", theme.bold(title)) : theme.fg("muted", title),
+	);
+	const more = theme.fg("dim", GLYPH.ellipsisAcross);
+	let start = 0;
+	const line = () => [...(start > 0 ? [more] : []), ...drawn.slice(start)].join(gap);
+	while (start < tabs.current && visibleWidth(line()) > inner) start++;
+	return line();
+}
+
+/** The rule between the tabs and the body, with the column line starting under it. */
+function divider(theme: Theme, width: number, column: Junction | undefined): string {
+	const span = Math.max(0, width - 2);
+	const cells: string[] = Array.from({ length: span }, () => LINE.h);
+	if (column !== undefined && column.at - 1 < span) cells[column.at - 1] = column.char;
+	return theme.fg("border", `${LINE.teeLeft}${cells.join("")}${LINE.teeRight}`);
 }
 
 /** The bottom edge on its own, for a screen that draws the rest itself. */
