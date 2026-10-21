@@ -1,6 +1,6 @@
 {
 	"name": "@adeildo/pi-providers",
-	"version": "5.12.0",
+	"version": "6.0.0",
 	"description": "Provider features for Pi. Bills Anthropic OAuth requests to the Claude Pro or Max plan, keeps several accounts per provider, keeps the prompt cache warm while you are away, and adds OpenAI-compatible endpoints from /login.",
 	"keywords": [
 		"anthropic",
