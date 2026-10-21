@@ -37,6 +37,8 @@ export interface Glyphs {
 	empty: string;
 	levels: readonly string[];
 	ellipsis: string;
+	/** Between the agents of the folder and those of each shared room. */
+	apart: string;
 }
 
 const COMMON = {
@@ -48,6 +50,7 @@ const COMMON = {
 	conflicted: "!",
 	sent: "↑",
 	received: "↓",
+	apart: "│",
 };
 
 export const NERD: Glyphs = {
@@ -114,6 +117,7 @@ export const UNICODE: Glyphs = {
 
 export const ASCII: Glyphs = {
 	set: "ascii",
+	apart: "|",
 	folder: "",
 	branch: "",
 	host: "@",

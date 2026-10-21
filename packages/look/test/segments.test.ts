@@ -86,6 +86,16 @@ describe("segments", () => {
 		expect(text(["peers"], snapshot())).toEqual([]);
 	});
 
+	test("the agents of a shared room come after the folder's, past a rule", () => {
+		const peers = [
+			{ handle: "oauth", color: "syntaxFunction", state: "idle" as const },
+			{ handle: "hedy-api", color: "syntaxString", state: "running" as const, room: "hedy-ada" },
+			{ handle: "migration", color: "syntaxType", state: "idle" as const },
+		];
+		const [piece] = render(["peers"], snapshot({ peers, peersUnread: 0 }));
+		expect(plainText(piece?.text ?? "")).toBe("@ oauth  @ migration  |  @ hedy-api");
+	});
+
 	test("with several tasks under way, the first shows and the rest count", () => {
 		let tasks = applyTaskOps(emptyTasks(), [{ op: "ask", text: "a" }], YOU);
 		tasks = applyTaskOps(tasks, [{ op: "ask", text: "b" }], { ...YOU, busy: true });

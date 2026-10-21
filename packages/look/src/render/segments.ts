@@ -160,7 +160,7 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 	peers: {
 		priority: 25,
 		describe:
-			"the other agents in this folder, each by the name it chose and in its colour, then @ how many messages wait for an answer",
+			"the other agents in this folder, then those of each shared room after a rule, each by the name it chose and in its colour, then @ how many messages wait for an answer",
 		// The whole folder, then one name, then the bare mark, as the line runs out of room.
 		render: ({ snapshot, glyphs, paint }) => {
 			const peers = snapshot.peers;
@@ -170,7 +170,12 @@ export const SEGMENTS: Record<BuiltinSegment, Segment> = {
 			if (first === undefined) return mentions === "" ? undefined : { text: mentions };
 			const named = (peer: PeerMark) => paint.raw(peer.color, `${glyphs.peers} ${peer.handle}`);
 			const rest = peers.length > 1 ? paint.dim(` +${peers.length - 1}`) : "";
-			const full = joined([...peers].map(named).join("  "), mentions);
+			const rooms = new Map<string, string[]>();
+			for (const peer of peers)
+				rooms.set(peer.room ?? "", [...(rooms.get(peer.room ?? "") ?? []), named(peer)]);
+			const apart = `  ${paint.dim(glyphs.apart)}  `;
+			const groups = [...rooms.values()].map((group) => group.join("  "));
+			const full = joined(groups.join(apart), mentions);
 			const short = joined(named(first) + rest, mentions);
 			const least = joined(paint.raw(first.color, glyphs.peers), mentions);
 			return {
