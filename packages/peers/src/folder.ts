@@ -16,6 +16,8 @@ export interface Peer {
 	pid?: number;
 	host?: string;
 	model?: string;
+	/** Where it works. Its edited paths are relative to this. Absent in logs older than rooms. */
+	cwd?: string;
 	startedAt: number;
 	endedAt?: number;
 	handle?: string;
@@ -99,7 +101,7 @@ export class Folder {
 		switch (event.type) {
 			case "session.started": {
 				const data = event.data as LoggedEvent<"session.started">["data"];
-				Object.assign(peer, { pid: data.pid, host: data.host, model: data.model });
+				Object.assign(peer, { pid: data.pid, host: data.host, model: data.model, cwd: data.cwd });
 				peer.endedAt = undefined;
 				this.#happen({ kind: "joined", session: peer.session, at: event.at });
 				return;

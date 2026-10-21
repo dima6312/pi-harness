@@ -10,6 +10,8 @@ export interface PeerMark {
 	/** A theme color name, so a peer looks the same in the footer, the room and the board. */
 	color: string;
 	state: "running" | "idle" | "waiting";
+	/** The shared room it is in with this session, absent for the folder's room. */
+	room?: string;
 }
 
 export interface PeersProbe {

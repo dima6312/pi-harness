@@ -62,6 +62,24 @@ export function eventsDir(cwd: string, root = eventsRoot()): string {
 	return join(root, `--${cwd.replace(/^[/\\]+/, "").replace(/[/\\:]+/g, "-")}--`);
 }
 
+/**
+ * Where shared rooms live, one directory each. A folder's directory always starts with `--`, so this
+ * never takes a folder's name.
+ */
+export function roomsDir(root = eventsRoot()): string {
+	return join(root, "rooms");
+}
+
+/** The directory of a shared room's logs. */
+export function roomDir(id: string, root = eventsRoot()): string {
+	return join(roomsDir(root), id);
+}
+
+/** The index of the sessions open now, one small file each, so finding them reads no logs. */
+export function liveDir(root = eventsRoot()): string {
+	return join(root, "live");
+}
+
 export function targetOf(session: SessionSource, root?: string): LogTarget {
 	return { dir: eventsDir(session.getCwd(), root), session: session.getSessionId() };
 }
