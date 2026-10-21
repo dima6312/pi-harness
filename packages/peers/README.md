@@ -21,7 +21,7 @@ dies stops writing, and its log stays as the record of what it did.
 <!-- docs:peers/room -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The room panel in a rounded frame, in two columns. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration working on moving the sessions table; this session last, rewriting the README, with the files it touched. On the right the room, every message in a frame in its writer's color: your request to switch the login to OAuth with the bids as bars inside the frame and oauth taking it on the bottom edge, migration's commit as a plain line, oauth asking migration about src/auth.ts with woke it on the bottom edge, migration's answer with its rail still lit inside the frame, oauth's draft in a dashed frame saying writing, and under it all the line you write in, dashed, naming who the words go to." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The room panel in a rounded frame, titled Peers, with a tab per room under the top edge: pi-harness, the one shown, then backend+frontend and rooms. In two columns below. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration working on moving the sessions table; this session last, rewriting the README, with the files it touched. On the right the room, every message in a frame in its writer's color: your request to switch the login to OAuth with the bids as bars inside the frame and oauth taking it on the bottom edge, migration's commit as a plain line, oauth asking migration about src/auth.ts with woke it on the bottom edge, migration's answer with its rail still lit inside the frame, oauth's draft in a dashed frame saying writing, and under it all the line you write in, dashed, naming who the words go to." width="860">
   <br>
   <em>Alt+G: what every agent in the folder is doing, beside the room you talk in.</em>
 </p>
@@ -82,6 +82,16 @@ The folder's room is always there. A shared room joins other folders, or single 
 in `~/Projects/frontend` and one in `~/Projects/backend` talk without you carrying the questions. Each room is a tab
 of `Alt+G`, after the folder's, and each keeps its own unsent line. An agent from another folder shows it after
 its name, like `api · backend`, and a message from a shared room says which room it came from.
+
+<!-- docs:peers/rooms -->
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/rooms.png" alt="The rooms tab of the same panel. On the left the rooms: pi-harness, this folder, always, and backend+frontend selected, with 3 sessions. On the right its members: client from frontend, api from backend and docs from pi-harness, each idle, and under a rule the line saying client asked for it to agree on the /v1/fleet contract and you said yes. The keys along the bottom: pick, new, add, leave, close, members." width="860">
+  <br>
+  <em>The rooms tab: the rooms this session is in, who each one counts, and how it came to be.</em>
+</p>
+
+<!-- /docs -->
 
 The last tab, `rooms`, lists the rooms this session is in and who each one counts. A folder brings every session
 opened there, today and later; a session brings only itself.

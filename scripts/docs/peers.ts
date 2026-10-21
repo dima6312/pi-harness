@@ -1,29 +1,37 @@
-// The Alt+G picture, built by letting three sessions log into a folder and reading the room back, so
-// it shows what the package draws and not a hand-made mockup.
-import { mkdtempSync, rmSync } from "node:fs";
+// The Alt+G pictures, built by letting sessions in three folders log into their rooms and reading the
+// panel back, so they show what the package draws and not a hand-made mockup.
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Theme } from "@earendil-works/pi-coding-agent";
 
 import { applyTaskOps, emptyTasks, type SessionTasks } from "../../packages/kit/src/index.ts";
-import { Here, type Hooks } from "../../packages/peers/src/here.ts";
-import { RoomView } from "../../packages/peers/src/ui/room.ts";
+import type { Here, Hooks } from "../../packages/peers/src/here.ts";
+import { Rooms } from "../../packages/peers/src/rooms.ts";
+import { PeersPanel } from "../../packages/peers/src/ui/panel.ts";
 import { WIDTH } from "./drive.ts";
 
 /** 12:38 on the clock the picture reads. */
 const START = Date.UTC(2026, 9, 8, 12, 38);
 const SECOND = 1_000;
 
+/** The `rooms` tab, on the shared room. */
+export const ROOMS_TAB = ["\x1b[D", "\x1b[B"] as const;
+
 export async function peersRoom(
 	theme: Theme,
 	width = WIDTH,
 	keys: readonly string[] = [],
+	rows = 28,
 ): Promise<string[]> {
 	const root = mkdtempSync(join(tmpdir(), "peers-docs-"));
-	process.env.PI_HARNESS_EVENTS = root;
+	const home = process.env.HOME;
+	process.env.PI_HARNESS_EVENTS = join(root, "events");
+	// The folders show as ~/Projects/..., whoever draws the picture.
+	process.env.HOME = root;
 	let now = START;
-	const opened: Here[] = [];
+	const opened: Rooms[] = [];
 	const hooks = {
 		events: { emit() {}, on: () => () => {} },
 		sendMessage() {},
@@ -34,11 +42,13 @@ export async function peersRoom(
 		alive: () => true,
 	} as unknown as Hooks;
 
-	function session(id: string, fit: number): Here {
-		const here = new Here({ ...hooks, fit: async () => ({ fit, reason: "" }) });
-		here.open({ getCwd: () => "/repo/pi-harness", getSessionId: () => id }, undefined);
-		opened.push(here);
-		return here;
+	function session(id: string, fit: number, folder = "pi-harness"): Rooms {
+		const cwd = join(root, "Projects", folder);
+		mkdirSync(cwd, { recursive: true });
+		const rooms = new Rooms({ ...hooks, fit: async () => ({ fit, reason: "" }) });
+		rooms.open({ getCwd: () => cwd, getSessionId: () => id }, undefined);
+		opened.push(rooms);
+		return rooms;
 	}
 
 	function tasks(title: string, ops: Parameters<typeof applyTaskOps>[1]): SessionTasks {
@@ -47,11 +57,14 @@ export async function peersRoom(
 
 	try {
 		// Opened in this order so the board reads in the same order on every machine.
-		const oauth = session("9c1e-oauth", 0.82);
+		const oauthRooms = session("9c1e-oauth", 0.82);
 		now += SECOND;
-		const migration = session("77b0-migration", 0.37);
+		const migrationRooms = session("77b0-migration", 0.37);
 		now += SECOND;
-		const me = session("3f2a-docs", 0.2);
+		const meRooms = session("3f2a-docs", 0.2);
+		const oauth = homeOf(oauthRooms);
+		const migration = homeOf(migrationRooms);
+		const me = homeOf(meRooms);
 
 		oauth.log("session.named", { handle: "oauth", title: "OAuth for the MCP server" });
 		oauth.log("session.state", { state: "running" });
@@ -92,9 +105,9 @@ export async function peersRoom(
 		// You ask anyone, both agents bid, and the best fit takes it.
 		me.post("any", "Switch the login to OAuth", "you");
 		now += 4 * SECOND;
-		await bid(oauth, migration);
+		await bid(oauthRooms, migrationRooms);
 		now += 8 * SECOND;
-		await bid(oauth, migration);
+		await bid(oauthRooms, migrationRooms);
 
 		now += 20 * SECOND;
 		migration.log("activity", {
@@ -112,38 +125,62 @@ export async function peersRoom(
 		migration.post(["9c1e-oauth"], "Not anymore, it's yours. I'm on the SQL files only.", "agent");
 		// Two seconds on, the answer's rail is still lit and oauth is writing back.
 		now += 2 * SECOND;
-		oauth.sync();
+		oauthRooms.sync();
 		oauth.typing("@migration", "Thanks. I'll push the callback and tell you when auth.ts is clear");
-		me.sync();
+		meRooms.sync();
 
-		const view = new RoomView({
+		// Another folder's agent asked for a room with this one's, and the room has news.
+		now += SECOND;
+		const api = session("5d10-api", 0.5, "backend");
+		const client = session("b7e3-client", 0.5, "frontend");
+		api.log("session.named", { handle: "api", title: "The fleet API" });
+		client.log("session.named", { handle: "client", title: "The fleet client" });
+		const linked = client.link({
+			folder: join(root, "Projects", "backend"),
+			why: "to agree on the /v1/fleet contract",
+			allowedBy: "you",
+		});
+		if (linked.room === undefined) throw new Error(linked.text);
+		meRooms.add(linked.room, [{ session: "3f2a-docs", cwd: join(root, "Projects", "pi-harness") }]);
+		for (const rooms of [api, client, meRooms]) rooms.sync();
+		now += 30 * SECOND;
+		api.here(linked.room)?.post("all", "/v1/fleet now has a capacity field.", "agent");
+		for (const rooms of [api, client, oauthRooms, migrationRooms]) rooms.sync();
+		meRooms.sync();
+
+		const view = new PeersPanel({
 			theme,
-			here: me,
-			title: "pi-harness",
-			rows: () => 28,
+			view: meRooms,
+			rows: () => rows,
 			now: () => now,
 			// UTC, so the picture reads the same on every machine.
 			clock: (at) => new Date(at).toISOString().slice(11, 16),
 			close() {},
 			requestRender() {},
-			send() {},
 		});
 		view.focused = true;
 		for (const key of keys) view.handleInput(key);
 		return view.render(width);
 	} finally {
-		for (const here of opened) here.close();
+		for (const rooms of opened) rooms.end();
 		delete process.env.PI_HARNESS_EVENTS;
+		process.env.HOME = home;
 		rmSync(root, { recursive: true, force: true });
 	}
 }
 
 /** Everyone reads the new events, bids, and the one in line takes the request. */
-async function bid(...sessions: Here[]): Promise<void> {
+async function bid(...sessions: Rooms[]): Promise<void> {
 	for (let round = 0; round < 4; round++) {
-		for (const here of sessions) here.sync();
+		for (const rooms of sessions) rooms.sync();
 		// oxlint-disable-next-line no-await-in-loop -- a bid resolves over a few ticks
 		await new Promise((resolve) => setTimeout(resolve, 0));
 	}
-	for (const here of sessions) here.sync();
+	for (const rooms of sessions) rooms.sync();
+}
+
+function homeOf(rooms: Rooms): Here {
+	const here = rooms.home;
+	if (here === undefined) throw new Error("the session did not open");
+	return here;
 }

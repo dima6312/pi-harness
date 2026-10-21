@@ -25,7 +25,7 @@ import { pruneLine } from "./compact.ts";
 import { KEYS, openDialog, press, type, WIDTH } from "./drive.ts";
 import { drawLook, lookParts } from "./look.ts";
 import { assistantText, userMessage } from "./messages.ts";
-import { peersRoom } from "./peers.ts";
+import { peersRoom, ROOMS_TAB } from "./peers.ts";
 import { settingsLines } from "./settings.ts";
 import { tasksPanel } from "./tasks.ts";
 
@@ -378,8 +378,15 @@ export const SCENES: readonly Scene[] = [
 	{
 		name: "peers/room",
 		caption: "Alt+G: what every agent in the folder is doing, beside the room you talk in.",
-		alt: "The room panel in a rounded frame, in two columns. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration working on moving the sessions table; this session last, rewriting the README, with the files it touched. On the right the room, every message in a frame in its writer's color: your request to switch the login to OAuth with the bids as bars inside the frame and oauth taking it on the bottom edge, migration's commit as a plain line, oauth asking migration about src/auth.ts with woke it on the bottom edge, migration's answer with its rail still lit inside the frame, oauth's draft in a dashed frame saying writing, and under it all the line you write in, dashed, naming who the words go to.",
+		alt: "The room panel in a rounded frame, titled Peers, with a tab per room under the top edge: pi-harness, the one shown, then backend+frontend and rooms. In two columns below. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration working on moving the sessions table; this session last, rewriting the README, with the files it touched. On the right the room, every message in a frame in its writer's color: your request to switch the login to OAuth with the bids as bars inside the frame and oauth taking it on the bottom edge, migration's commit as a plain line, oauth asking migration about src/auth.ts with woke it on the bottom edge, migration's answer with its rail still lit inside the frame, oauth's draft in a dashed frame saying writing, and under it all the line you write in, dashed, naming who the words go to.",
 		draw: (theme) => peersRoom(theme),
+	},
+	{
+		name: "peers/rooms",
+		caption:
+			"The rooms tab: the rooms this session is in, who each one counts, and how it came to be.",
+		alt: "The rooms tab of the same panel. On the left the rooms: pi-harness, this folder, always, and backend+frontend selected, with 3 sessions. On the right its members: client from frontend, api from backend and docs from pi-harness, each idle, and under a rule the line saying client asked for it to agree on the /v1/fleet contract and you said yes. The keys along the bottom: pick, new, add, leave, close, members.",
+		draw: (theme) => peersRoom(theme, undefined, ROOMS_TAB, 11),
 	},
 	{
 		name: "harness/conversation",
