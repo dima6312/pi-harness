@@ -1,7 +1,7 @@
 // The one frame every dialog of the harness wears: a rounded line on the terminal's own background,
 // the title and a status in the top edge, the keys in the bottom edge. No surface paints a background,
 // so nothing clashes with the terminal's theme. See DESIGN.md.
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 import { CUT, GLYPH, LINE } from "./glyphs.ts";
@@ -42,6 +42,8 @@ export interface BottomOptions {
 	footnote?: string;
 	/** A column line inside, this many columns into the text, meeting both edges. */
 	split?: number;
+	/** The color of the lines. A screen that fills the terminal draws them quieter than a dialog. */
+	border?: ThemeColor;
 }
 
 /** The text width inside a frame this wide. */
@@ -58,8 +60,10 @@ export function frame(
 	const title = options.title === "" ? "" : theme.bold(theme.fg("accent", options.title));
 	const column = junction(options.split, LINE.teeTop);
 	const { tabs } = options;
+	const border = options.border ?? "border";
 	const top = edge(
 		theme,
+		border,
 		width,
 		LINE.topLeft,
 		LINE.topRight,
@@ -71,13 +75,13 @@ export function frame(
 		tabs === undefined
 			? []
 			: [
-					row(theme, width, tabsLine(theme, tabs, frameInner(width)), false),
-					divider(theme, width, column),
+					row(theme, border, width, tabsLine(theme, tabs, frameInner(width)), false),
+					divider(theme, border, width, column),
 				];
 	const rows = body.map((line) =>
 		typeof line === "string"
-			? row(theme, width, line, false)
-			: row(theme, width, line.text, line.selected === true),
+			? row(theme, border, width, line, false)
+			: row(theme, border, width, line.text, line.selected === true),
 	);
 	return [top, ...head, ...rows, frameBottom(theme, width, options)];
 }
@@ -99,11 +103,16 @@ function tabsLine(theme: Theme, tabs: FrameTabs, inner: number): string {
 }
 
 /** The rule between the tabs and the body, with the column line starting under it. */
-function divider(theme: Theme, width: number, column: Junction | undefined): string {
+function divider(
+	theme: Theme,
+	border: ThemeColor,
+	width: number,
+	column: Junction | undefined,
+): string {
 	const span = Math.max(0, width - 2);
 	const cells: string[] = Array.from({ length: span }, () => LINE.h);
 	if (column !== undefined && column.at - 1 < span) cells[column.at - 1] = column.char;
-	return theme.fg("border", `${LINE.teeLeft}${cells.join("")}${LINE.teeRight}`);
+	return theme.fg(border, `${LINE.teeLeft}${cells.join("")}${LINE.teeRight}`);
 }
 
 /** The bottom edge on its own, for a screen that draws the rest itself. */
@@ -119,7 +128,8 @@ export function frameBottom(theme: Theme, width: number, options: BottomOptions 
 	const hints = keyHints(theme, fitKeys(theme, keys, room));
 	const footnote = options.footnote ?? "";
 	const note = visibleWidth(hints) + visibleWidth(footnote) + 3 <= room ? footnote : "";
-	return edge(theme, width, LINE.bottomLeft, LINE.bottomRight, hints, note, cross);
+	const border = options.border ?? "border";
+	return edge(theme, border, width, LINE.bottomLeft, LINE.bottomRight, hints, note, cross);
 }
 
 /**
@@ -134,14 +144,20 @@ function fitKeys(theme: Theme, keys: readonly KeyHint[], room: number): KeyHint[
 }
 
 /** A row of text, padded to the frame. A selected row gets the accent bar against the left side. */
-function row(theme: Theme, width: number, text: string, selected: boolean): string {
+function row(
+	theme: Theme,
+	border: ThemeColor,
+	width: number,
+	text: string,
+	selected: boolean,
+): string {
 	const inner = frameInner(width);
 	// The line is measured to pad it anyway, so it is only cut when it does not fit.
 	const cells = visibleWidth(text);
 	const clipped = cells > inner ? truncateToWidth(text, inner, CUT) : text;
 	const shown = cells > inner ? visibleWidth(clipped) : cells;
 	const fill = " ".repeat(Math.max(0, inner - shown));
-	const side = theme.fg("border", LINE.v);
+	const side = theme.fg(border, LINE.v);
 	const lead = selected
 		? `${theme.fg("accent", BAR)}${" ".repeat(FRAME_PAD - 1)}`
 		: " ".repeat(FRAME_PAD);
@@ -183,6 +199,7 @@ function junction(split: number | undefined, char: string): Junction | undefined
  */
 function edge(
 	theme: Theme,
+	color: ThemeColor,
 	width: number,
 	left: string,
 	right: string,
@@ -190,7 +207,7 @@ function edge(
 	note: string,
 	cross?: Junction,
 ): string {
-	const border = (text: string) => theme.fg("border", text);
+	const border = (text: string) => theme.fg(color, text);
 	const span = Math.max(0, width - 2);
 	const at = cross === undefined || cross.at - 1 >= span ? undefined : cross.at - 1;
 	const head = label === "" ? "" : ` ${label} `;

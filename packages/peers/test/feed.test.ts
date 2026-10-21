@@ -71,12 +71,12 @@ function draw(room: RoomItem[], only?: string): string[] {
 }
 
 describe("the room", () => {
-	test("an answer right under its question shows just its words inside its frame", () => {
+	test("an answer right under its question shows just its words", () => {
 		const lines = draw([
 			said("1", "a", ["b"], "Are you touching src/auth.ts?", 1_000),
 			said("2", "b", ["a"], "Not anymore.", 2_000),
 		]);
-		const at = lines.findIndex((line) => line.startsWith("╭─ @migration → @oauth"));
+		const at = lines.findIndex((line) => line.startsWith("@migration → @oauth"));
 		expect(lines[at - 1]).toBe("");
 		expect(lines[at + 1]).toContain("Not anymore.");
 	});
@@ -87,7 +87,7 @@ describe("the room", () => {
 			said("2", "c", ["a"], "Unrelated.", 1_500),
 			said("3", "b", ["a"], "Not anymore.", 2_000),
 		]);
-		const at = lines.findIndex((line) => line.startsWith("╭─ @migration → @oauth"));
+		const at = lines.findIndex((line) => line.startsWith("@migration → @oauth"));
 		expect(lines[at + 1]).toContain("\u21b1 @oauth Are you touching src/auth.ts?");
 	});
 
@@ -95,7 +95,7 @@ describe("the room", () => {
 		const text = "\nfirst\n\nsecond\n\nthird\nfourth\nfifth";
 		const room = [said("1", "a", ["b"], text, 1_000), said("2", "b", ["a"], "ok", 2_000)];
 		const lines = draw(room);
-		const at = lines.findIndex((line) => line.startsWith("╭─ @oauth → @migration"));
+		const at = lines.findIndex((line) => line.startsWith("@oauth → @migration"));
 		const body = lines.slice(at + 1, at + 5).join("\n");
 		expect(body).toContain("first");
 		expect(body).toContain("second");
@@ -109,17 +109,17 @@ describe("the room", () => {
 		]);
 	});
 
-	test("what became of a message sits on the frame's bottom edge", () => {
+	test("what became of a message is the last line under it", () => {
 		const room = [said("1", "a", ["b"], "hi", 1_000)];
 		const message = room[0]?.kind === "message" ? room[0].message : undefined;
 		message?.read.add("b");
 		const lines = draw(room);
-		expect(lines[0]).toContain("╭─ @oauth → @migration");
+		expect(lines[0]).toContain("@oauth → @migration");
 		expect(lines[0]).toContain("12:00");
 		expect(lines.at(-1)).toContain("✓✓ read");
 	});
 
-	test("a message that just arrived keeps its rail, inside the frame", () => {
+	test("a message that just arrived keeps its rail", () => {
 		expect(draw([said("1", "a", ["b"], "hi", 1_000_000 - 1)])[1]).toContain("\u258e");
 		expect(draw([said("1", "a", ["b"], "hi", 1_000)])[1]).not.toContain("\u258e");
 	});
@@ -156,17 +156,17 @@ describe("the room", () => {
 		expect(draw([], "b")).toEqual(["Nothing from or to migration yet."]);
 	});
 
-	test("a message to everyone says how many got it, and its frame stays closed", () => {
+	test("a message to everyone says how many got it", () => {
 		const message = said("1", "c", "all", "deploy at six", 1_000);
 		if (message.kind === "message") {
 			message.message.received.set("a", { mode: "woke", at: 1_100 });
 			message.message.read.add("b");
 		}
 		const lines = draw([message], undefined);
-		const bottom = lines.find((line) => line.startsWith("\u2570")) ?? "";
+		const bottom = lines.at(-1) ?? "";
 		expect(bottom).toContain("1 read");
 		expect(bottom).toContain("1 got it");
-		expect(bottom.endsWith("\u256f")).toBe(true);
+		expect(lines.join("\n")).not.toMatch(/[\u256d\u2570]/);
 	});
 
 	test("a message moves while it is new or on its way, and stops after", () => {

@@ -57,31 +57,26 @@ function session(id: string, fit: Fit = { fit: 0.5, reason: "" }): Here {
 
 /** The room as this session sees it, with the composer focused. */
 function room(here: Here): RoomView {
-	const view = new RoomView({
+	return new RoomView({
 		theme: plain,
 		here,
-		title: "repo",
-		close: () => {},
 		requestRender: () => {},
 		send: () => {},
-		rows: () => 24,
 		now: () => now,
 		clock: () => "12:00",
 	});
-	view.focused = true;
-	return view;
 }
 
 function typing(view: RoomView, text: string): string {
 	for (const char of text) view.handleInput(char);
-	return stripTerminalSequences(view.render(100).join("\n"));
+	return stripTerminalSequences(view.lines(100, 20, true).join("\n"));
 }
 
 describe("what the composer promises", () => {
 	test("a group mention is a destination, not a mistake", () => {
 		const me = session("me");
 		const drawn = typing(room(me), "@everyone deploy at six");
-		expect(drawn).toContain("you → everyone");
+		expect(drawn).toContain("→ everyone");
 		expect(drawn).not.toContain("no agent");
 	});
 
@@ -91,7 +86,7 @@ describe("what the composer promises", () => {
 		const me = session("me");
 		const drawn = typing(room(me), "read @oauth.ts");
 		expect(drawn).not.toContain("no agent");
-		expect(drawn).toContain("you → everyone");
+		expect(drawn).toContain("→ everyone");
 	});
 
 	test("an unknown name is still a mistake", () => {

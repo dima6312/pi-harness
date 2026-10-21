@@ -38,8 +38,6 @@ const plain = {
 
 const UP = "\x1b[A";
 const DOWN = "\x1b[B";
-const RIGHT = "\x1b[C";
-const LEFT = "\x1b[D";
 const ENTER = "\r";
 const TAB = "\t";
 const ESC = "\x1b";
@@ -158,84 +156,117 @@ function press(panel: PeersPanel, ...keys: string[]): string {
 	return stripTerminalSequences(panel.render(110).join("\n"));
 }
 
-describe("the panel's tabs", () => {
-	test("it opens on the folder's room, with every room and `rooms` as tabs", () => {
+/** The column the line between the two sides sits at, on the first row of the body. */
+function columnAt(drawn: string): number {
+	const row = drawn.split("\n")[1] ?? "";
+	return row.indexOf("\u2502", 1);
+}
+
+describe("the panel's layout", () => {
+	test("it opens on the folder's room, with every room listed on the left", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		shared(rooms);
 		const drawn = press(panelOf(rooms));
-		expect(drawn).toContain("pi-harness   backend+frontend   rooms");
+		expect(drawn.split("\n")[0]).toContain("pi-harness");
+		expect(drawn).toContain("backend+frontend");
 		expect(drawn).toContain("message everyone, @ for one agent");
 	});
 
-	test("the arrows switch rooms from an empty line, and each room keeps its unsent line", () => {
+	test("the two sides keep their place whatever room is open", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		shared(rooms);
 		const panel = panelOf(rooms);
-		expect(press(panel, RIGHT)).toContain("message everyone in backend+frontend");
-		press(panel, ..."half a thought");
-		// With text on the line the arrows move the cursor, so the tab stays.
-		expect(press(panel, LEFT)).toContain("half a thought");
-		// From the agents column the arrows always switch.
-		expect(press(panel, TAB, LEFT)).toContain("message everyone, @ for one agent");
-		expect(press(panel, RIGHT)).toContain("half a thought");
+		const folder = press(panel);
+		const other = press(panel, TAB, DOWN, DOWN);
+		expect(other).toContain("message everyone in backend+frontend");
+		expect(columnAt(other)).toBe(columnAt(folder));
 	});
 
-	test("a line written in a room's tab goes to that room", () => {
+	test("moving onto a room opens it, and each room keeps its unsent line", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		shared(rooms);
 		const panel = panelOf(rooms);
-		press(panel, RIGHT, ..."the contract changed", ENTER);
+		press(panel, ..."half a thought");
+		expect(press(panel, TAB, DOWN, DOWN)).not.toContain("half a thought");
+		expect(press(panel, UP)).toContain("half a thought");
+	});
+
+	test("a line written goes to the open room", () => {
+		const rooms = new Rooms(session("me", "/repo"));
+		shared(rooms);
+		const panel = panelOf(rooms);
+		press(panel, TAB, DOWN, DOWN, TAB, ..."the contract changed", ENTER);
 		expect(rooms.sent).toEqual([{ room: "r1", text: "the contract changed" }]);
+	});
+
+	test("typing on the list writes in the room", () => {
+		const rooms = new Rooms(session("me", "/repo"));
+		const panel = panelOf(rooms);
+		press(panel, TAB, ..."hi", ENTER);
+		expect(rooms.sent).toEqual([{ room: undefined, text: "hi" }]);
 	});
 
 	test("a room this session left falls back to the folder's room", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		shared(rooms);
 		const panel = panelOf(rooms);
-		press(panel, RIGHT);
+		press(panel, TAB, DOWN, DOWN);
 		rooms.shown.pop();
 		expect(press(panel)).toContain("message everyone, @ for one agent");
 	});
-});
 
-describe("the rooms tab", () => {
-	test("it lists the rooms and who is in the selected one, with how it came to be", () => {
+	test("too narrow for both sides, it shows the side you are on", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		shared(rooms);
-		const drawn = press(panelOf(rooms), LEFT, DOWN);
-		expect(drawn).toContain("this folder, always");
-		expect(drawn).toContain("2 folders, 1 session");
-		expect(drawn).toContain("/home/x/backend");
-		expect(drawn).toContain("docs-help · research");
+		const panel = panelOf(rooms);
+		const write = stripTerminalSequences(panel.render(60).join("\n"));
+		expect(write).toContain("message everyone");
+		panel.handleInput(TAB);
+		const list = stripTerminalSequences(panel.render(60).join("\n"));
+		expect(list).toContain("backend+frontend");
+		expect(list).not.toContain("message everyone");
+	});
+});
+
+describe("changing the rooms", () => {
+	test("a shared room says how it came to be, and can be left", () => {
+		const rooms = new Rooms(session("me", "/repo"));
+		shared(rooms);
+		const drawn = press(panelOf(rooms), TAB, DOWN, DOWN);
 		expect(drawn).toContain("client asked");
+		expect(drawn).toContain("2 folders");
 		expect(drawn).toMatch(/l leave/);
 	});
 
 	test("the folder's room cannot be left or closed", () => {
 		const rooms = new Rooms(session("me", "/repo"));
-		const drawn = press(panelOf(rooms), LEFT, "l", "x");
+		const drawn = press(panelOf(rooms), TAB, "l", "x");
 		expect(rooms.calls).toEqual([]);
 		expect(drawn).not.toContain("l leave");
 		expect(drawn).not.toContain("close pi-harness?");
-		expect(drawn).toContain("n makes a room with");
+		expect(drawn).toContain("n  new room");
 	});
 
 	test("closing asks first, and only y closes", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		shared(rooms);
 		const panel = panelOf(rooms);
-		expect(press(panel, LEFT, DOWN, "x")).toContain("close backend+frontend?");
+		expect(press(panel, TAB, DOWN, DOWN, "x")).toContain("close backend+frontend?");
 		press(panel, ESC);
 		expect(rooms.calls).toEqual([]);
 		press(panel, "x", "y");
 		expect(rooms.calls).toEqual(["close r1"]);
 	});
 
-	test("r removes the member picked in the members column", () => {
+	test("r takes the agent under the cursor out of a shared room", () => {
 		const rooms = new Rooms(session("me", "/repo"));
-		shared(rooms);
-		press(panelOf(rooms), LEFT, DOWN, TAB, DOWN, DOWN, "r");
-		expect(rooms.calls).toEqual(["remove r1 session:s9"]);
+		const here = shared(rooms);
+		const api = session("api", "/home/x/backend");
+		api.log("session.named", { handle: "api", title: "API" });
+		here.sync();
+		// The room, then its agents: api first, this session last.
+		press(panelOf(rooms), TAB, DOWN, DOWN, DOWN, "r");
+		expect(rooms.calls).toEqual(["remove r1 session:api"]);
 	});
 
 	test("a new room starts with this session, then takes a name made of the folders", () => {
@@ -264,7 +295,7 @@ describe("the rooms tab", () => {
 			},
 		);
 		const panel = panelOf(rooms);
-		const picker = press(panel, LEFT, "n");
+		const picker = press(panel, TAB, "n");
 		expect(picker).toContain("New room");
 		expect(picker).toContain("1 picked");
 		const filtered = press(panel, ..."backend");
@@ -282,18 +313,18 @@ describe("the rooms tab", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		shared(rooms);
 		const panel = panelOf(rooms);
-		const drawn = press(panel, LEFT, DOWN, "a", ..."/srv/lab");
+		const drawn = press(panel, TAB, DOWN, DOWN, "a", ..."/srv/lab");
 		expect(drawn).toContain("Add to backend+frontend");
 		expect(drawn).toContain("/srv/lab");
 		press(panel, ENTER);
 		expect(rooms.calls).toEqual(["add r1 folder:/srv/lab"]);
 	});
 
-	test("esc in the picker goes back to the tab, and Alt+G closes the panel from anywhere", () => {
+	test("esc in the picker goes back to the room, and Alt+R closes the panel from anywhere", () => {
 		const rooms = new Rooms(session("me", "/repo"));
 		const panel = panelOf(rooms);
-		expect(press(panel, LEFT, "n", ESC)).toContain("this folder, always");
-		press(panel, UP, "\x1bg");
+		expect(press(panel, TAB, "n", ESC)).toContain("message everyone");
+		press(panel, UP, "\x1br");
 		expect(rooms.calls).toEqual(["closed panel"]);
 	});
 });
@@ -315,7 +346,7 @@ describe("the notice when this session joins or leaves", () => {
 			"me",
 		);
 		expect(joined).toBe(
-			"You joined backend+frontend, added by api: ask about /v1/fleet. With backend, docs-help. Alt+G shows it.",
+			"You joined backend+frontend, added by api: ask about /v1/fleet. With backend, docs-help. Alt+R shows it.",
 		);
 	});
 

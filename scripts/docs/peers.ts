@@ -1,4 +1,4 @@
-// The Alt+G pictures, built by letting sessions in three folders log into their rooms and reading the
+// The Alt+R pictures, built by letting sessions in three folders log into their rooms and reading the
 // panel back, so they show what the package draws and not a hand-made mockup.
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,8 +16,8 @@ import { WIDTH } from "./drive.ts";
 const START = Date.UTC(2026, 9, 8, 12, 38);
 const SECOND = 1_000;
 
-/** The `rooms` tab, on the shared room. */
-export const ROOMS_TAB = ["\x1b[D", "\x1b[B"] as const;
+/** The list, down past the folder's agents to the shared room. */
+export const SHARED_ROOM = ["\t", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"] as const;
 
 export async function peersRoom(
 	theme: Theme,

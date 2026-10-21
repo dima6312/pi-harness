@@ -25,7 +25,7 @@ import { pruneLine } from "./compact.ts";
 import { KEYS, openDialog, press, type, WIDTH } from "./drive.ts";
 import { drawLook, lookParts } from "./look.ts";
 import { assistantText, userMessage } from "./messages.ts";
-import { peersRoom, ROOMS_TAB } from "./peers.ts";
+import { peersRoom, SHARED_ROOM } from "./peers.ts";
 import { settingsLines } from "./settings.ts";
 import { tasksPanel } from "./tasks.ts";
 
@@ -377,16 +377,17 @@ export const SCENES: readonly Scene[] = [
 	},
 	{
 		name: "peers/room",
-		caption: "Alt+G: what every agent in the folder is doing, beside the room you talk in.",
-		alt: "The room panel in a rounded frame, titled Peers, with a tab per room under the top edge: pi-harness, the one shown, then backend+frontend and rooms. In two columns below. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration working on moving the sessions table; this session last, rewriting the README, with the files it touched. On the right the room, every message in a frame in its writer's color: your request to switch the login to OAuth with the bids as bars inside the frame and oauth taking it on the bottom edge, migration's commit as a plain line, oauth asking migration about src/auth.ts with woke it on the bottom edge, migration's answer with its rail still lit inside the frame, oauth's draft in a dashed frame saying writing, and under it all the line you write in, dashed, naming who the words go to.",
+		caption:
+			"Alt+R: the rooms on the left, the open one's agents under it, and what was said there.",
+		alt: "The panel over the whole screen, in a quiet frame titled pi-harness, the room that is open, with 1 waits and 3 open on the right of the top edge. On the left the rooms: pi-harness, open, with a flag because an agent waits on you, its agents under it, oauth waiting on you to push to main, migration and docs working for 2 minutes with what each is on; then backend+frontend with 1 unread. On the right the conversation, no box around any message: who joined, your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit as a plain line, oauth asking migration about src/auth.ts and migration's answer, each a header with the time on the right, the words under it and what became of it under them. At the bottom a thin rule and the line you write in.",
 		draw: (theme) => peersRoom(theme),
 	},
 	{
 		name: "peers/rooms",
 		caption:
-			"The rooms tab: the rooms this session is in, who each one counts, and how it came to be.",
-		alt: "The rooms tab of the same panel. On the left the rooms: pi-harness, this folder, always, and backend+frontend selected, with 3 sessions. On the right its members: client from frontend, api from backend and docs from pi-harness, each idle, and under a rule the line saying client asked for it to agree on the /v1/fleet contract and you said yes. The keys along the bottom: pick, new, add, leave, close, members.",
-		draw: (theme) => peersRoom(theme, undefined, ROOMS_TAB, 11),
+			"A shared room: its agents come from several folders, and the top says how it came to be.",
+		alt: "The same panel with backend+frontend open from the list, its name in the top edge with 3 open on the right. Under it in the list its agents: api from backend, client from frontend, and docs, this session. On the right the line saying client asked for it to agree on the /v1/fleet contract and you said yes, then api's message to everyone with how many got it. Along the bottom the keys of the list: move, write, new room, add, leave, close room.",
+		draw: (theme) => peersRoom(theme, undefined, SHARED_ROOM, 18),
 	},
 	{
 		name: "harness/conversation",

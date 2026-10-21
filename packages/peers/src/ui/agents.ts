@@ -21,6 +21,10 @@ export interface AgentsOptions {
 	width: number;
 	/** The pointer is bright while ↑↓ move it, and dim while you write in the room. */
 	focused?: boolean;
+	/** A line per agent, and what it does only under the selected one, for a narrow list. */
+	compact?: boolean;
+	/** Columns in front of every line, under whatever the list sits in. */
+	indent?: number;
 }
 
 export type AgentState = "running" | "idle" | "waiting";
@@ -52,6 +56,18 @@ export function stateText(peer: Peer, theme: Theme, now: number): string {
 	}
 }
 
+/** The state in a word or two, for a list too narrow for the whole of it. */
+function shortState(peer: Peer, theme: Theme, now: number): string {
+	switch (stateOf(peer)) {
+		case "waiting":
+			return theme.fg("warning", "waits");
+		case "running":
+			return theme.fg("muted", since(peer.stateAt, now));
+		case "idle":
+			return "";
+	}
+}
+
 /** The others first, this session last: it is the one you already know about. */
 export function inOrder(live: readonly Peer[], me: string | undefined): Peer[] {
 	return [...live].toSorted((a, b) => Number(a.session === me) - Number(b.session === me));
@@ -76,6 +92,8 @@ export function agentLines(
 	let selectedAt = 0;
 	let selectedEnd = 0;
 	const here = live.find((peer) => peer.session === options.me)?.cwd;
+	const indent = " ".repeat(options.indent ?? 0);
+	const compact = options.compact === true;
 	for (const [index, peer] of live.entries()) {
 		const named = names.get(peer.session);
 		const color = (named?.color ?? "muted") as ThemeColor;
@@ -90,15 +108,19 @@ export function agentLines(
 				: theme.fg("dim", ` \u00b7 ${base(peer.cwd)}`);
 		if (selected) selectedAt = lines.length;
 		lines.push(
-			spread(
+			`${indent}${spread(
 				`${marker}${markOf(peer, color, theme, now)} ${name}${where}${you}`,
-				stateText(peer, theme, now),
-				width,
-			),
+				compact ? shortState(peer, theme, now) : stateText(peer, theme, now),
+				width - indent.length,
+			)}`,
 		);
-		for (const line of details(peer, theme, width - 4, selected)) lines.push(`    ${line}`);
+		const room = width - indent.length - 4;
+		// A narrow list keeps one line of what each agent does, and the whole of it for the selected.
+		const shown =
+			compact && !selected ? glance(peer, theme, room) : details(peer, theme, room, selected);
+		for (const line of shown) lines.push(`${indent}    ${line}`);
 		if (selected) selectedEnd = lines.length;
-		if (index < live.length - 1) lines.push("");
+		if (!compact && index < live.length - 1) lines.push("");
 	}
 	return { lines, selectedAt, selectedEnd };
 }
@@ -122,6 +144,19 @@ function details(peer: Peer, theme: Theme, width: number, selected: boolean): st
 		lines.push(theme.fg("dim", truncateToWidth(`edited ${edited.join(", ")}`, width, CUT)));
 	if (selected && lines.length === 0) lines.push(theme.fg("dim", "nothing in progress"));
 	return lines;
+}
+
+/** What an agent waits on or does, cut to one line. */
+function glance(peer: Peer, theme: Theme, width: number): string[] {
+	const tasks = peer.tasks;
+	if (tasks === undefined) return [];
+	const waiting = tasksWith(tasks, "waiting")[0];
+	const doing = tasksWith(tasks, "doing")[0];
+	const first = waiting ?? doing;
+	if (first === undefined) return [];
+	return [
+		theme.fg(waiting === undefined ? "dim" : "warning", truncateToWidth(first.text, width, CUT)),
+	];
 }
 
 /** The first task wrapped to at most `most` lines, and how many others there are. */

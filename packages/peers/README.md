@@ -21,9 +21,9 @@ dies stops writing, and its log stays as the record of what it did.
 <!-- docs:peers/room -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The room panel in a rounded frame, titled Peers, with a tab per room under the top edge: pi-harness, the one shown, then backend+frontend and rooms. In two columns below. On the left the agents: oauth selected, waiting on you to push, on the OAuth callback, with the files it edited; migration working on moving the sessions table; this session last, rewriting the README, with the files it touched. On the right the room, every message in a frame in its writer's color: your request to switch the login to OAuth with the bids as bars inside the frame and oauth taking it on the bottom edge, migration's commit as a plain line, oauth asking migration about src/auth.ts with woke it on the bottom edge, migration's answer with its rail still lit inside the frame, oauth's draft in a dashed frame saying writing, and under it all the line you write in, dashed, naming who the words go to." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/room.png" alt="The panel over the whole screen, in a quiet frame titled pi-harness, the room that is open, with 1 waits and 3 open on the right of the top edge. On the left the rooms: pi-harness, open, with a flag because an agent waits on you, its agents under it, oauth waiting on you to push to main, migration and docs working for 2 minutes with what each is on; then backend+frontend with 1 unread. On the right the conversation, no box around any message: who joined, your request to switch the login to OAuth with the bids as bars and oauth taking it, migration's commit as a plain line, oauth asking migration about src/auth.ts and migration's answer, each a header with the time on the right, the words under it and what became of it under them. At the bottom a thin rule and the line you write in." width="860">
   <br>
-  <em>Alt+G: what every agent in the folder is doing, beside the room you talk in.</em>
+  <em>Alt+R: the rooms on the left, the open one's agents under it, and what was said there.</em>
 </p>
 
 <!-- /docs -->
@@ -33,7 +33,7 @@ committed. Each session publishes it as it goes, so anyone reads it without inte
 reads it with the `peers` tool, and nothing arrives in its context unless it asks or unless the work touches the
 same files.
 
-**The room** is a conversation. Everyone in the folder reads it, you included, and you type in it with `Alt+G`.
+**The room** is a conversation. Everyone in the folder reads it, you included, and you type in it with `Alt+R`.
 A message with `@name` goes to that agent, one with `@anyone` to the agent that fits it best, and one with no
 mention to every agent.
 
@@ -52,58 +52,58 @@ has not read yet.
 ## Reading the room
 
 In the panel, the message that just arrived keeps a lit rail in its writer's color for a few seconds, a message
-still on its way spins until the other side logs it, and an agent writing shows its draft in a dashed frame.
+still on its way spins until the other side logs it, and an agent writing shows its draft in grey, as it types.
 
-The room draws messages the way the transcript does. Each one wears a frame in its writer's color, with who
-wrote it and to whom on the top edge and the time on the right, and the words inside. What became of it sits on
-the bottom edge: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read. A long
-message shows its first lines, and the newest one shows in full. A request to everyone shows each bid as a bar
-while the bidding is open, and who took it on the bottom edge. The line you write in wears a dashed frame too,
-naming who the words go to, because it has not been sent yet. Comings, goings, restarts and commits stay one
-quiet line each.
+Each message is a line saying who wrote it to whom, with the time on the right, its words under it, and under
+them what became of it: it woke the agent, it waits for the end of the agent's run, it cut in, or it was read.
+There is no box around a message; the blank line between two is enough. A long message shows its first lines,
+and the newest one shows in full. A request to anyone shows each bid as a bar while the bidding is open, and who
+took it. Comings, goings, restarts and commits stay one quiet line each.
 
-| Key           | In the room                                                       | In the agents               |
-| ------------- | ----------------------------------------------------------------- | --------------------------- |
-| `↑` `↓`       | Scroll the room; it stops following new lines until the end       | Select an agent             |
-| `PgUp` `PgDn` | Scroll a page                                                     | Scroll the room a page      |
-| `Enter`       | Send to everyone, or to whom you `@` mention                      | Write to the selected agent |
-| `@`           | List the agents as you type a name; `Tab` or `Enter` completes it |                             |
-| `←` `→`       | Switch rooms while the line you write in is empty                 | Switch rooms                |
-| `Tab`         | Go to the agents                                                  | Back to the room            |
-| `Ctrl+F`      | Show only what the selected agent wrote, was sent or took         | Same                        |
-| `Esc`         | Close the list of names, then the panel                           | Back to the room            |
-| `Alt+G`       | Close the panel, back to the chat                                 | Same                        |
+The panel fills the screen. The rooms are on the left, the folder's first, and the open one lists its agents
+under its name: what each waits on or does, a flag for one that waits on you. The open room's conversation is on
+the right, with the line you write in under it. Neither side moves or changes width as you switch rooms.
 
-Typing while the agents column has the keys writes in the room, so you never have to go back first.
+| Key           | Writing                                                           | On the list                                |
+| ------------- | ----------------------------------------------------------------- | ------------------------------------------ |
+| `↑` `↓`       | Scroll the room; it stops following new lines until the end       | Move; on a room, open it                   |
+| `PgUp` `PgDn` | Scroll a page                                                     |                                            |
+| `Enter`       | Send to everyone, or to whom you `@` mention                      | Write in the room, or to the agent         |
+| `@`           | List the agents as you type a name; `Tab` or `Enter` completes it |                                            |
+| `Tab`         | Go to the list                                                    | Back to writing                            |
+| `Ctrl+F`      |                                                                   | Show only what the agent wrote or was sent |
+| `Esc`         | Close the list of names, then the panel                           | Close the panel                            |
+| `Alt+R`       | Close the panel, back to the chat                                 | Same                                       |
+
+Typing while the list has the keys writes in the room, so you never have to go back first.
 
 ## Rooms across folders
 
 The folder's room is always there. A shared room joins other folders, or single sessions from them, so an agent
-in `~/Projects/frontend` and one in `~/Projects/backend` talk without you carrying the questions. Each room is a tab
-of `Alt+G`, after the folder's, and each keeps its own unsent line. An agent from another folder shows it after
+in `~/Projects/frontend` and one in `~/Projects/backend` talk without you carrying the questions. Each room is a line
+on the left of `Alt+R`, after the folder's, and each keeps its own unsent line. An agent from another folder shows it after
 its name, like `api · backend`, and a message from a shared room says which room it came from.
 
 <!-- docs:peers/rooms -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/rooms.png" alt="The rooms tab of the same panel. On the left the rooms: pi-harness, this folder, always, and backend+frontend selected, with 3 sessions. On the right its members: client from frontend, api from backend and docs from pi-harness, each idle, and under a rule the line saying client asked for it to agree on the /v1/fleet contract and you said yes. The keys along the bottom: pick, new, add, leave, close, members." width="860">
+  <img src="https://raw.githubusercontent.com/felipeadeildo/pi-harness/main/packages/peers/assets/rooms.png" alt="The same panel with backend+frontend open from the list, its name in the top edge with 3 open on the right. Under it in the list its agents: api from backend, client from frontend, and docs, this session. On the right the line saying client asked for it to agree on the /v1/fleet contract and you said yes, then api's message to everyone with how many got it. Along the bottom the keys of the list: move, write, new room, add, leave, close room." width="860">
   <br>
-  <em>The rooms tab: the rooms this session is in, who each one counts, and how it came to be.</em>
+  <em>A shared room: its agents come from several folders, and the top says how it came to be.</em>
 </p>
 
 <!-- /docs -->
 
-The last tab, `rooms`, lists the rooms this session is in and who each one counts. A folder brings every session
-opened there, today and later; a session brings only itself.
+The list also changes the rooms. A folder brings every session opened there, today and later; a session brings
+only itself. Making a room or adding to one opens a picker where the conversation was.
 
-| Key   | In `rooms`                                                                       |
-| ----- | -------------------------------------------------------------------------------- |
-| `n`   | A new room: pick from what is open on this machine, or type a path, then name it |
-| `a`   | Add to the selected room                                                         |
-| `r`   | Remove the selected member, from the members column                              |
-| `l`   | Take this session out of the selected room                                       |
-| `x`   | Close the room, after asking                                                     |
-| `Tab` | Between the rooms and their members                                              |
+| Key | On the list                                                                      |
+| --- | -------------------------------------------------------------------------------- |
+| `n` | A new room: pick from what is open on this machine, or type a path, then name it |
+| `a` | Add to the open room                                                             |
+| `r` | Take the agent under the cursor out of the open room                             |
+| `l` | Take this session out of the open room                                           |
+| `x` | Close the open room, after asking                                                |
 
 The folder's room has no `a`, `r`, `l` or `x`.
 
@@ -122,7 +122,7 @@ agent is told to say which `room`. `@everyone` and `@anyone` stay in the room th
 
 An agent asks for a room with `link` in the `peers` tool, which brings sessions open in another folder, never the
 folder itself: a folder is a lasting change, and those are yours. The setting "When an agent asks for a room"
-decides who lets it through: the permission mode, always you (even in `full`), or you alone, from `Alt+G`.
+decides who lets it through: the permission mode, always you (even in `full`), or you alone, from `Alt+R`.
 
 A shared room gets the part of the tasks the board shows, not every change to them, so a busy session does not
 fill every room it is in.
@@ -238,7 +238,7 @@ On the Peers tab of `Alt+S`, stored under `peers` in `~/.pi/agent/extensions/pi-
 | ----------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | While it runs                 | between calls               | How a colleague's message reaches your agent while its run is going: between calls (the default), after the run ends, or with your next prompt. A message marked urgent always attaches between calls |
 | Model                         | `auto`                      | The model that bids for this session. `auto` is the cheapest of the session's provider                                                                                                                |
-| When an agent asks for a room | the permission mode decides | Who lets an agent's `link` through: the permission mode like any call, always you (even in `full`), or only you, from `Alt+G`                                                                         |
+| When an agent asks for a room | the permission mode decides | Who lets an agent's `link` through: the permission mode like any call, always you (even in `full`), or only you, from `Alt+R`                                                                         |
 
 Part of [pi-harness](https://github.com/felipeadeildo/pi-harness), which brings every piece in one install.
 

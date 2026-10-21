@@ -52,12 +52,12 @@ When the list does not have the keys, as the agents in the room while you write,
 
 ## Shapes
 
-| Shape        | Where                         | Size                                             |
-| ------------ | ----------------------------- | ------------------------------------------------ |
-| Panel        | `Alt+G` room, `Alt+T` tasks   | Centered overlay, about 80% of the screen        |
-| Full screen  | `Alt+S` settings              | The whole terminal                               |
-| Inline       | Questions, permission         | In place of the editor, full width, content tall |
-| Small dialog | Accounts, login, model picker | Narrow, centered, one short list                 |
+| Shape        | Where                         | Size                                                       |
+| ------------ | ----------------------------- | ---------------------------------------------------------- |
+| Panel        | `Alt+R` rooms, `Alt+T` tasks  | Rooms fill the screen; tasks a centered overlay, about 80% |
+| Full screen  | `Alt+S` settings              | The whole terminal                                         |
+| Inline       | Questions, permission         | In place of the editor, full width, content tall           |
+| Small dialog | Accounts, login, model picker | Narrow, centered, one short list                           |
 
 All four use the same frame, the same keys and the same selection. Only the size and the place change.
 
@@ -112,8 +112,8 @@ says who or what it is, and its bottom edge says what became of it and how long 
 
 The kit draws them: `entryFrame()` is the frame, and `GLYPH` and `LINE` name every character.
 A dashed frame has not happened yet. A message that leaves the queue becomes a `you` frame in the
-transcript. The room (Alt+G) draws its messages the same way, and the line you write in there and
-another agent's draft wear the dashed frame, because neither has been sent yet.
+transcript. The rooms (Alt+R) fill the screen, so they draw lighter: a message is a header line,
+its words and its receipt, with no frame of its own, and the panel's frame is in `borderMuted`.
 
 ## The start screen
 

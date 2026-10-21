@@ -1,4 +1,4 @@
-import { type Delivery, CUT, ENTRY_X, entryFrame, GLYPH } from "@adeildo/pi-kit";
+import { type Delivery, CUT, GLYPH, spread } from "@adeildo/pi-kit";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
@@ -108,9 +108,10 @@ export function feedView(
 }
 
 /**
- * A message wears the frame of a transcript entry: who wrote it to whom on the top edge with the time
- * on the right, the words inside, and what became of it on the bottom edge. An answer first quotes the
- * line it answers. See DESIGN.md, "The transcript".
+ * A message is a header (who wrote it to whom, the time on the right), its words two columns in, and
+ * what became of it under them, quiet. No box: the blank line between messages already sets them
+ * apart, and the panel's own frame is the only one on screen. An answer first quotes the line it
+ * answers.
  */
 function messageLines(
 	message: Posted,
@@ -121,12 +122,14 @@ function messageLines(
 	const { theme, now, width } = options;
 	const color = speakerColor(message, options);
 	const fresh = isFresh(message.at, now);
-	const room = Math.max(8, width - ENTRY_X - INDENT);
-	const body: string[] = [];
-	if (answered !== undefined) body.push(` ${quoteLine(answered, options)}`);
+	const room = Math.max(8, width - INDENT);
+	const urgent = message.urgent ? theme.fg("warning", `  ${GLYPH.flag} urgent`) : "";
+	const head = `${speaker(message, options)}${theme.fg("dim", ` ${GLYPH.right} `)}${recipients(message, options)}${urgent}`;
+	const lines = [spread(head, theme.fg(fresh ? color : "dim", options.clock(message.at)), width)];
+	if (answered !== undefined) lines.push(`  ${quoteLine(answered, options)}`);
 
 	// Only a message that just arrived keeps its rail lit, in its writer's color.
-	const lead = fresh ? `${theme.fg(color, "\u258e")} ` : "  ";
+	const lead = fresh ? `${theme.fg(color, "\u258e")} ` : " ".repeat(INDENT);
 	let wrapped = wrapTextWithAnsi(message.text.trim(), room);
 	if (!full) {
 		// A preview skips blank lines, so its few lines carry words.
@@ -137,16 +140,12 @@ function messageLines(
 				theme.fg("dim", `${words.length - BODY_SHOWN + 1} more lines, ctrl+f to read`),
 			];
 	}
-	for (const line of wrapped) body.push(`${lead}${theme.fg("text", line)}`);
+	for (const line of wrapped) lines.push(`${lead}${theme.fg("text", line)}`);
 
 	const receipts = receiptLines(message, options, room);
-	for (const line of receipts.inside) body.push(`  ${line}`);
-	return entryFrame(body, width, theme, {
-		top: `${speaker(message, options)}${theme.fg("dim", ` ${GLYPH.right} `)}${recipients(message, options)}${message.urgent ? theme.fg("warning", `  ${GLYPH.flag} urgent`) : ""}`,
-		topRight: theme.fg(fresh ? color : "dim", options.clock(message.at)),
-		bottom: receipts.bottom,
-		color,
-	});
+	for (const line of receipts.inside) lines.push(`  ${line}`);
+	if (receipts.bottom !== undefined && receipts.bottom !== "") lines.push(`  ${receipts.bottom}`);
+	return lines;
 }
 
 /** The first line of the message an answer answers, quoted above it. */
@@ -157,9 +156,9 @@ function quoteLine(question: Posted, options: FeedOptions): string {
 }
 
 interface Receipts {
-	/** What the message became, for the frame's bottom edge. */
+	/** What the message became, the last line under its words. */
 	bottom: string | undefined;
-	/** What needs lines of its own inside the frame: the bids of a request for everyone. */
+	/** What needs lines of its own before that: the bids of a request for anyone. */
 	inside: readonly string[];
 }
 
@@ -260,20 +259,19 @@ function typingLines(typing: Typing, options: FeedOptions): string[] {
 	const { theme, now, width } = options;
 	const named = options.names.get(typing.session);
 	const color = (named?.color ?? "muted") as ThemeColor;
-	const room = Math.max(8, width - ENTRY_X - INDENT);
+	const room = Math.max(8, width - INDENT);
 	const cursor = blink(now) ? theme.fg(color, GLYPH.bar) : " ";
 	const wrapped = wrapTextWithAnsi(typing.text, room).slice(-2);
 	if (wrapped.length === 0) wrapped.push("");
-	const body = wrapped.map(
-		(line, index) => `  ${theme.fg("muted", line)}${index === wrapped.length - 1 ? cursor : ""}`,
-	);
-	// A draft has not happened yet, so it wears the dashed frame the send queue wears.
-	return entryFrame(body, width, theme, {
-		top: `${theme.fg(color, theme.bold(`@${named?.handle ?? "an agent"}`))}${theme.fg("dim", ` ${GLYPH.right} `)}${typingRecipients(typing.to, options.names, theme)}`,
-		topRight: `${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`,
-		color,
-		dashed: true,
-	});
+	const head = `${theme.fg(color, theme.bold(`@${named?.handle ?? "an agent"}`))}${theme.fg("dim", ` ${GLYPH.right} `)}${typingRecipients(typing.to, options.names, theme)}`;
+	const state = `${theme.fg(color, spin(now))} ${theme.fg("dim", `writing${dots(now)}`)}`;
+	// Not said yet, so the words stay grey until they are sent.
+	return [
+		spread(head, state, width),
+		...wrapped.map(
+			(line, index) => `  ${theme.fg("muted", line)}${index === wrapped.length - 1 ? cursor : ""}`,
+		),
+	];
 }
 
 function happeningLine(group: readonly Happening[], options: FeedOptions): string {
