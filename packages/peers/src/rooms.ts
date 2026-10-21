@@ -410,7 +410,7 @@ export class Rooms implements RoomsView {
 		const open = this.openIn(folder);
 		if (open.length === 0)
 			return {
-				text: `No session is open in ${tilde(folder)}. Tell the operator what you need there and why: they can link the folder from Alt+G.`,
+				text: `No session is open in ${tilde(folder)}. Tell the operator what you need there and why: they can link the folder from Alt+R.`,
 			};
 		const wanted = request.session?.trim().replace(/^@/, "").toLowerCase();
 		const targets =

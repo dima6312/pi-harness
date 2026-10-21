@@ -237,7 +237,7 @@ export const peers = defineFeature({
 					rooms.prompted();
 					return { action: "continue" };
 				case "unclear":
-					ctx.ui.notify(`${route.error} Write it in that room's tab on Alt+G.`, "warning");
+					ctx.ui.notify(`${route.error} Write it in that room on Alt+R.`, "warning");
 					ctx.ui.setEditorText(event.text);
 					return { action: "handled" };
 				case "group": {
@@ -421,7 +421,7 @@ export const peers = defineFeature({
 			const rule = link.get(scope);
 			if (rule === "never")
 				return reply(
-					"Only the operator links folders here. Tell them what you need from that folder and why: they can link it from Alt+G.",
+					"Only the operator links folders here. Tell them what you need from that folder and why: they can link it from Alt+R.",
 				);
 			const folder = params.folder?.trim() ?? "";
 			if (folder === "") return reply("Say which folder in folder.");
@@ -447,7 +447,7 @@ export const peers = defineFeature({
 			return reply(result.text);
 		}
 
-		scope.registerShortcut(Key.alt("g"), {
+		scope.registerShortcut(Key.alt("r"), {
 			description: "The agents in your rooms, their tasks, and the rooms to talk in",
 			handler: (ctx) => (ctx.mode === "tui" ? openPanel(ctx, rooms) : undefined),
 		});
