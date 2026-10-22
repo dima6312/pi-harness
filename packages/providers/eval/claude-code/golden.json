@@ -1,6 +1,6 @@
 {
-	"version": "2.1.306",
-	"userAgent": "claude-cli/2.1.306 (external, cli)",
+	"version": "2.1.308",
+	"userAgent": "claude-cli/2.1.308 (external, cli)",
 	"entrypoint": "cli",
 	"identity": "You are Claude Code, Anthropic's official CLI for Claude.",
 	"system": [
@@ -98,8 +98,8 @@
 		{
 			"name": "prompt_caching_scope",
 			"header": "prompt-caching-scope-2026-01-05",
-			"turn": true,
-			"description": "Anthropic's own API only. Changes what the cache covers, and nothing in the request itself."
+			"turn": false,
+			"description": "Changes what the cache covers, and nothing in the request itself."
 		},
 		{
 			"name": "prompt_caching_evict",

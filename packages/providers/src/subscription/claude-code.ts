@@ -4,7 +4,7 @@
 // and it refuses newer models to a version it considers too old. `turn` marks the features a turn
 // of Claude Code's TUI asks for, which is the side the settings screen offers.
 
-export const CLAUDE_CODE_VERSION = "2.1.306";
+export const CLAUDE_CODE_VERSION = "2.1.308";
 
 export const CLAUDE_CODE_FEATURES = [
 	{
@@ -81,9 +81,8 @@ export const CLAUDE_CODE_FEATURES = [
 	{
 		name: "prompt_caching_scope",
 		header: "prompt-caching-scope-2026-01-05",
-		turn: true,
-		description:
-			"Anthropic's own API only. Changes what the cache covers, and nothing in the request itself.",
+		turn: false,
+		description: "Changes what the cache covers, and nothing in the request itself.",
 	},
 	{
 		name: "prompt_caching_evict",
